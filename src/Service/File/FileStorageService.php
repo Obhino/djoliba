@@ -14,15 +14,24 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 class FileStorageService
 {
     private const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 Mo
-    
+
     private const ALLOWED_MIME_TYPES = [
         'application/pdf',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'application/x-tex',
         'text/x-tex',
-        'text/plain' // Souvent utilisé pour les fichiers .tex
+        // NOTE: 'text/plain' a été retiré intentionnellement (fix sécurité).
+        // text/plain accepte n'importe quel fichier texte (scripts PHP, JS, etc.).
+        // Seuls application/x-tex et text/x-tex sont acceptés pour les fichiers LaTeX.
     ];
 
+    private const ALLOWED_EXTENSIONS = ['pdf', 'docx', 'tex'];
+
+    /**
+     * IMPORTANT SÉCURITÉ : Ce répertoire doit TOUJOURS rester hors de public/.
+     * Déplacer ce répertoire dans public/ exposerait les documents de recherche
+     * des utilisateurs directement via URL.
+     */
     public function __construct(
         private EntityManagerInterface $entityManager,
         private DocumentRepository $documentRepository,
@@ -39,19 +48,18 @@ class FileStorageService
      */
     public function upload(UploadedFile $file, Project $project, User $user): Document
     {
-        // 1. Validation de la taille (25 Mo)
+        // 1. Validation de la taille (25 Mo max)
         if ($file->getSize() > self::MAX_FILE_SIZE) {
             throw new \InvalidArgumentException('Le fichier dépasse la taille maximale autorisée de 25 Mo.');
         }
 
-        // 2. Validation du format (Analyse du contenu réel du fichier, pas juste l'extension du nom)
-        $mimeType = $file->getMimeType(); // Utilise finfo en interne
-        $guessedExtension = $file->guessExtension(); // Déduit l'extension basée sur le vrai MIME type
+        // 2. Double validation du format : MIME (via finfo/magic bytes) + extension déduite
+        //    Ces deux méthodes analysent le CONTENU du fichier, pas le nom fourni par l'utilisateur.
+        $mimeType = $file->getMimeType();
+        $guessedExtension = $file->guessExtension();
 
-        $allowedExtensions = ['pdf', 'docx', 'tex', 'txt'];
-
-        if (!in_array($mimeType, self::ALLOWED_MIME_TYPES) || !in_array($guessedExtension, $allowedExtensions)) {
-            throw new \InvalidArgumentException('Format de fichier non supporté. Seuls PDF, DOCX et LaTeX sont acceptés.');
+        if (!in_array($mimeType, self::ALLOWED_MIME_TYPES) || !in_array($guessedExtension, self::ALLOWED_EXTENSIONS)) {
+            throw new \InvalidArgumentException('Format de fichier non supporté. Seuls PDF, DOCX et LaTeX (.tex) sont acceptés.');
         }
 
         // 3. Scan antivirus
@@ -60,11 +68,17 @@ class FileStorageService
             throw new \RuntimeException('Opération annulée : un virus a été détecté dans le fichier.');
         }
 
-        // 4. Génération d'un nom unique sécurisé et sauvegarde physique
+        // 4. Génération d'un nom unique sécurisé
+        //    On utilise uniquement l'extension déduite (guessExtension), jamais celle fournie par le client.
         $originalFilename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-        $safeFilename = preg_replace('/[^a-zA-Z0-9_.-]/', '', $originalFilename);
-        $extension = $file->guessExtension() ?? $file->getClientOriginalExtension();
-        $newFilename = $safeFilename . '-' . uniqid() . '.' . $extension;
+        $safeFilename = preg_replace('/[^a-zA-Z0-9_-]/', '', $originalFilename);
+
+        // Fix: prévenir un safeFilename vide si le nom original était composé de caractères spéciaux
+        if (empty($safeFilename)) {
+            $safeFilename = 'document';
+        }
+
+        $newFilename = $safeFilename . '-' . uniqid() . '.' . $guessedExtension;
 
         try {
             $file->move($this->uploadDirectory, $newFilename);
@@ -72,7 +86,7 @@ class FileStorageService
             throw new \RuntimeException('Erreur système lors de l\'enregistrement du fichier : ' . $e->getMessage());
         }
 
-        $finalPath = $this->uploadDirectory . '/' . $newFilename;
+        $finalPath = $this->uploadDirectory . DIRECTORY_SEPARATOR . $newFilename;
 
         // 5. Création et persistance de l'entité Document
         $document = new Document();
@@ -82,7 +96,7 @@ class FileStorageService
         $document->setStoredPath($finalPath);
         $document->setMimeType($mimeType);
         $document->setSizeBytes(filesize($finalPath));
-        $document->setIsScanned(true); // Considéré scanné puisque c'est fait en amont
+        $document->setIsScanned(true);
         $document->setVirusFound(false);
 
         $this->entityManager->persist($document);
@@ -91,31 +105,47 @@ class FileStorageService
         return $document;
     }
 
-    public function getDocument(int $id): ?Document
+    /**
+     * Récupère un document appartenant à un utilisateur spécifique.
+     * Fix IDOR : on filtre toujours par user pour éviter qu'un utilisateur
+     * accède aux documents d'un autre en devinant l'ID.
+     */
+    public function getDocument(int $id, User $user): ?Document
     {
-        return $this->documentRepository->find($id);
+        return $this->documentRepository->findOneBy([
+            'id'   => $id,
+            'user' => $user,
+        ]);
     }
 
+    /**
+     * Supprime le fichier physique et l'entité en base de données.
+     * Fix Path Traversal : on vérifie que le chemin résolu est bien dans le répertoire d'upload
+     * avant d'appeler unlink(), pour éviter la suppression de fichiers système en cas de
+     * valeur corrompue dans storedPath.
+     */
     public function deleteDocument(Document $document): void
     {
-        // 1. Suppression physique du fichier s'il existe toujours
-        if (file_exists($document->getStoredPath())) {
-            unlink($document->getStoredPath());
+        $realUploadDir = realpath($this->uploadDirectory);
+        $realFilePath  = realpath($document->getStoredPath());
+
+        if ($realFilePath !== false && $realUploadDir !== false && str_starts_with($realFilePath, $realUploadDir . DIRECTORY_SEPARATOR)) {
+            unlink($realFilePath);
         }
 
-        // 2. Suppression en base de données
         $this->entityManager->remove($document);
         $this->entityManager->flush();
     }
 
     /**
-     * Simule un scan antivirus.
-     * Pour la production, utiliser ClamAV ou une API tierce.
+     * Scan antivirus — à connecter à ClamAV en production.
+     * Librairie recommandée : xenolope/quahog (client PHP pour clamd).
+     * Commande directe : exec('clamdscan --no-summary ' . escapeshellarg($filePath), $output, $exitCode);
+     * Exit code 0 = OK, 1 = virus trouvé.
      */
     private function scanForVirus(string $filePath): bool
     {
-        // TODO: Implémentation réelle de ClamAV (ex: via exec('clamdscan ...'))
-        // Pour l'instant, on retourne false (pas de virus)
+        // TODO: Implémenter ClamAV avant la mise en production
         return false;
     }
 }
