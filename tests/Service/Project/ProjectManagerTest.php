@@ -1,0 +1,64 @@
+<?php
+
+namespace App\Tests\Service\Project;
+
+use App\Entity\Project;
+use App\Entity\User;
+use App\Repository\ProjectRepository;
+use App\Service\Project\ProjectManager;
+use Doctrine\ORM\EntityManagerInterface;
+use PHPUnit\Framework\TestCase;
+
+class ProjectManagerTest extends TestCase
+{
+    private $entityManager;
+    private $projectRepository;
+    private $manager;
+
+    protected function setUp(): void
+    {
+        $this->entityManager = $this->createMock(EntityManagerInterface::class);
+        $this->projectRepository = $this->createMock(ProjectRepository::class);
+        $this->manager = new ProjectManager($this->entityManager, $this->projectRepository);
+    }
+
+    public function testCreateProject(): void
+    {
+        $user = new User();
+        $user->setEmail('test@example.com');
+
+        $this->entityManager->expects($this->once())->method('persist');
+        $this->entityManager->expects($this->once())->method('flush');
+
+        $project = $this->manager->createProject($user, 'thesis', 'Ma Thèse');
+
+        $this->assertInstanceOf(Project::class, $project);
+        $this->assertEquals('thesis', $project->getType());
+        $this->assertEquals('Ma Thèse', $project->getName());
+        $this->assertEquals($user, $project->getUser());
+    }
+
+    public function testUpdateProject(): void
+    {
+        $project = new Project();
+        $project->setName('Ancien Nom');
+
+        $this->entityManager->expects($this->once())->method('flush');
+
+        $updatedProject = $this->manager->updateProject($project, ['name' => 'Nouveau Nom']);
+
+        $this->assertEquals('Nouveau Nom', $updatedProject->getName());
+    }
+
+    public function testArchiveProject(): void
+    {
+        $project = new Project();
+        $project->setStatus('active');
+
+        $this->entityManager->expects($this->once())->method('flush');
+
+        $this->manager->archiveProject($project);
+
+        $this->assertEquals('archived', $project->getStatus());
+    }
+}
