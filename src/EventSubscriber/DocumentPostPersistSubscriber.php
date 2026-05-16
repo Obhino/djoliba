@@ -38,6 +38,9 @@ class DocumentPostPersistSubscriber
         }
 
         // Dispatch du message dans la file d'attente asynchrone (doctrine://default)
-        $this->messageBus->dispatch(new ProcessDocumentMessage($entity->getId()));
+        $this->messageBus->dispatch(new ProcessDocumentMessage(
+            $entity->getId(),
+            $entity->getProject()->getId(),
+        ));
     }
 }
