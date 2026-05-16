@@ -115,3 +115,30 @@ h1, h2, h3, h4, h5, h6 {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* Dark Mode Overrides */
+.dark body {
+    background-color: var(--slate-950);
+    color: var(--slate-200);
+}
+
+.dark .bg-white {
+    background-color: var(--slate-900);
+}
+
+.dark .card-premium {
+    background-color: var(--slate-900);
+    border-color: var(--slate-800);
+}
+
+.dark .sidebar-link:hover {
+    background-color: var(--slate-800);
+}
+
+.dark .text-djoliba {
+    color: var(--slate-100);
+}
+
+.dark .border-slate-200, .dark .border-slate-100, .dark .border-slate-50 {
+    border-color: var(--slate-800);
+}
