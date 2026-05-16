@@ -52,44 +52,17 @@
 </head>
 <body class="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col selection:bg-primary-500 selection:text-white">
 
-    {# Header #}
-    <header class="fixed w-full top-0 z-50 glass-nav transition-all duration-300">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-20">
-                <div class="flex-shrink-0 flex items-center gap-3 cursor-pointer transition-transform hover:scale-105">
-                    <div class="w-10 h-10 bg-[#0B2545] rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg">
-                        D
-                    </div>
-                    <span class="font-display font-bold text-2xl tracking-tight text-[#0B2545]">
-                        Djoliba <span class="font-light text-slate-400">Search</span>
-                    </span>
-                </div>
-                
-                <nav class="hidden md:flex space-x-8">
-                    <a href="#" class="text-slate-600 hover:text-primary-600 font-medium transition-colors">Accueil</a>
-                    <a href="#" class="text-slate-600 hover:text-primary-600 font-medium transition-colors">Fonctionnalités</a>
-                    <a href="#" class="text-slate-600 hover:text-primary-600 font-medium transition-colors">Tarifs</a>
-                </nav>
+    {# Structure avec Sidebar pour les utilisateurs connectés #}
+    <div class="flex min-h-screen">
+        {% if app.user %}
+            {{ include('_sidebar.html.twig') }}
+        {% endif %}
 
-                <div class="hidden md:flex items-center space-x-4">
-                    {% if app.user %}
-                        <a href="#" class="text-slate-600 hover:text-primary-600 font-medium transition-colors">Mon Espace</a>
-                        <a href="{{ path('app_logout') }}" class="text-slate-500 hover:text-red-600 font-medium transition-colors">Déconnexion</a>
-                    {% else %}
-                        <a href="/login" class="text-slate-600 hover:text-primary-600 font-medium transition-colors">Connexion</a>
-                        <a href="/register" class="bg-slate-900 hover:bg-primary-600 text-white px-5 py-2.5 rounded-full font-medium transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
-                            S'inscrire
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </header>
-
-    {# Contenu principal #}
-    <main class="flex-grow pt-20">
-        {% block content %}{% endblock %}
-    </main>
+        {# Contenu principal #}
+        <main class="flex-grow {% if not app.user %}pt-20{% endif %}">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
 
     {# Footer #}
     <footer class="bg-white border-t border-slate-200 mt-auto">
