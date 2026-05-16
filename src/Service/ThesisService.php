@@ -14,6 +14,7 @@ class ThesisService
 {
     public function __construct(
         private ChapterRepository      $chapterRepository,
+        private \App\Repository\DocumentRepository $documentRepository,
         private EntityManagerInterface $entityManager,
         private DeepSeekService        $deepSeekService,
         private CacheService           $cacheService,
@@ -186,6 +187,68 @@ class ThesisService
         $interaction->setProject($project);
         $interaction->setType('thesis_consistency');
         $interaction->setUserPrompt("Évaluation de la cohérence de la thèse");
+        $interaction->setAiResponse($aiResponse);
+        $interaction->setResponseTimeMs($responseTimeMs);
+
+        $this->entityManager->persist($interaction);
+        $this->entityManager->flush();
+
+        return [
+            'response'    => $aiResponse,
+            'interaction' => $interaction,
+        ];
+    }
+    /**
+     * Génère du contenu pour un chapitre spécifique.
+     * Utilise le contexte des documents du projet et des autres chapitres existants.
+     *
+     * @return array{response: string, interaction: Interaction}
+     */
+    public function writeChapter(Chapter $chapter, string $userPrompt): array
+    {
+        $project = $chapter->getProject();
+        
+        // 1. Contexte des autres chapitres (pour la cohérence)
+        $otherChapters = $this->chapterRepository->findBy(['project' => $project]);
+        $chaptersSummary = [];
+        foreach ($otherChapters as $c) {
+            if ($c->getId() === $chapter->getId()) continue;
+            $chaptersSummary[] = sprintf("- %s: %s", $c->getTitle(), mb_substr((string)$c->getContent(), 0, 300));
+        }
+        $chaptersContext = implode("\n", $chaptersSummary);
+
+        // 2. Contexte des documents du projet
+        $documents = $this->documentRepository->findBy(['project' => $project]);
+        $docsContext = [];
+        foreach ($documents as $doc) {
+            $docsContext[] = "- Document: " . $doc->getFilename();
+        }
+        $documentsList = implode("\n", $docsContext);
+
+        $prompt = sprintf(
+            "Tu es un assistant de rédaction académique expert. Rédige le contenu pour le chapitre suivant d'une thèse.\n\n" .
+            "Projet: %s\n" .
+            "Chapitre cible: %s\n\n" .
+            "Contexte des autres chapitres:\n%s\n\n" .
+            "Documents de référence disponibles:\n%s\n\n" .
+            "Instruction de l'utilisateur: %s\n\n" .
+            "Rédige un contenu structuré, académique et fluide. Cite des éléments si nécessaire.",
+            $project->getName(),
+            $chapter->getTitle(),
+            $chaptersContext ?: "Aucun autre chapitre défini.",
+            $documentsList ?: "Aucun document importé.",
+            $userPrompt
+        );
+
+        $startTime = microtime(true);
+        $aiResponse = $this->deepSeekService->call($prompt, ['temperature' => 0.7]);
+        $responseTimeMs = (int) ((microtime(true) - $startTime) * 1000);
+
+        // Traçabilité
+        $interaction = new Interaction();
+        $interaction->setProject($project);
+        $interaction->setType('thesis_write');
+        $interaction->setUserPrompt($userPrompt);
         $interaction->setAiResponse($aiResponse);
         $interaction->setResponseTimeMs($responseTimeMs);
 

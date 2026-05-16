@@ -179,13 +179,12 @@ class ThesisController extends AbstractController
     /**
      * POST /api/thesis/write
      * Body JSON: { "chapter_id": int, "prompt": "string" }
-     * Alias ou route spécifique demandée pour la rédaction (potentiellement via SSE).
+     *
+     * Génère du contenu pour un chapitre basé sur un prompt utilisateur et le contexte du projet.
      */
     #[Route('/write', name: 'api_thesis_write', methods: ['POST'])]
     public function writeContent(Request $request): JsonResponse
     {
-        // En attendant de savoir exactement ce que fait cette route (ex: SSE ou prompt pour écrire le chapitre)
-        // On retourne un stub ou on utilise un service IA direct.
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['chapter_id']) || empty($data['prompt'])) {
@@ -198,10 +197,18 @@ class ThesisController extends AbstractController
             return $this->json(['success' => false, 'error' => ['code' => 404, 'message' => 'Chapitre non trouvé.']], Response::HTTP_NOT_FOUND);
         }
 
-        // TODO: Appeler l'IA pour générer du contenu pour le chapitre basé sur le prompt et le projet
-        return $this->json([
-            'success' => true,
-            'message' => 'Route /api/thesis/write prête à être branchée sur le stream ou le DeepSeekService pour la rédaction.'
-        ]);
+        try {
+            $result = $this->thesisService->writeChapter($chapter, $data['prompt']);
+
+            return $this->json([
+                'success' => true,
+                'data' => [
+                    'response' => $result['response'],
+                    'interaction_id' => $result['interaction']->getId(),
+                ]
+            ]);
+        } catch (\RuntimeException $e) {
+            return $this->json(['success' => false, 'error' => ['code' => 503, 'message' => 'Service IA temporairement indisponible.']], Response::HTTP_SERVICE_UNAVAILABLE);
+        }
     }
 }
