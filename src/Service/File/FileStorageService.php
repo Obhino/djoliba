@@ -44,9 +44,13 @@ class FileStorageService
             throw new \InvalidArgumentException('Le fichier dépasse la taille maximale autorisée de 25 Mo.');
         }
 
-        // 2. Validation du format (MIME type)
-        $mimeType = $file->getMimeType();
-        if (!in_array($mimeType, self::ALLOWED_MIME_TYPES)) {
+        // 2. Validation du format (Analyse du contenu réel du fichier, pas juste l'extension du nom)
+        $mimeType = $file->getMimeType(); // Utilise finfo en interne
+        $guessedExtension = $file->guessExtension(); // Déduit l'extension basée sur le vrai MIME type
+
+        $allowedExtensions = ['pdf', 'docx', 'tex', 'txt'];
+
+        if (!in_array($mimeType, self::ALLOWED_MIME_TYPES) || !in_array($guessedExtension, $allowedExtensions)) {
             throw new \InvalidArgumentException('Format de fichier non supporté. Seuls PDF, DOCX et LaTeX sont acceptés.');
         }
 
