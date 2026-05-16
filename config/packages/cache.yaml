@@ -3,12 +3,12 @@ framework:
         # Unique name of your app: used to compute stable namespaces for cache keys.
         #prefix_seed: your_vendor_name/app_name
 
-        # Pool principal de l'application : Redis en prod, système de fichiers en dev si Redis absent
-        app: cache.adapter.redis
+        # Redis configuration
         default_redis_provider: '%env(REDIS_URL)%'
 
-        # APCu (alternative si Redis non disponible)
-        #app: cache.adapter.apcu
+        # Pools
+        app: cache.adapter.redis
+        system: cache.adapter.redis
 
 when@test:
     framework:
