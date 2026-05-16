@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            margin: 2.5cm;
+        }
+        body {
+            font-family: 'DejaVu Sans', sans-serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: #1a1a1a;
+        }
+        .cover {
+            text-align: center;
+            margin-top: 5cm;
+            margin-bottom: 5cm;
+        }
+        .project-title {
+            font-size: 28pt;
+            font-weight: bold;
+            color: #0B2545;
+            margin-bottom: 0.5cm;
+        }
+        .project-type {
+            font-size: 14pt;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .author {
+            margin-top: 2cm;
+            font-size: 12pt;
+        }
+        .page-break {
+            page-break-after: always;
+        }
+        h1 {
+            color: #0B2545;
+            font-size: 20pt;
+            border-bottom: 2px solid #0B2545;
+            padding-bottom: 10px;
+            margin-top: 1cm;
+        }
+        h2 {
+            color: #10B981;
+            font-size: 16pt;
+            margin-top: 0.8cm;
+        }
+        .content {
+            text-align: justify;
+        }
+        .footer {
+            position: fixed;
+            bottom: -1cm;
+            left: 0;
+            right: 0;
+            height: 1cm;
+            text-align: center;
+            font-size: 9pt;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <!-- Page de garde -->
+    <div class="cover">
+        <div class="project-title">{{ project.name }}</div>
+        <div class="project-type">{{ project.type }}</div>
+        <div class="author">
+            Par : {{ project.user.username }}<br>
+            Généré par Djoliba Search le {{ "now"|date("d/m/Y") }}
+        </div>
+    </div>
+    <div class="page-break"></div>
+
+    <!-- Sommaire -->
+    <h1>Sommaire</h1>
+    <ul style="list-style-type: none; padding-left: 0;">
+        {% for chapter in chapters %}
+            <li style="margin-bottom: 10px;">
+                <strong>{{ chapter.order }}. {{ chapter.title }}</strong>
+                {% if not chapter.children.isEmpty() %}
+                    <ul style="list-style-type: none; padding-left: 20px;">
+                        {% for sub in chapter.children %}
+                            <li>{{ chapter.order }}.{{ sub.order }} {{ sub.title }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+    <div class="page-break"></div>
+
+    <!-- Contenu -->
+    {% for chapter in chapters %}
+        <div class="chapter">
+            <h1>{{ chapter.order }}. {{ chapter.title }}</h1>
+            <div class="content">
+                {{ chapter.content|nl2br }}
+            </div>
+            
+            {% for sub in chapter.children %}
+                <h2>{{ chapter.order }}.{{ sub.order }} {{ sub.title }}</h2>
+                <div class="content">
+                    {{ sub.content|nl2br }}
+                </div>
+            {% endfor %}
+        </div>
+        {% if not loop.last %}<div class="page-break"></div>{% endif %}
+    {% endfor %}
+
+    <div class="footer">
+        Djoliba Search - La 1ère plateforme autonome de recherche en Afrique
+    </div>
+</body>
+</html>

@@ -8,13 +8,54 @@ use App\Repository\ChapterRepository;
 use App\Repository\DocumentRepository;
 use Symfony\Component\Filesystem\Filesystem;
 
+use Dompdf\Dompdf;
+use Dompdf\Options;
+use Twig\Environment;
+
 class ProjectExporterService
 {
     public function __construct(
         private ChapterRepository $chapterRepository,
         private DocumentRepository $documentRepository,
+        private Environment $twig,
         private string $projectDir
     ) {
+    }
+
+    /**
+     * Exporte un projet complet sous forme de fichier PDF.
+     */
+    public function exportToPdf(Project $project): string
+    {
+        $options = new Options();
+        $options->set('defaultFont', 'DejaVu Sans');
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+
+        $dompdf = new Dompdf($options);
+
+        $chapters = $this->chapterRepository->findBy(['project' => $project, 'parent' => null], ['order' => 'ASC']);
+        
+        $html = $this->twig->render('export/pdf_thesis.html.twig', [
+            'project' => $project,
+            'chapters' => $chapters,
+        ]);
+
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        $exportDir = $this->projectDir . '/public/uploads/exports';
+        if (!is_dir($exportDir)) {
+            mkdir($exportDir, 0777, true);
+        }
+
+        $filename = sprintf('%s_%s.pdf', $this->slugify($project->getName()), uniqid());
+        $pdfPath = $exportDir . '/' . $filename;
+
+        file_put_contents($pdfPath, $dompdf->output());
+
+        return $pdfPath;
     }
 
     /**

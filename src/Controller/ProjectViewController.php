@@ -35,6 +35,26 @@ class ProjectViewController extends AbstractController
         }
     }
 
+    #[IsGranted('ROLE_USER')]
+    #[Route('/project/{id}/export/pdf', name: 'app_project_export_pdf')]
+    public function exportPdf(int $id): Response
+    {
+        $project = $this->projectManager->getProject($id);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            throw $this->createNotFoundException('Projet non trouvé.');
+        }
+
+        try {
+            $pdfPath = $this->exporterService->exportToPdf($project);
+            
+            return $this->file($pdfPath, sprintf('%s_export.pdf', $this->exporterService->slugify($project->getName())));
+        } catch (\Exception $e) {
+            $this->addFlash('error', "L'export PDF a échoué : " . $e->getMessage());
+            return $this->redirectToRoute('app_project_show', ['id' => $id]);
+        }
+    }
+
     #[Route('/hub', name: 'app_hub')]
     public function hub(): Response
     {
