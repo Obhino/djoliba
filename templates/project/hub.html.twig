@@ -8,7 +8,7 @@
         
         <!-- Header / Salutation -->
         <div class="mb-12 fade-in">
-            <h1 class="text-3xl font-display font-black text-djoliba mb-2">Bonjour, {{ app.user ? app.user.username : 'Chercheur' }}</h1>
+            <h1 class="text-3xl font-display font-black text-djoliba mb-2">Bonjour, {{ app.user ? (app.user.firstName ?: app.user.userIdentifier) : 'Chercheur' }}</h1>
             <p class="text-slate-500">Que souhaitez-vous explorer aujourd'hui ?</p>
         </div>
 

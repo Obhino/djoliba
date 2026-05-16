@@ -13,4 +13,5 @@ framework:
 when@test:
     framework:
         cache:
-            app: cache.adapter.array  # Cache en mémoire pour les tests (pas de Redis nécessaire)
+            app: cache.adapter.array
+            system: cache.adapter.array

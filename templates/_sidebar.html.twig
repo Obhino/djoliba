@@ -76,10 +76,10 @@
         {% if app.user %}
             <div class="bg-slate-50 rounded-2xl p-4 flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-djoliba flex items-center justify-center text-white font-bold text-xs">
-                    {{ app.user.username|slice(0, 2)|upper }}
+                    {{ (app.user.firstName ?: app.user.userIdentifier)|slice(0, 2)|upper }}
                 </div>
                 <div class="flex-grow min-w-0">
-                    <div class="text-sm font-bold text-djoliba truncate">{{ app.user.username }}</div>
+                    <div class="text-sm font-bold text-djoliba truncate">{{ app.user.firstName ?: app.user.userIdentifier }}</div>
                     <div class="text-[10px] text-slate-400">Chercheur</div>
                 </div>
                 <a href="{{ path('app_logout') }}" class="text-slate-300 hover:text-red-500 transition-colors">
