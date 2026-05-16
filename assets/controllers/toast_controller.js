@@ -1,68 +1,102 @@
 import { Controller } from '@hotwired/stimulus';
 
-/**
- * Stimulus Controller — toast
- *
- * Gère l'affichage des notifications toasts (succès, erreur, info).
- */
+/* stimulusFetch: 'lazy' */
 export default class extends Controller {
-    static targets = ['container'];
-    static values = { message: String, type: String };
+    static values = {
+        message: String,
+        type: { type: String, default: 'success' }
+    }
 
     connect() {
-        if (this.hasMessageValue) {
-            this.show(this.messageValue, this.typeValue || 'info');
+        // Si le contrôleur est instancié avec des valeurs (ex: flash messages Symfony)
+        if (this.hasMessageValue && this.messageValue !== '') {
+            this.show(this.messageValue, this.typeValue);
+            // On supprime l'élément "témoin" du DOM car le toast est créé dynamiquement dans le container
+            this.element.remove();
         }
 
-        // Écoute les événements personnalisés pour afficher des toasts depuis d'autres contrôleurs
-        window.addEventListener('toast:show', (event) => {
-            this.show(event.detail.message, event.detail.type || 'info');
-        });
+        // Écoute des événements globaux
+        this.handleShowEvent = this.handleShowEvent.bind(this);
+        window.addEventListener('toast:show', this.handleShowEvent);
     }
 
-    showFromFlash() {
-        this.show(this.messageValue, this.typeValue || 'info');
+    disconnect() {
+        window.removeEventListener('toast:show', this.handleShowEvent);
     }
 
-    show(message, type = 'info') {
+    handleShowEvent(event) {
+        if (event.detail && event.detail.message) {
+            this.show(event.detail.message, event.detail.type || 'success');
+        }
+    }
+
+    /**
+     * Affiche une notification
+     * @param {string} message Le texte à afficher
+     * @param {string} type 'success', 'error', 'info', 'warning'
+     */
+    show(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        if (!container) {
+            console.warn('Toast container not found. Make sure you have <div id="toast-container"> in your base template.');
+            return;
+        }
+
         const toast = document.createElement('div');
-        toast.className = `toast-item fade-in-right ${this.getThemeClasses(type)}`;
+        toast.className = `toast-item glass shadow-xl p-4 rounded-2xl flex items-center gap-3 border-l-4 fade-in-right pointer-events-auto min-w-[320px] max-w-md`;
         
-        const icon = this.getIcon(type);
-        
+        const config = this.getTypeConfig(type);
+        toast.classList.add(...config.classes.split(' '));
+
         toast.innerHTML = `
-            <div class="flex items-center gap-3">
-                <div class="flex-shrink-0">${icon}</div>
-                <div class="text-sm font-semibold">${message}</div>
-                <button class="ml-auto text-current opacity-50 hover:opacity-100 transition-opacity" onclick="this.parentElement.parentElement.remove()">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+            <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${config.iconBg}">
+                ${config.icon}
             </div>
+            <div class="flex-grow text-sm font-semibold text-slate-800">${message}</div>
+            <button class="flex-shrink-0 text-slate-400 hover:text-slate-600 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
         `;
 
-        this.element.appendChild(toast);
+        // Bouton de fermeture manuelle
+        toast.querySelector('button').addEventListener('click', () => this.hide(toast));
 
-        // Auto-suppression après 5 secondes
-        setTimeout(() => {
-            toast.classList.add('fade-out');
-            setTimeout(() => toast.remove(), 500);
-        }, 5000);
+        container.appendChild(toast);
+
+        // Auto-disparition
+        setTimeout(() => this.hide(toast), 5000);
     }
 
-    getThemeClasses(type) {
-        switch (type) {
-            case 'success': return 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20';
-            case 'error': return 'bg-red-500 text-white shadow-lg shadow-red-500/20';
-            case 'warning': return 'bg-amber-500 text-white shadow-lg shadow-amber-500/20';
-            default: return 'bg-djoliba text-white shadow-lg shadow-djoliba/20';
-        }
+    hide(toast) {
+        if (!toast.parentElement) return;
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 400);
     }
 
-    getIcon(type) {
-        switch (type) {
-            case 'success': return '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
-            case 'error': return '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
-            default: return '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
-        }
+    getTypeConfig(type) {
+        const configs = {
+            success: {
+                classes: 'border-emerald-500 bg-white/90',
+                iconBg: 'bg-emerald-100 text-emerald-600',
+                icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
+            },
+            error: {
+                classes: 'border-red-500 bg-white/90',
+                iconBg: 'bg-red-100 text-red-600',
+                icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>'
+            },
+            warning: {
+                classes: 'border-amber-500 bg-white/90',
+                iconBg: 'bg-amber-100 text-amber-600',
+                icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>'
+            },
+            info: {
+                classes: 'border-djoliba bg-white/90',
+                iconBg: 'bg-slate-100 text-djoliba',
+                icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+            }
+        };
+
+        return configs[type] || configs.info;
     }
 }

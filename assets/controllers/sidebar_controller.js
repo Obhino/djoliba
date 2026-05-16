@@ -1,30 +1,54 @@
 import { Controller } from '@hotwired/stimulus';
 
-/**
- * Stimulus Controller — sidebar
- *
- * Gère l'état actif des liens de la barre latérale en fonction de l'URL actuelle.
- */
+/* stimulusFetch: 'lazy' */
 export default class extends Controller {
-    static targets = ['link'];
+    static targets = ['link', 'menu', 'overlay']
 
     connect() {
         this.highlightActiveLink();
     }
 
+    /**
+     * Gère la mise en surbrillance du lien actif
+     */
     highlightActiveLink() {
         const currentPath = window.location.pathname;
 
         this.linkTargets.forEach(link => {
             const linkPath = link.getAttribute('href');
+            if (!linkPath || linkPath === '#') return;
             
-            // On vérifie si l'URL commence par le lien (pour gérer les sous-routes)
-            // Ou si c'est une correspondance exacte pour le Hub
-            if (currentPath === linkPath || (linkPath !== '/hub' && currentPath.startsWith(linkPath))) {
-                link.classList.add('active');
+            if (currentPath === linkPath || (linkPath !== '/' && currentPath.startsWith(linkPath))) {
+                link.classList.add('bg-djoliba/10', 'text-djoliba', 'border-djoliba');
+                link.classList.remove('text-slate-500', 'border-transparent');
             } else {
-                link.classList.remove('active');
+                link.classList.remove('bg-djoliba/10', 'text-djoliba', 'border-djoliba');
+                link.classList.add('text-slate-500', 'border-transparent');
             }
         });
+    }
+
+    /**
+     * Ouvre le menu mobile
+     */
+    toggle() {
+        if (this.hasMenuTarget) {
+            this.menuTarget.classList.toggle('-translate-x-full');
+        }
+        if (this.hasOverlayTarget) {
+            this.overlayTarget.classList.toggle('hidden');
+        }
+    }
+
+    /**
+     * Ferme le menu mobile
+     */
+    close() {
+        if (this.hasMenuTarget) {
+            this.menuTarget.classList.add('-translate-x-full');
+        }
+        if (this.hasOverlayTarget) {
+            this.overlayTarget.classList.add('hidden');
+        }
     }
 }

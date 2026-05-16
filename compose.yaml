@@ -24,7 +24,7 @@ services:
     volumes:
       - database_data:/var/lib/postgresql/data:rw
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
   # ─────────────────────────────────────────────
   # Cache Redis (sessions + cache IA + Messenger)

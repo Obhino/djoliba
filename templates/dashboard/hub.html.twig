@@ -1,0 +1,66 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dashboard - Djoliba{% endblock %}
+
+{% block main %}
+<div class="p-4 sm:p-8 max-w-7xl mx-auto">
+    {# En-tête de bienvenue #}
+    <div class="mb-12">
+        <h1 class="text-3xl sm:text-4xl font-display font-bold text-djoliba mb-2">Bienvenue sur Djoliba</h1>
+        <p class="text-slate-500">Votre assistant intelligent pour la recherche académique est prêt.</p>
+    </div>
+
+    {# Zone centrale : Recherche & Action #}
+    <div class="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 p-8 sm:p-12 border border-slate-100 mb-12 relative overflow-hidden" data-controller="search">
+        {# Décoration arrière-plan #}
+        <div class="absolute top-0 right-0 -mt-20 -mr-20 w-64 h-64 bg-emerald_ia/5 rounded-full blur-3xl"></div>
+        
+        <div class="relative z-10">
+            <h2 class="text-xl font-bold text-djoliba mb-8 text-center">Que souhaitez-vous explorer aujourd'hui ?</h2>
+            
+            <div class="max-w-3xl mx-auto">
+                {# Barre de recherche centrale #}
+                <div class="relative group mb-6">
+                    <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                        <svg class="h-6 w-6 text-slate-400 group-focus-within:text-djoliba transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input type="text" 
+                           data-search-target="input"
+                           data-action="keydown->search#onSearch"
+                           class="block w-full pl-14 pr-4 py-5 bg-slate-50 border-none rounded-2xl text-lg text-djoliba placeholder-slate-400 focus:ring-2 focus:ring-djoliba/20 focus:bg-white transition-all shadow-inner"
+                           placeholder="Entrez un sujet, un DOI ou une question de recherche...">
+                </div>
+
+                <div class="flex flex-wrap justify-center gap-4">
+                    <input type="file" data-search-target="fileInput" data-action="change->search#onUpload" class="hidden" accept=".pdf">
+                    <button data-action="click->search#triggerUpload" class="flex items-center gap-2 px-8 py-4 bg-djoliba text-white rounded-2xl font-bold shadow-lg shadow-djoliba/20 hover:-translate-y-0.5 transition-all">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                        Soumettre un PDF
+                    </button>
+                    <button class="flex items-center gap-2 px-8 py-4 bg-white border-2 border-slate-100 text-djoliba rounded-2xl font-bold hover:bg-slate-50 transition-all">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                        Parcourir la bibliothèque
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Derniers projets en cours #}
+    <div data-controller="projects-list">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-djoliba">Derniers projets en cours</h2>
+            <a href="{{ path('app_dashboard') }}" class="text-sm font-bold text-emerald_ia hover:underline">Voir tout</a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-projects-list-target="container">
+            {# Chargé dynamiquement via projects_list_controller.js #}
+            <div class="col-span-full py-12 flex justify-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-djoliba"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

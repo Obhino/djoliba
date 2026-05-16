@@ -126,10 +126,19 @@ class ProjectViewController extends AbstractController
 
     #[IsGranted('ROLE_USER')]
     #[Route('/project/{id}/reading', name: 'app_project_reading')]
-    public function reading(int $id): Response
+    public function reading(int $id, \App\Repository\DocumentRepository $documentRepository): Response
     {
         $project = $this->projectManager->getProject($id);
-        return $this->render('project/reading.html.twig', ['project' => $project]);
+        
+        // Récupérer le premier document associé au projet
+        $document = $documentRepository->findOneBy(['project' => $project]);
+        $documentId = $document ? $document->getId() : 0;
+        
+        return $this->render('project/reading.html.twig', [
+            'project'     => $project,
+            'document_id' => $documentId,
+            'document'    => $document,
+        ]);
     }
 
     #[IsGranted('ROLE_USER')]

@@ -160,8 +160,19 @@ class ReadingService
             return file_get_contents($path);
         }
 
-        // PDF et DOCX : retourner une instruction pour DeepSeek
-        // TODO: Implémenter une extraction réelle via exec('pdftotext') ou phpoffice/phpword
+        // PDF : extraction via smalot/pdfparser
+        if ($mimeType === 'application/pdf') {
+            try {
+                $parser = new \Smalot\PdfParser\Parser();
+                $pdf = $parser->parseFile($path);
+                return $pdf->getText();
+            } catch (\Exception $e) {
+                throw new \RuntimeException(sprintf('Erreur lors de la lecture du PDF : %s', $e->getMessage()), 0, $e);
+            }
+        }
+
+        // DOCX : retourner une instruction pour DeepSeek
+        // TODO: Implémenter une extraction réelle via phpoffice/phpword
         // Pour l'instant, on indique le nom du fichier pour que l'IA sache de quoi il s'agit
         return sprintf(
             "[Contenu du fichier %s — extraction binaire non encore implémentée. Fichier de type : %s]",

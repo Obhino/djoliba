@@ -23,10 +23,21 @@ class ProjectController extends AbstractController
     }
 
     #[Route('', name: 'api_projects_list', methods: ['GET'])]
-    public function list(): JsonResponse
+    public function list(Request $request): JsonResponse
     {
         $user = $this->getUser();
-        $projects = $this->projectManager->getUserProjects($user);
+        $limit = $request->query->get('limit');
+        
+        if ($user) {
+            $projects = $this->projectManager->getUserProjects($user);
+        } else {
+            // Mode Test : Récupération depuis la session
+            $projects = $request->getSession()->get('test_projects', []);
+        }
+        
+        if ($limit) {
+            $projects = array_slice($projects, 0, (int)$limit);
+        }
 
         return $this->json([
             'success' => true,
@@ -38,22 +49,41 @@ class ProjectController extends AbstractController
     public function create(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
+        
+        // Support pour FormData (utilisé lors de l'upload de fichiers)
+        if (null === $data || !isset($data['name'])) {
+            $data = [
+                'name' => $request->request->get('name'),
+                'type' => $request->request->get('type'),
+            ];
+        }
 
-        if (!isset($data['name']) || !isset($data['type'])) {
+        if (!$data['name'] || !$data['type']) {
             return $this->json([
                 'success' => false,
-                'error' => [
-                    'code' => 400,
-                    'message' => 'Nom et type sont requis'
-                ]
+                'error' => ['code' => 400, 'message' => 'Nom et type sont requis']
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        $project = $this->projectManager->createProject(
-            $this->getUser(),
-            $data['type'],
-            $data['name']
-        );
+        $user = $this->getUser();
+        if ($user) {
+            $project = $this->projectManager->createProject($user, $data['type'], $data['name']);
+        } else {
+            // Mode Test : Sauvegarde en session
+            $session = $request->getSession();
+            $projects = $session->get('test_projects', []);
+            
+            $project = [
+                'id' => count($projects) + 1,
+                'name' => $data['name'],
+                'type' => $data['type'],
+                'createdAt' => (new \DateTime())->format('c'),
+                'status' => 'active'
+            ];
+            
+            array_unshift($projects, $project);
+            $session->set('test_projects', $projects);
+        }
 
         return $this->json([
             'success' => true,
@@ -127,6 +157,51 @@ class ProjectController extends AbstractController
             'success' => true,
             'data' => null
         ], Response::HTTP_NO_CONTENT);
+    }
+
+    #[Route('/{id}/articles', name: 'api_projects_add_article', methods: ['POST'])]
+    public function addArticle(int $id, Request $request): JsonResponse
+    {
+        $user = $this->getUser();
+        $isTestMode = $request->getSession()->get('is_test_mode');
+
+        if (!$user && !$isTestMode) {
+            return $this->json(['success' => false, 'error' => ['message' => 'Non autorisé']], 401);
+        }
+
+        $articleData = json_decode($request->getContent(), true);
+        if (!$articleData) {
+            return $this->json(['success' => false, 'error' => ['message' => 'Données invalides']], 400);
+        }
+
+        if ($user) {
+            $project = $this->projectManager->getProject($id);
+            if (!$project || $project->getUser() !== $user) {
+                return $this->json(['success' => false, 'error' => ['message' => 'Projet non trouvé']], 404);
+            }
+            
+            $currentMetadata = $project->getMetadata() ?? [];
+            if (!isset($currentMetadata['articles'])) $currentMetadata['articles'] = [];
+            $currentMetadata['articles'][] = $articleData;
+            $this->projectManager->updateProject($project, ['metadata' => $currentMetadata]);
+        } else {
+            $session = $request->getSession();
+            $projects = $session->get('test_projects', []);
+            $found = false;
+            foreach ($projects as &$p) {
+                if ($p['id'] == $id) {
+                    if (!isset($p['metadata'])) $p['metadata'] = [];
+                    if (!isset($p['metadata']['articles'])) $p['metadata']['articles'] = [];
+                    $p['metadata']['articles'][] = $articleData;
+                    $found = true;
+                    break;
+                }
+            }
+            if (!$found) return $this->json(['success' => false, 'error' => ['message' => 'Projet non trouvé']], 404);
+            $session->set('test_projects', $projects);
+        }
+
+        return $this->json(['success' => true]);
     }
 
     #[Route('/{id}/export', name: 'api_projects_export', methods: ['GET'])]

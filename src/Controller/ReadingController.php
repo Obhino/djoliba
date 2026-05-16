@@ -134,6 +134,43 @@ class ReadingController extends AbstractController
     }
 
     /**
+     * GET /api/reading/{id}/synthesize
+     * Génère et retourne la synthèse en points clés du document.
+     */
+    #[Route('/{id}/synthesize', name: 'api_reading_document_synthesize', methods: ['GET'])]
+    public function documentSynthesize(int $id): JsonResponse
+    {
+        $document = $this->documentRepository->findOneBy([
+            'id'   => $id,
+            'user' => $this->getUser(),
+        ]);
+
+        if (!$document) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 404, 'message' => 'Document non trouvé.']
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        try {
+            $result = $this->readingService->synthesize($document, $document->getProject());
+
+            return $this->json([
+                'success' => true,
+                'data'    => [
+                    'points' => $result['points'],
+                    'interaction_id' => $result['interaction']->getId(),
+                ],
+            ]);
+        } catch (\RuntimeException $e) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 503, 'message' => 'Service IA temporairement indisponible.']
+            ], Response::HTTP_SERVICE_UNAVAILABLE);
+        }
+    }
+
+    /**
      * POST /api/reading/synthesize
      * Body JSON: { "document_id": int, "project_id": int }
      */
@@ -203,5 +240,45 @@ class ReadingController extends AbstractController
         } catch (\RuntimeException $e) {
             return $this->json(['success' => false, 'error' => ['code' => 503, 'message' => 'Service IA temporairement indisponible.']], Response::HTTP_SERVICE_UNAVAILABLE);
         }
+    }
+
+    /**
+     * GET /api/reading/project/{id}/history
+     * Récupère l'historique des interactions de chat (reading_chat) pour un projet.
+     */
+    #[Route('/project/{id}/history', name: 'api_reading_project_history', methods: ['GET'])]
+    public function projectHistory(int $id, \App\Repository\InteractionRepository $interactionRepo): JsonResponse
+    {
+        $project = $this->projectManager->getProject($id);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            return $this->json(['success' => false, 'error' => ['code' => 404, 'message' => 'Projet non trouvé.']], Response::HTTP_NOT_FOUND);
+        }
+
+        $interactions = $interactionRepo->findBy(
+            ['project' => $project, 'type' => 'reading_chat'],
+            ['createdAt' => 'ASC']
+        );
+
+        $history = [];
+        foreach ($interactions as $interaction) {
+            $history[] = [
+                'role' => 'user',
+                'content' => $interaction->getUserPrompt(),
+                'time' => $interaction->getCreatedAt()->format('H:i')
+            ];
+            if ($interaction->getAiResponse()) {
+                $history[] = [
+                    'role' => 'ai',
+                    'content' => $interaction->getAiResponse(),
+                    'time' => $interaction->getCreatedAt()->format('H:i')
+                ];
+            }
+        }
+
+        return $this->json([
+            'success' => true,
+            'data' => ['history' => $history]
+        ]);
     }
 }

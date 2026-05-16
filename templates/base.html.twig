@@ -4,121 +4,99 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Djoliba - Plateforme Autonome de Recherche{% endblock %}</title>
-    
-    {# Tailwind CSS via CDN #}
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    {# Configuration Tailwind pour la charte Djoliba #}
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        display: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
-                        serif: ['Merriweather', 'serif'],
-                    },
-                    colors: {
-                        djoliba: '#0B2545',
-                        emerald_ia: '#10B981',
-                        gold_prestige: '#F59E0B',
-                        slate: {
-                            950: '#020617'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    
+
     {# Polices Google #}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
-    
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
-        .glass-nav {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-        }
-    </style>
 
-    {% block stylesheets %}{% endblock %}
+    {# KaTeX pour le rendu des équations LaTeX #}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex/contrib/auto-render.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var checkKaTeX = setInterval(function() {
+                if (window.renderMathInElement) {
+                    clearInterval(checkKaTeX);
+                    window.renderMathInElement(document.body, {
+                        delimiters: [
+                            {left: "$$", right: "$$", display: true},
+                            {left: "$", right: "$", display: false},
+                            {left: "\\(", right: "\\)", display: false},
+                            {left: "\\[", right: "\\]", display: true}
+                        ],
+                        throwOnError: false
+                    });
+                }
+            }, 50);
+        });
+    </script>
+
+    {# AssetMapper : CSS (Tailwind) & JS (Stimulus) #}
+    {% block javascripts %}
+        {{ importmap('app') }}
+    {% endblock %}
+
+    {% block styles %}{% endblock %}
 </head>
-<body class="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col selection:bg-primary-500 selection:text-white">
+<body class="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col selection:bg-djoliba selection:text-white">
 
-    {# Structure avec Sidebar pour les utilisateurs connectés ou Mode Test #}
-    <div class="flex min-h-screen">
-        {% if app.user or app.session.get('is_test_mode') %}
-            {{ include('_sidebar.html.twig') }}
+    {% block header %}
+        {# Conteneur pour les Toasts Stimulus #}
+        <div id="toast-container" data-controller="toast" class="fixed top-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none"></div>
+
+        {# Gestion des messages Flash Symfony via Toasts #}
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <div data-controller="toast" data-toast-message-value="{{ message }}" data-toast-type-value="{{ label }}"></div>
+            {% endfor %}
+        {% endfor %}
+    {% endblock %}
+
+    {% set show_sidebar = (not hide_sidebar|default(false)) and (app.user or app.session.get('is_test_mode')) %}
+
+    <div class="{{ show_sidebar ? 'flex min-h-screen' : '' }}" {{ show_sidebar ? 'data-controller="sidebar"' : '' }}>
+        {% if show_sidebar %}
+            {% block sidebar %}
+                {{ include('_sidebar.html.twig') }}
+            {% endblock %}
         {% endif %}
 
-        {# Contenu principal #}
-        <main class="flex-grow {% if not app.user and not app.session.get('is_test_mode') %}pt-20{% endif %}">
-            {% block content %}{% endblock %}
-        </main>
+        <div class="{{ show_sidebar ? 'flex-grow flex flex-col min-w-0' : '' }}">
+            {% if show_sidebar %}
+                {# Header Mobile #}
+                <header class="lg:hidden bg-white border-b border-slate-200 h-16 flex items-center px-4 sticky top-0 z-[70]">
+                    <button data-action="click->sidebar#toggle" class="p-2 text-slate-500 hover:text-djoliba">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    </button>
+                    <div class="ml-4 flex items-center gap-2">
+                        <div class="w-7 h-7 bg-djoliba rounded-md flex items-center justify-center text-white font-bold text-sm">D</div>
+                        <span class="font-display font-bold text-lg text-djoliba">Djoliba</span>
+                    </div>
+                </header>
+            {% endif %}
+
+            <main class="flex-grow">
+                {% block main %}{% endblock %}
+                {% block content %}{% endblock %}
+            </main>
+        </div>
     </div>
 
-    {# Footer #}
-    <footer class="bg-white border-t border-slate-200 mt-auto">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-                <div class="col-span-1 md:col-span-2">
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-8 h-8 bg-gradient-to-br from-primary-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
-                            D
-                        </div>
-                        <span class="font-display font-bold text-xl text-slate-900">Djoliba</span>
-                    </div>
-                    <p class="text-slate-500 max-w-sm">
-                        La 1ère plateforme autonome de recherche scientifique en Afrique. Accélérez vos revues de littérature, lecture et rédaction.
-                    </p>
+    {% block footer %}
+        <footer class="bg-white border-t border-slate-200 mt-auto">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
+                <div class="flex justify-center items-center gap-2 mb-4">
+                    <span class="font-display font-bold text-xl text-djoliba">Djoliba</span>
                 </div>
-                <div>
-                    <h3 class="font-bold text-slate-900 mb-4">Produit</h3>
-                    <ul class="space-y-2">
-                        <li><a href="#" class="text-slate-500 hover:text-primary-600 transition-colors">Fonctionnalités</a></li>
-                        <li><a href="#" class="text-slate-500 hover:text-primary-600 transition-colors">Tarifs</a></li>
-                        <li><a href="#" class="text-slate-500 hover:text-primary-600 transition-colors">Tutoriels</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h3 class="font-bold text-slate-900 mb-4">Légal</h3>
-                    <ul class="space-y-2">
-                        <li><a href="#" class="text-slate-500 hover:text-primary-600 transition-colors">CGU</a></li>
-                        <li><a href="#" class="text-slate-500 hover:text-primary-600 transition-colors">Confidentialité</a></li>
-                        <li><a href="#" class="text-slate-500 hover:text-primary-600 transition-colors">Contact</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="mt-12 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
                 <p class="text-slate-400 text-sm">
                     &copy; {{ 'now'|date('Y') }} Djoliba. Tous droits réservés.
                 </p>
-                <div class="flex space-x-6">
-                    <a href="#" class="text-slate-400 hover:text-primary-600 transition-colors">Twitter</a>
-                    <a href="#" class="text-slate-400 hover:text-primary-600 transition-colors">LinkedIn</a>
-                </div>
             </div>
-        </div>
-    </footer>
+        </footer>
+    {% endblock %}
 
-    {# Conteneur pour les Toasts Stimulus #}
-    <div id="toast-container" data-controller="toast"></div>
-
-    {# Gestion des messages Flash Symfony via Toasts #}
-    {% for label, messages in app.flashes %}
-        {% for message in messages %}
-            <div data-controller="toast" data-toast-message-value="{{ message }}" data-toast-type-value="{{ label }}"></div>
-        {% endfor %}
-    {% endfor %}
-
-    {% block javascripts %}{% endblock %}
-            {% block importmap %}{{ importmap('app') }}{% endblock %}
+    {% block javascript %}{% endblock %}
 </body>
 </html>

@@ -26,7 +26,7 @@ class AuthController extends AbstractController
         // Récupérer le dernier nom d'utilisateur saisi (l'email dans notre cas)
         $lastUsername = $authenticationUtils->getLastUsername();
 
-        return $this->render('auth/login.html.twig', [
+        return $this->render('security/login.html.twig', [
             'last_username' => $lastUsername,
             'error' => $error,
         ]);
@@ -73,6 +73,6 @@ class AuthController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
-        return $this->render('auth/register.html.twig');
+        return $this->render('security/register.html.twig');
     }
 }

@@ -1,0 +1,47 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ title }} - Djoliba{% endblock %}
+
+{% block content %}
+<div class="p-8">
+    <div class="max-w-7xl mx-auto">
+        <div class="flex justify-between items-end mb-8">
+            <div>
+                <h1 class="text-3xl font-display font-bold text-djoliba mb-2">{{ title }}</h1>
+                <p class="text-slate-500">{{ subtitle }}</p>
+            </div>
+            <button class="px-6 py-2.5 bg-djoliba text-white rounded-xl font-bold text-sm shadow-lg hover:-translate-y-0.5 transition-all">
+                Nouveau projet
+            </button>
+        </div>
+
+        {% if projects|length > 0 %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for project in projects %}
+                    <a href="{{ path('app_project_show', {id: project.id}) }}" class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center text-djoliba group-hover:bg-djoliba group-hover:text-white transition-colors">
+                                {{ icon|raw }}
+                            </div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{{ project.createdAt|date('d M Y') }}</span>
+                        </div>
+                        <h3 class="font-bold text-djoliba mb-2">{{ project.name }}</h3>
+                        <p class="text-xs text-slate-500 line-clamp-2 mb-4">{{ project.description|default('Aucune description') }}</p>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-1 bg-emerald-50 text-emerald-600 rounded text-[10px] font-bold uppercase">Actif</span>
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="bg-white rounded-3xl p-20 text-center border border-slate-100">
+                <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
+                    {{ icon|raw }}
+                </div>
+                <h2 class="text-xl font-bold text-djoliba mb-2">Aucun projet pour le moment</h2>
+                <p class="text-slate-400">Commencez votre première exploration dès maintenant.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

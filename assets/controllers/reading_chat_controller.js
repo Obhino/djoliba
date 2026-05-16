@@ -22,7 +22,14 @@ import { Controller } from '@hotwired/stimulus';
  * </div>
  */
 export default class extends Controller {
-    static targets = ['input', 'messages', 'response', 'status', 'submit'];
+    #currentResponseText = '';
+
+    static targets = [
+        'input', 'messages', 'response', 'status', 'submit', 
+        'progressBar', 'progressContainer', 'fileInput',
+        'emptyState', 'loader', 'pointsList', 'docName', 'synthesisContainer'
+    ];
+
     static values  = {
         documentId: Number,   // ID du document ciblé (optionnel, 0 = tout le projet)
         projectId:  Number,   // ID du projet courant
@@ -32,6 +39,14 @@ export default class extends Controller {
     connect() {
         this.abortController = null;
         this.#log('reading-chat connecté');
+        
+        // Charger l'historique des messages existants au chargement de la page
+        this.loadHistory();
+
+        // Lancer la synthèse automatiquement si le document est pré-rempli (uploadé depuis le hub)
+        if (this.documentIdValue > 0) {
+            this.fetchSynthesis(this.documentIdValue);
+        }
     }
 
     disconnect() {
@@ -39,20 +54,229 @@ export default class extends Controller {
     }
 
     /**
-     * Handler du formulaire de question.
-     * Déclenché par : data-action="submit->reading-chat#sendQuestion"
+     * Charge l'historique de chat du projet
      */
-    async sendQuestion(event) {
+    async loadHistory() {
+        if (!this.projectIdValue) return;
+
+        try {
+            const response = await fetch(`/api/reading/project/${this.projectIdValue}/history`);
+            const result = await response.json();
+
+            if (result.success && result.data.history) {
+                // S'il y a un historique, on vide d'abord le message d'accueil par défaut
+                if (result.data.history.length > 0 && this.hasMessagesTarget) {
+                    this.messagesTarget.innerHTML = '';
+                    
+                    result.data.history.forEach(msg => {
+                        // Filtre les commandes internes type [synthesize]
+                        if (msg.role === 'user' && msg.content.startsWith('[synthesize]')) return;
+                        
+                        this.#appendMessage(msg.role, msg.content, msg.time);
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Erreur lors du chargement de l\'historique:', error);
+        }
+    }
+
+    /**
+     * Déclenche l'explorateur de fichiers
+     */
+    triggerSelect() {
+        this.fileInputTarget.click();
+    }
+
+    /**
+     * Gère le survol lors d'un drag over
+     */
+    onDragOver(event) {
+        event.preventDefault();
+        event.currentTarget.classList.add('border-djoliba', 'bg-djoliba/5');
+    }
+
+    /**
+     * Gère la sortie du survol drag leave
+     */
+    onDragLeave(event) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('border-djoliba', 'bg-djoliba/5');
+    }
+
+    /**
+     * Gère le dépôt du fichier (drop)
+     */
+    onDrop(event) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('border-djoliba', 'bg-djoliba/5');
+
+        const files = event.dataTransfer.files;
+        if (files.length > 0) {
+            this.uploadFile(files[0]);
+        }
+    }
+
+    /**
+     * Gère la sélection manuelle via explorateur
+     */
+    onFileSelect(event) {
+        const file = event.target.files[0];
+        if (file) {
+            this.uploadFile(file);
+        }
+    }
+
+    /**
+     * Valide et téléverse un fichier PDF
+     * Taille max : 25 Mo (25 * 1024 * 1024 octets)
+     */
+    uploadFile(file) {
+        const maxSize = 25 * 1024 * 1024; // 25 Mo
+
+        // Validations robustes (type MIME ou extension .pdf)
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        if (!isPdf) {
+            this.showToast('Seuls les fichiers PDF sont acceptés.', 'error');
+            return;
+        }
+
+        if (file.size > maxSize) {
+            this.showToast('Le fichier dépasse la taille maximale autorisée de 25 Mo.', 'error');
+            return;
+        }
+
+        // UI Reset pour synthèse
+        if (this.hasDocNameTarget) this.docNameTarget.textContent = file.name;
+        if (this.hasEmptyStateTarget) this.emptyStateTarget.classList.add('hidden');
+        if (this.hasPointsListTarget) this.pointsListTarget.classList.add('hidden');
+        if (this.hasLoaderTarget) this.loaderTarget.classList.add('hidden');
+
+        // Afficher la barre de progression si elle existe
+        if (this.hasProgressContainerTarget) {
+            this.progressContainerTarget.classList.remove('hidden');
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('project_id', this.projectIdValue);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/reading/upload', true);
+
+        // Suivi de progression
+        xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable && this.hasProgressBarTarget) {
+                const percent = (event.loaded / event.total) * 100;
+                this.progressBarTarget.style.width = `${percent}%`;
+            }
+        };
+
+        xhr.onload = async () => {
+            if (xhr.status === 201 || xhr.status === 200) {
+                const res = JSON.parse(xhr.responseText);
+                const docId = res.data.document_id;
+                this.documentIdValue = docId;
+                
+                this.showToast('Document uploadé. Génération de la synthèse...', 'success');
+                
+                // Lancer la synthèse
+                await this.fetchSynthesis(docId);
+            } else {
+                let errorMsg = 'Erreur lors du téléversement.';
+                try {
+                    const res = JSON.parse(xhr.responseText);
+                    errorMsg = res.error?.message || errorMsg;
+                } catch (e) {}
+                this.showToast(errorMsg, 'error');
+                this.#resetUploadProgress();
+            }
+        };
+
+        xhr.onerror = () => {
+            this.showToast('Erreur réseau lors du téléversement.', 'error');
+            this.#resetUploadProgress();
+        };
+
+        xhr.send(formData);
+    }
+
+    /**
+     * Appelle l'API de synthèse et affiche les points clés
+     */
+    async fetchSynthesis(documentId) {
+        if (this.hasLoaderTarget) this.loaderTarget.classList.remove('hidden');
+        if (this.hasProgressContainerTarget) this.progressContainerTarget.classList.add('hidden');
+
+        try {
+            const response = await fetch(`/api/reading/${documentId}/synthesize`);
+            const result = await response.json();
+
+            if (result.success) {
+                this.renderSynthesis(result.data.points);
+            } else {
+                this.showToast('Échec de la synthèse IA.', 'error');
+                if (this.hasEmptyStateTarget) this.emptyStateTarget.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Erreur synthèse:', error);
+            this.showToast('Erreur de communication avec l\'IA.', 'error');
+        } finally {
+            if (this.hasLoaderTarget) this.loaderTarget.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Affiche les points de synthèse dans le DOM
+     */
+    renderSynthesis(points) {
+        if (!this.hasPointsListTarget) return;
+
+        this.pointsListTarget.innerHTML = points.map((p, index) => `
+            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-djoliba/20 transition-all group">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="w-5 h-5 rounded-full bg-djoliba text-white flex items-center justify-center text-[10px] font-bold">${index + 1}</span>
+                    <h4 class="text-xs font-bold text-djoliba">${p.point}</h4>
+                </div>
+                <p class="text-[11px] text-slate-600 leading-relaxed">${p.explication}</p>
+            </div>
+        `).join('');
+
+        this.pointsListTarget.classList.remove('hidden');
+    }
+
+    #resetUploadProgress() {
+        if (this.hasProgressContainerTarget) {
+            this.progressContainerTarget.classList.add('hidden');
+        }
+        if (this.hasProgressBarTarget) {
+            this.progressBarTarget.style.width = '0%';
+        }
+    }
+
+    showToast(message, type = 'success') {
+        window.dispatchEvent(new CustomEvent('toast:show', {
+            detail: { message, type }
+        }));
+    }
+
+    /**
+     * Handler du formulaire de question (Chat).
+     * Déclenché par : data-action="submit->reading-chat#sendMessage"
+     */
+    async sendMessage(event) {
         event.preventDefault();
 
         const question = this.inputTarget.value.trim();
         if (!question) return;
 
-        // Afficher la question de l'utilisateur dans l'historique
+        // Afficher la question de l'utilisateur dans l'historique (alternance user)
         this.#appendMessage('user', question);
+        
+        // Efface le champ de saisie après envoi
         this.inputTarget.value = '';
 
-        // Préparer la zone de réponse IA
+        // Préparer la zone de réponse IA (alternance assistant/ai)
         this.#prepareResponseArea();
         this.#setStatus('En cours de génération…');
         this.#setSubmitDisabled(true);
@@ -66,7 +290,7 @@ export default class extends Controller {
         } catch (error) {
             if (error.name !== 'AbortError') {
                 this.#setStatus('Erreur de connexion. Veuillez réessayer.');
-                console.error('[reading-chat] Erreur SSE :', error);
+                console.error('[reading-chat] Erreur :', error);
             }
         } finally {
             this.#setSubmitDisabled(false);
@@ -176,16 +400,23 @@ export default class extends Controller {
         }
     }
 
-    #appendMessage(role, text) {
+    #appendMessage(role, text, timeStr = null) {
         if (!this.hasMessagesTarget) return;
 
         const bubble = document.createElement('div');
         bubble.classList.add('message', `message--${role}`);
-        bubble.textContent = text;
+        
+        // Convert Markdown bold/italic to HTML for history messages
+        const formattedText = text
+            .replace(/\n/g, '<br>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>');
+            
+        bubble.innerHTML = formattedText;
 
         const timestamp = document.createElement('span');
         timestamp.classList.add('message__time');
-        timestamp.textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        timestamp.textContent = timeStr || new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
         bubble.appendChild(timestamp);
 
         this.messagesTarget.appendChild(bubble);

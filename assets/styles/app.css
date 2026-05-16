@@ -1,8 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+    --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-serif: "Merriweather", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+
+    --color-djoliba: #0B2545;
+    --color-emerald_ia: #10B981;
+    --color-gold_prestige: #F59E0B;
+}
+
 /* Design System Djoliba - Conforme à la Charte Graphique */
 :root {
-    --primary: #0B2545;       /* Bleu Djoliba - Profondeur & Confiance */
-    --secondary: #10B981;     /* Vert Émeraude IA - Innovation */
-    --accent: #F59E0B;        /* Or Prestige - Excellence */
+    --primary: var(--color-djoliba);
+    --secondary: var(--color-emerald_ia);
+    --accent: var(--color-gold_prestige);
     --bg-light: #F8FAFC;      /* Blanc Cassé - Confort de lecture */
     --text-main: #1E293B;     /* Gris Ardoise - Réduction fatigue oculaire */
     

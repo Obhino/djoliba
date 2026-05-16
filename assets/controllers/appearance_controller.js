@@ -9,35 +9,7 @@ export default class extends Controller {
     static targets = ['themeIcon', 'langLabel'];
 
     connect() {
-        this.initTheme();
         this.initLanguage();
-    }
-
-    // --- THÈME ---
-    initTheme() {
-        const theme = localStorage.getItem('theme') || 'light';
-        this.setTheme(theme);
-    }
-
-    toggleTheme() {
-        const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        this.setTheme(newTheme);
-    }
-
-    setTheme(theme) {
-        if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-        localStorage.setItem('theme', theme);
-        this.updateThemeUI(theme);
-    }
-
-    updateThemeUI(theme) {
-        if (!this.hasThemeIconTarget) return;
-        // SVG Icon update logic can go here if needed
     }
 
     // --- LANGUE ---

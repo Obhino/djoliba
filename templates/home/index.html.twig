@@ -4,6 +4,22 @@
 
 {% block content %}
 <div class="relative overflow-hidden bg-white">
+    {# En-tête avec bouton de connexion #}
+    <div class="absolute top-0 left-0 right-0 p-6 flex justify-end z-50">
+        {% if app.user %}
+            <a href="{{ path('app_dashboard') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-djoliba hover:text-emerald_ia transition-colors">
+                Mon tableau de bord 
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+            </a>
+        {% else %}
+            <div class="flex items-center gap-4">
+                <span class="text-sm text-slate-500 hidden sm:inline">Déjà inscrit ?</span>
+                <a href="{{ path('app_login') }}" class="inline-flex items-center justify-center rounded-full bg-slate-100 px-6 py-2.5 text-sm font-semibold text-djoliba hover:bg-slate-200 transition-colors">
+                    Se connecter
+                </a>
+            </div>
+        {% endif %}
+    </div>
     {# Arrière-plan décoratif #}
     <div class="absolute inset-0 z-0">
         <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%230B2545\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-50"></div>
@@ -22,7 +38,7 @@
         </h1>
         
         <p class="mx-auto max-w-2xl text-lg text-slate-600 mb-10 leading-relaxed">
-            Djoliba Search vous accompagne de la revue de littérature à la rédaction finale. Analysez vos documents, structurez vos idées et rédigez plus rapidement grâce à notre IA spécialisée pour l'Afrique.
+            Djoliba Search vous accompagne de la revue de littérature à la rédaction finale. Analysez vos documents, structurez vos idées et rédigez plus rapidement grâce à notre IA spécialisée.
         </p>
         
         <div class="flex justify-center gap-4 flex-col sm:flex-row">

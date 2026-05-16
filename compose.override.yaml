@@ -4,8 +4,8 @@
 
 services:
   database:
-    ports:
-      - "5432:5432"
+    # ports:
+    #  - "5433:5432"
 
   redis:
     ports:
