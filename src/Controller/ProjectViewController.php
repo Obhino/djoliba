@@ -8,7 +8,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[IsGranted('ROLE_USER')]
 class ProjectViewController extends AbstractController
 {
     public function __construct(
@@ -18,13 +17,19 @@ class ProjectViewController extends AbstractController
     #[Route('/hub', name: 'app_hub')]
     public function hub(): Response
     {
-        $projects = $this->projectManager->getUserProjects($this->getUser());
+        // On autorise si l'utilisateur est connecté OU si le mode test est actif
+        if (!$this->getUser() && !$this->container->get('request_stack')->getCurrentRequest()->getSession()->get('is_test_mode')) {
+            return $this->redirectToRoute('app_login');
+        }
+
+        $projects = $this->getUser() ? $this->projectManager->getUserProjects($this->getUser()) : [];
         
         return $this->render('project/hub.html.twig', [
             'projects' => $projects,
         ]);
     }
 
+    #[IsGranted('ROLE_USER')]
     #[Route('/dashboard', name: 'app_dashboard')]
     public function dashboard(): Response
     {
@@ -35,6 +40,7 @@ class ProjectViewController extends AbstractController
         ]);
     }
 
+    #[IsGranted('ROLE_USER')]
     #[Route('/project/{id}', name: 'app_project_show')]
     public function show(int $id): Response
     {
@@ -49,6 +55,7 @@ class ProjectViewController extends AbstractController
         ]);
     }
 
+    #[IsGranted('ROLE_USER')]
     #[Route('/project/{id}/literature', name: 'app_project_literature')]
     public function literature(int $id): Response
     {
@@ -56,6 +63,7 @@ class ProjectViewController extends AbstractController
         return $this->render('project/literature.html.twig', ['project' => $project]);
     }
 
+    #[IsGranted('ROLE_USER')]
     #[Route('/project/{id}/reading', name: 'app_project_reading')]
     public function reading(int $id): Response
     {
@@ -63,6 +71,7 @@ class ProjectViewController extends AbstractController
         return $this->render('project/reading.html.twig', ['project' => $project]);
     }
 
+    #[IsGranted('ROLE_USER')]
     #[Route('/project/{id}/thesis', name: 'app_project_thesis')]
     public function thesis(int $id): Response
     {
@@ -70,6 +79,7 @@ class ProjectViewController extends AbstractController
         return $this->render('project/thesis.html.twig', ['project' => $project]);
     }
 
+    #[IsGranted('ROLE_USER')]
     #[Route('/project/{id}/writing', name: 'app_project_writing')]
     public function writing(int $id): Response
     {
