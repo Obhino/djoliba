@@ -15,6 +15,16 @@ class ProjectViewController extends AbstractController
         private ProjectManager $projectManager
     ) {}
 
+    #[Route('/hub', name: 'app_hub')]
+    public function hub(): Response
+    {
+        $projects = $this->projectManager->getUserProjects($this->getUser());
+        
+        return $this->render('project/hub.html.twig', [
+            'projects' => $projects,
+        ]);
+    }
+
     #[Route('/dashboard', name: 'app_dashboard')]
     public function dashboard(): Response
     {
