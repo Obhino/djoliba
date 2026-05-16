@@ -22,12 +22,13 @@ class WritingController extends AbstractController
     }
 
     /**
-     * POST /api/writing/originality
+     * POST /api/writing/check   (alias: /api/writing/originality)
      * Body JSON: { "text": "string", "project_id": int }
      *
      * Analyse l'originalité d'un texte.
      * Réponse: { originality_score, level, similar_passages[], recommendations[] }
      */
+    #[Route('/check', name: 'api_writing_check', methods: ['POST'])]
     #[Route('/originality', name: 'api_writing_originality', methods: ['POST'])]
     public function checkOriginality(Request $request): JsonResponse
     {
@@ -78,12 +79,13 @@ class WritingController extends AbstractController
     }
 
     /**
-     * POST /api/writing/journals
+     * POST /api/writing/suggest-journal   (alias: /api/writing/journals)
      * Body JSON: { "text": "string", "project_id": int, "limit": 5 (optional) }
      *
      * Suggère des revues scientifiques adaptées au texte.
      * Réponse: { journals[]: { name, publisher, impact_factor, scope, url, match_reason } }
      */
+    #[Route('/suggest-journal', name: 'api_writing_suggest_journal', methods: ['POST'])]
     #[Route('/journals', name: 'api_writing_journals', methods: ['POST'])]
     public function suggestJournal(Request $request): JsonResponse
     {
