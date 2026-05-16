@@ -7,6 +7,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: DocumentRepository::class)]
+#[ORM\Index(columns: ['user_id'])]
 class Document
 {
     #[ORM\Id]

@@ -8,6 +8,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: ProjectRepository::class)]
+#[ORM\Index(columns: ['user_id'])]
+#[ORM\Index(columns: ['type'])]
 class Project
 {
     #[ORM\Id]
