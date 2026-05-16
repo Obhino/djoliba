@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Repository\ProjectRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: ProjectRepository::class)]
 class Project
@@ -12,6 +13,7 @@ class Project
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['project:read'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne]
@@ -19,27 +21,35 @@ class Project
     private ?User $user = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['project:read'])]
     private ?string $type = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['project:read'])]
     private ?string $name = null;
 
     #[ORM\Column(length: 255, options: ['default' => 'active'])]
+    #[Groups(['project:read'])]
     private ?string $status = 'active';
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[Groups(['project:read'])]
     private ?\DateTimeInterface $createdAt = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    #[Groups(['project:read'])]
     private ?\DateTimeInterface $updatedAt = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    #[Groups(['project:read'])]
     private ?\DateTimeInterface $lastAccessedAt = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    #[Groups(['project:read'])]
     private ?\DateTimeInterface $expiresAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['project:read'])]
     private ?array $metadata = null;
 
     public function __construct()
