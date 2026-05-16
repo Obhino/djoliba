@@ -108,6 +108,16 @@
         </div>
     </footer>
 
+    {# Conteneur pour les Toasts Stimulus #}
+    <div id="toast-container" data-controller="toast"></div>
+
+    {# Gestion des messages Flash Symfony via Toasts #}
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div data-controller="toast" data-toast-message-value="{{ message }}" data-toast-type-value="{{ label }}"></div>
+        {% endfor %}
+    {% endfor %}
+
     {% block javascripts %}{% endblock %}
             {% block importmap %}{{ importmap('app') }}{% endblock %}
 </body>
