@@ -105,4 +105,26 @@ git add . ; git commit -m "feat: creation du service ProjectManager"
 
 ---
 
+### Tests API — Exemples curl
+
+```bash
+# Revue de littérature
+curl -X POST https://127.0.0.1:8000/api/literature/review \
+  -H "Content-Type: application/json" \
+  -d '{"query": "bien-être au travail en Afrique", "project_id": 1}'
+
+# Suggestions d'articles (limit optionnel, défaut: 5, max: 10)
+curl -X POST https://127.0.0.1:8000/api/literature/suggestions \
+  -H "Content-Type: application/json" \
+  -d '{"query": "bien-être au travail en Afrique", "limit": 5}'
+
+# Streaming SSE (affichage progressif)
+curl -N -X POST https://127.0.0.1:8000/api/stream \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{"prompt": "Résume cet article en 3 paragraphes", "project_id": 1}'
+```
+
+---
+
 *Dernière mise à jour : 2026-05-16*
