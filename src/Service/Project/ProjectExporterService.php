@@ -27,8 +27,14 @@ class ProjectExporterService
     public function exportToZip(Project $project): string
     {
         $zip = new \ZipArchive();
-        $tempDir = sys_get_temp_dir() . '/djoliba_export_' . uniqid();
-        $zipPath = $tempDir . '.zip';
+        $exportDir = $this->projectDir . '/public/uploads/exports';
+        
+        if (!is_dir($exportDir)) {
+            mkdir($exportDir, 0777, true);
+        }
+
+        $filename = sprintf('%s_%s.zip', $this->slugify($project->getName()), uniqid());
+        $zipPath = $exportDir . '/' . $filename;
 
         if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
             throw new \RuntimeException("Impossible d'ouvrir le fichier ZIP : $zipPath");
