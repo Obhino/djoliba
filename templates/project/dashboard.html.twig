@@ -1,0 +1,144 @@
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+<style>
+    .sidebar {
+        width: 280px;
+        background: white;
+        border-right: 1px solid var(--slate-200);
+        height: calc(100vh - 80px);
+        position: sticky;
+        top: 80px;
+    }
+    .main-content {
+        flex: 1;
+        padding: 2rem;
+        background: var(--bg-light);
+        min-height: calc(100vh - 80px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex">
+    <!-- Sidebar -->
+    <aside class="sidebar hidden lg:block p-6">
+        <div class="space-y-2">
+            <a href="{{ path('app_dashboard') }}" class="sidebar-link active">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                Dashboard
+            </a>
+            <div class="pt-4 pb-2 text-xs font-bold text-slate-400 uppercase tracking-wider">Projets Récents</div>
+            {% for project in projects|slice(0, 5) %}
+                <a href="{{ path('app_project_show', {id: project.id}) }}" class="sidebar-link">
+                    <span class="w-2 h-2 rounded-full bg-djoliba"></span>
+                    <span class="truncate">{{ project.name }}</span>
+                </a>
+            {% endfor %}
+        </div>
+        
+        <div class="absolute bottom-8 left-6 right-6">
+            <div class="bg-djoliba rounded-2xl p-4 text-white shadow-xl">
+                <div class="text-xs text-slate-400 mb-1 uppercase font-bold tracking-widest">Quota IA</div>
+                <div class="flex justify-between items-end mb-2">
+                    <span class="text-lg font-bold">75%</span>
+                    <span class="text-[10px] text-emerald_ia font-bold uppercase">Optimisé</span>
+                </div>
+                <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                    <div class="bg-emerald_ia h-full w-[75%]"></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex justify-between items-center mb-8 fade-in">
+                <div>
+                    <h1 class="text-3xl font-display font-extrabold text-djoliba">Bienvenue, {{ app.user.username }}</h1>
+                    <p class="text-slate-500">Prêt à accélérer vos recherches aujourd'hui ?</p>
+                </div>
+                <button class="btn-premium btn-primary shadow-lg shadow-djoliba/20">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Nouveau Projet
+                </button>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 fade-in" style="animation-delay: 0.1s">
+                <div class="card-premium flex items-center gap-4">
+                    <div class="w-12 h-12 bg-[#0B2545]/10 text-djoliba rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold">{{ projects|length }}</div>
+                        <div class="text-sm text-slate-500">Projets actifs</div>
+                    </div>
+                </div>
+                <div class="card-premium flex items-center gap-4">
+                    <div class="w-12 h-12 bg-emerald-50 text-emerald_ia rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold">12</div>
+                        <div class="text-sm text-slate-500">Documents lus</div>
+                    </div>
+                </div>
+                <div class="card-premium flex items-center gap-4 border-b-4 border-b-gold_prestige">
+                    <div class="w-12 h-12 bg-amber-50 text-gold_prestige rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold">2.4k</div>
+                        <div class="text-sm text-slate-500">Tokens utilisés</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Projects Grid -->
+            <div class="mb-8 flex justify-between items-end fade-in" style="animation-delay: 0.2s">
+                <h2 class="text-2xl font-display font-bold text-djoliba">Vos Projets</h2>
+                <a href="#" class="text-djoliba font-semibold hover:underline">Voir tout</a>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 fade-in" style="animation-delay: 0.3s">
+                {% for project in projects %}
+                    <a href="{{ path('app_project_show', {id: project.id}) }}" class="group">
+                        <div class="card-premium h-full flex flex-col hover:border-djoliba transition-all">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 group-hover:bg-slate-200 transition-colors">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                                </div>
+                                <span class="px-2 py-1 bg-emerald-50 rounded text-[10px] font-bold uppercase text-emerald_ia">{{ project.type }}</span>
+                            </div>
+                            <h3 class="font-bold text-lg text-djoliba mb-2 transition-colors">{{ project.name }}</h3>
+                            <p class="text-sm text-slate-500 line-clamp-2 mb-4 flex-grow">
+                                {{ project.description|default('Aucune description pour ce projet.') }}
+                            </p>
+                            <div class="pt-4 border-t border-slate-50 flex justify-between items-center text-[11px] text-slate-400 font-medium">
+                                <span>Créé le {{ project.createdAt|date('d/m/Y') }}</span>
+                                <div class="flex -space-x-2">
+                                    <div class="w-6 h-6 rounded-full bg-djoliba border-2 border-white flex items-center justify-center text-[8px] text-white">AI</div>
+                                    <div class="w-6 h-6 rounded-full bg-emerald_ia border-2 border-white"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                {% else %}
+                    <div class="col-span-full py-20 text-center bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                        <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-djoliba">Aucun projet pour le moment</h3>
+                        <p class="text-slate-500 mb-6">Commencez par créer votre premier projet de recherche.</p>
+                        <button class="btn-premium btn-primary inline-flex shadow-lg shadow-djoliba/20">
+                            Créer mon 1er projet
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

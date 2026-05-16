@@ -1,0 +1,69 @@
+<?php
+
+namespace App\Controller;
+
+use App\Service\Project\ProjectManager;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+
+#[IsGranted('ROLE_USER')]
+class ProjectViewController extends AbstractController
+{
+    public function __construct(
+        private ProjectManager $projectManager
+    ) {}
+
+    #[Route('/dashboard', name: 'app_dashboard')]
+    public function dashboard(): Response
+    {
+        $projects = $this->projectManager->getUserProjects($this->getUser());
+        
+        return $this->render('project/dashboard.html.twig', [
+            'projects' => $projects,
+        ]);
+    }
+
+    #[Route('/project/{id}', name: 'app_project_show')]
+    public function show(int $id): Response
+    {
+        $project = $this->projectManager->getProject($id);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            throw $this->createNotFoundException('Projet non trouvé.');
+        }
+
+        return $this->render('project/show.html.twig', [
+            'project' => $project,
+        ]);
+    }
+
+    #[Route('/project/{id}/literature', name: 'app_project_literature')]
+    public function literature(int $id): Response
+    {
+        $project = $this->projectManager->getProject($id);
+        return $this->render('project/literature.html.twig', ['project' => $project]);
+    }
+
+    #[Route('/project/{id}/reading', name: 'app_project_reading')]
+    public function reading(int $id): Response
+    {
+        $project = $this->projectManager->getProject($id);
+        return $this->render('project/reading.html.twig', ['project' => $project]);
+    }
+
+    #[Route('/project/{id}/thesis', name: 'app_project_thesis')]
+    public function thesis(int $id): Response
+    {
+        $project = $this->projectManager->getProject($id);
+        return $this->render('project/thesis.html.twig', ['project' => $project]);
+    }
+
+    #[Route('/project/{id}/writing', name: 'app_project_writing')]
+    public function writing(int $id): Response
+    {
+        $project = $this->projectManager->getProject($id);
+        return $this->render('project/writing.html.twig', ['project' => $project]);
+    }
+}

@@ -1,3 +1,117 @@
+/* Design System Djoliba - Conforme à la Charte Graphique */
+:root {
+    --primary: #0B2545;       /* Bleu Djoliba - Profondeur & Confiance */
+    --secondary: #10B981;     /* Vert Émeraude IA - Innovation */
+    --accent: #F59E0B;        /* Or Prestige - Excellence */
+    --bg-light: #F8FAFC;      /* Blanc Cassé - Confort de lecture */
+    --text-main: #1E293B;     /* Gris Ardoise - Réduction fatigue oculaire */
+    
+    --slate-50: #F8FAFC;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+    --slate-900: #0f172a;
+    --slate-950: #020617;
+
+    --glass: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.3);
+    --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+}
+
 body {
-    background-color: skyblue;
+    background-color: var(--bg-light);
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: -0.025em;
+}
+
+/* Serif pour le mode lecture (Optionnel) */
+.font-serif-reading {
+    font-family: 'Merriweather', serif;
+    line-height: 1.8;
+}
+
+/* Glassmorphism */
+.glass {
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-premium);
+}
+
+/* Premium Buttons */
+.btn-premium {
+    @apply px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 shadow-lg flex items-center justify-center gap-2;
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    @apply opacity-90 shadow-xl;
+}
+
+.btn-secondary {
+    background-color: var(--secondary);
+    color: white;
+}
+
+.btn-accent {
+    background-color: var(--accent);
+    color: white;
+}
+
+/* AI Action Animation */
+.ai-loading {
+    @apply animate-pulse;
+    color: var(--secondary);
+}
+
+/* Card Premium */
+.card-premium {
+    @apply bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300;
+}
+
+/* Custom Utilities */
+.text-djoliba { color: var(--primary); }
+.bg-djoliba { background-color: var(--primary); }
+.text-emerald-ia { color: var(--secondary); }
+.bg-emerald-ia { background-color: var(--secondary); }
+.text-gold-prestige { color: var(--accent); }
+.bg-gold-prestige { background-color: var(--accent); }
+
+/* Sidebar Styling */
+.sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:text-primary hover:bg-slate-100 transition-all duration-200;
+}
+
+.sidebar-link.active {
+    background-color: var(--slate-100);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* Transitions */
+.fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
 }

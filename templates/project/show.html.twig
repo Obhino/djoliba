@@ -1,0 +1,110 @@
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+<style>
+    .project-header {
+        background-color: var(--primary);
+        padding: 4rem 2rem;
+        color: white;
+        border-radius: 0 0 3rem 3rem;
+        margin-top: -20px;
+        position: relative;
+        overflow: hidden;
+    }
+    .project-header::before {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -20%;
+        width: 140%;
+        height: 200%;
+        background: radial-gradient(circle at center, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
+        pointer-events: none;
+    }
+    .feature-card {
+        @apply card-premium h-full flex flex-col items-center text-center p-8 hover:scale-105 transition-transform;
+    }
+    .icon-container {
+        @apply w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-inner;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="project-header fade-in">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
+        <div>
+            <div class="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur rounded-full text-xs font-bold uppercase tracking-widest text-emerald-400 mb-4 border border-white/10">
+                <span class="w-2 h-2 rounded-full bg-emerald_ia animate-pulse"></span>
+                Projet {{ project.type }}
+            </div>
+            <h1 class="text-4xl md:text-5xl font-display font-black mb-4 text-white">{{ project.name }}</h1>
+            <p class="text-slate-300 max-w-xl text-lg leading-relaxed">
+                {{ project.description|default('Gérez vos recherches, synthèses et rédactions de manière autonome.') }}
+            </p>
+        </div>
+        <div class="flex gap-4">
+            <button class="px-6 py-3 rounded-xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all flex items-center gap-2 font-semibold">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                Exporter
+            </button>
+            <button class="px-6 py-3 rounded-xl bg-gold_prestige hover:opacity-90 transition-all shadow-lg shadow-gold_prestige/20 flex items-center gap-2 font-semibold text-[#0B2545]">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                Modifier
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-6xl mx-auto px-4 py-16">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <!-- Littérature -->
+        <a href="{{ path('app_project_literature', {id: project.id}) }}" class="fade-in" style="animation-delay: 0.1s">
+            <div class="feature-card border-b-4 border-b-djoliba">
+                <div class="icon-container bg-slate-50 text-djoliba">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <h3 class="text-xl font-bold text-djoliba mb-2">Littérature</h3>
+                <p class="text-sm text-slate-500 mb-6">Recherche d'articles et revue de littérature automatisée par IA.</p>
+                <span class="text-djoliba font-bold text-sm inline-flex items-center gap-1">Explorer <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></span>
+            </div>
+        </a>
+
+        <!-- Lecture & Synthèse -->
+        <a href="{{ path('app_project_reading', {id: project.id}) }}" class="fade-in" style="animation-delay: 0.2s">
+            <div class="feature-card border-b-4 border-b-emerald_ia">
+                <div class="icon-container bg-emerald-50 text-emerald_ia">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                </div>
+                <h3 class="text-xl font-bold text-djoliba mb-2">Lecture</h3>
+                <p class="text-sm text-slate-500 mb-6">Importez vos PDF, générez des synthèses et chattez avec vos documents.</p>
+                <span class="text-emerald_ia font-bold text-sm inline-flex items-center gap-1">Analyser <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></span>
+            </div>
+        </a>
+
+        <!-- Thèse & Structure -->
+        <a href="{{ path('app_project_thesis', {id: project.id}) }}" class="fade-in" style="animation-delay: 0.3s">
+            <div class="feature-card border-b-4 border-b-slate-800">
+                <div class="icon-container bg-slate-900 text-white">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900 mb-2">Thèse</h3>
+                <p class="text-sm text-slate-500 mb-6">Organisez votre plan, gérez vos chapitres et vérifiez la cohérence.</p>
+                <span class="text-slate-900 font-bold text-sm inline-flex items-center gap-1">Structurer <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></span>
+            </div>
+        </a>
+
+        <!-- Rédaction -->
+        <a href="{{ path('app_project_writing', {id: project.id}) }}" class="fade-in" style="animation-delay: 0.4s">
+            <div class="feature-card border-b-4 border-b-gold_prestige">
+                <div class="icon-container bg-amber-50 text-gold_prestige">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                </div>
+                <h3 class="text-xl font-bold text-djoliba mb-2">Rédaction</h3>
+                <p class="text-sm text-slate-500 mb-6">Vérifiez l'originalité et trouvez la revue idéale pour publier.</p>
+                <span class="text-gold_prestige font-bold text-sm inline-flex items-center gap-1">Rédiger <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></span>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}
