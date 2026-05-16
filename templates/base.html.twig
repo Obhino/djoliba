@@ -52,14 +52,14 @@
 </head>
 <body class="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col selection:bg-primary-500 selection:text-white">
 
-    {# Structure avec Sidebar pour les utilisateurs connectés #}
+    {# Structure avec Sidebar pour les utilisateurs connectés ou Mode Test #}
     <div class="flex min-h-screen">
-        {% if app.user %}
+        {% if app.user or app.session.get('is_test_mode') %}
             {{ include('_sidebar.html.twig') }}
         {% endif %}
 
         {# Contenu principal #}
-        <main class="flex-grow {% if not app.user %}pt-20{% endif %}">
+        <main class="flex-grow {% if not app.user and not app.session.get('is_test_mode') %}pt-20{% endif %}">
             {% block content %}{% endblock %}
         </main>
     </div>
