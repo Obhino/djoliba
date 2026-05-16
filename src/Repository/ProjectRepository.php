@@ -20,4 +20,20 @@ class ProjectRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Project::class);
     }
+
+    /**
+     * Retourne tous les projets dont expires_at est défini et dépassé.
+     *
+     * @return Project[]
+     */
+    public function findExpired(): array
+    {
+        return $this->createQueryBuilder('p')
+            ->where('p.expiresAt IS NOT NULL')
+            ->andWhere('p.expiresAt < :now')
+            ->setParameter('now', new \DateTime())
+            ->getQuery()
+            ->getResult();
+    }
 }
+
