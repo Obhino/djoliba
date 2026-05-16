@@ -1,0 +1,253 @@
+import { Controller } from '@hotwired/stimulus';
+
+/**
+ * Stimulus Controller — reading-chat
+ *
+ * Gère le chat en streaming SSE avec l'API Djoliba.
+ * Utilise l'API fetch + ReadableStream pour un affichage progressif des réponses IA.
+ *
+ * Usage HTML :
+ * <div data-controller="reading-chat"
+ *      data-reading-chat-document-id-value="42"
+ *      data-reading-chat-url-value="/api/stream">
+ *
+ *   <div data-reading-chat-target="messages"></div>
+ *   <div data-reading-chat-target="response" class="ai-response"></div>
+ *   <div data-reading-chat-target="status"></div>
+ *
+ *   <form data-action="submit->reading-chat#sendQuestion">
+ *     <input type="text" data-reading-chat-target="input" placeholder="Posez votre question...">
+ *     <button type="submit" data-reading-chat-target="submit">Envoyer</button>
+ *   </form>
+ * </div>
+ */
+export default class extends Controller {
+    static targets = ['input', 'messages', 'response', 'status', 'submit'];
+    static values  = {
+        documentId: Number,   // ID du document ciblé (optionnel, 0 = tout le projet)
+        projectId:  Number,   // ID du projet courant
+        url:        { type: String, default: '/api/stream' },  // Endpoint SSE
+    };
+
+    connect() {
+        this.abortController = null;
+        this.#log('reading-chat connecté');
+    }
+
+    disconnect() {
+        this.#cancelStream();
+    }
+
+    /**
+     * Handler du formulaire de question.
+     * Déclenché par : data-action="submit->reading-chat#sendQuestion"
+     */
+    async sendQuestion(event) {
+        event.preventDefault();
+
+        const question = this.inputTarget.value.trim();
+        if (!question) return;
+
+        // Afficher la question de l'utilisateur dans l'historique
+        this.#appendMessage('user', question);
+        this.inputTarget.value = '';
+
+        // Préparer la zone de réponse IA
+        this.#prepareResponseArea();
+        this.#setStatus('En cours de génération…');
+        this.#setSubmitDisabled(true);
+
+        // Annuler un éventuel stream précédent
+        this.#cancelStream();
+        this.abortController = new AbortController();
+
+        try {
+            await this.#streamResponse(question);
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                this.#setStatus('Erreur de connexion. Veuillez réessayer.');
+                console.error('[reading-chat] Erreur SSE :', error);
+            }
+        } finally {
+            this.#setSubmitDisabled(false);
+        }
+    }
+
+    /**
+     * Annule manuellement le stream en cours.
+     * Déclenché par : data-action="click->reading-chat#cancelStream"
+     */
+    cancelStream() {
+        this.#cancelStream();
+        this.#setStatus('Génération annulée.');
+        this.#setSubmitDisabled(false);
+    }
+
+    // ─────────────────────────────────────────────
+    // Méthodes privées
+    // ─────────────────────────────────────────────
+
+    async #streamResponse(question) {
+        const payload = {
+            prompt:     question,
+            project_id: this.projectIdValue,
+        };
+
+        // Si un document spécifique est ciblé, on utilise l'endpoint document-chat
+        const url = (this.documentIdValue > 0)
+            ? `/api/reading/${this.documentIdValue}/chat`
+            : this.urlValue;
+
+        // Pour /api/reading/{id}/chat : body JSON avec "question"
+        const body = (this.documentIdValue > 0)
+            ? JSON.stringify({ question })
+            : JSON.stringify(payload);
+
+        const response = await fetch(url, {
+            method:  'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept':       'text/event-stream',
+            },
+            body,
+            signal: this.abortController.signal,
+        });
+
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data?.error?.message ?? `HTTP ${response.status}`);
+        }
+
+        // Lecture du flux SSE ligne par ligne
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // conserver la ligne incomplète
+
+            for (const line of lines) {
+                this.#processSSELine(line.trim());
+            }
+        }
+
+        // Traiter le reste du buffer
+        if (buffer.trim()) {
+            this.#processSSELine(buffer.trim());
+        }
+
+        this.#setStatus('');
+        this.#finalizeResponse();
+    }
+
+    #processSSELine(line) {
+        if (!line.startsWith('data: ')) return;
+
+        const jsonStr = line.slice(6);
+        if (jsonStr === '[DONE]') {
+            this.#finalizeResponse();
+            return;
+        }
+
+        try {
+            const data = JSON.parse(jsonStr);
+
+            if (data.error) {
+                this.#setStatus(`Erreur : ${data.error}`);
+                return;
+            }
+
+            if (data.chunk) {
+                this.#appendChunk(data.chunk);
+            }
+
+            // Réponse non-streamée (ex: /api/reading/{id}/chat retourne JSON complet)
+            if (data.data?.response) {
+                this.#appendChunk(data.data.response);
+                this.#finalizeResponse();
+            }
+        } catch {
+            // Ligne SSE non-JSON : ignorer silencieusement
+        }
+    }
+
+    #appendMessage(role, text) {
+        if (!this.hasMessagesTarget) return;
+
+        const bubble = document.createElement('div');
+        bubble.classList.add('message', `message--${role}`);
+        bubble.textContent = text;
+
+        const timestamp = document.createElement('span');
+        timestamp.classList.add('message__time');
+        timestamp.textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        bubble.appendChild(timestamp);
+
+        this.messagesTarget.appendChild(bubble);
+        this.messagesTarget.scrollTop = this.messagesTarget.scrollHeight;
+    }
+
+    #prepareResponseArea() {
+        if (!this.hasResponseTarget) return;
+        this.responseTarget.innerHTML = '';
+        this.responseTarget.classList.add('message', 'message--ai', 'message--streaming');
+        this.#currentResponseText = '';
+    }
+
+    #appendChunk(chunk) {
+        if (!this.hasResponseTarget) return;
+        this.#currentResponseText = (this.#currentResponseText ?? '') + chunk;
+        // Rendu Markdown basique : saut de ligne
+        this.responseTarget.innerHTML = this.#currentResponseText
+            .replace(/\n/g, '<br>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>');
+        this.messagesTarget?.scrollTo({ top: this.messagesTarget.scrollHeight, behavior: 'smooth' });
+    }
+
+    #finalizeResponse() {
+        if (!this.hasResponseTarget || !this.#currentResponseText) return;
+
+        // Déplacer la bulle de réponse dans l'historique
+        const finalBubble = this.responseTarget.cloneNode(true);
+        finalBubble.classList.remove('message--streaming');
+        this.messagesTarget?.appendChild(finalBubble);
+
+        this.responseTarget.innerHTML = '';
+        this.responseTarget.classList.remove('message--streaming');
+        this.#currentResponseText = '';
+    }
+
+    #cancelStream() {
+        if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+        }
+    }
+
+    #setStatus(text) {
+        if (this.hasStatusTarget) {
+            this.statusTarget.textContent = text;
+        }
+    }
+
+    #setSubmitDisabled(disabled) {
+        if (this.hasSubmitTarget) {
+            this.submitTarget.disabled = disabled;
+        }
+        if (this.hasInputTarget) {
+            this.inputTarget.disabled = disabled;
+        }
+    }
+
+    #log(msg) {
+        if (import.meta.env?.DEV) {
+            console.debug(`[reading-chat] ${msg}`);
+        }
+    }
+}
