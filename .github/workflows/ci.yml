@@ -1,0 +1,61 @@
+name: CI/CD Djoliba
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, iconv, sqlite3
+        coverage: none
+
+    - name: Install Dependencies
+      run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+    - name: Create Test Database
+      run: |
+        mkdir -p var
+        touch var/test.db
+        php bin/console doctrine:schema:update --force --env=test
+
+    - name: Run Tests
+      env:
+        APP_ENV: test
+        DATABASE_URL: "sqlite:///%kernel.project_dir%/var/test.db"
+        DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY || 'test_key' }}
+        DEEPSEEK_API_URL: "https://api.deepseek.com/v1"
+      run: php bin/phpunit
+
+  deploy:
+    needs: tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Deploy to Production
+      # Exemple de déploiement via SSH. 
+      # Vous devez configurer les secrets SSH_PRIVATE_KEY, SSH_HOST, SSH_USER dans GitHub.
+      if: env.SSH_PRIVATE_KEY != ''
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      run: |
+        echo "Déploiement en cours..."
+        # ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+        # echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+        # chmod 600 ~/.ssh/id_rsa
+        # ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd /var/www/djoliba && git pull origin main && composer install --no-dev --optimize-autoloader && php bin/console doctrine:migrations:migrate --no-interaction && php bin/console cache:clear"
+        echo "Déploiement simulé (configurez vos secrets SSH pour l'activer)"
