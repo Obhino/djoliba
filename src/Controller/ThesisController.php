@@ -210,5 +210,27 @@ class ThesisController extends AbstractController
         } catch (\RuntimeException $e) {
             return $this->json(['success' => false, 'error' => ['code' => 503, 'message' => 'Service IA temporairement indisponible.']], Response::HTTP_SERVICE_UNAVAILABLE);
         }
+    /**
+     * POST /api/thesis/reorder
+     * Body JSON: { "project_id": int, "orders": [{id, parent_id, order}] }
+     */
+    #[Route('/reorder', name: 'api_thesis_reorder', methods: ['POST'])]
+    public function reorder(Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data['project_id']) || !isset($data['orders'])) {
+            return $this->json(['success' => false, 'error' => ['code' => 400, 'message' => 'Les champs "project_id" et "orders" sont requis.']], Response::HTTP_BAD_REQUEST);
+        }
+
+        $project = $this->projectManager->getProject((int) $data['project_id']);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            return $this->json(['success' => false, 'error' => ['code' => 404, 'message' => 'Projet non trouvé.']], Response::HTTP_NOT_FOUND);
+        }
+
+        $this->thesisService->reorderChapters($project, $data['orders']);
+
+        return $this->json(['success' => true, 'data' => null]);
     }
 }

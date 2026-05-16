@@ -260,4 +260,26 @@ class ThesisService
             'interaction' => $interaction,
         ];
     }
+
+    /**
+     * Réorganise les chapitres d'un projet.
+     * $orders: array<{id: int, parent_id: int|null, order: int}>
+     */
+    public function reorderChapters(Project $project, array $orders): void
+    {
+        foreach ($orders as $item) {
+            $chapter = $this->chapterRepository->find($item['id']);
+            if (!$chapter || $chapter->getProject() !== $project) continue;
+
+            $parent = null;
+            if (!empty($item['parent_id'])) {
+                $parent = $this->chapterRepository->find($item['parent_id']);
+            }
+
+            $chapter->setParent($parent);
+            $chapter->setOrder($item['order']);
+        }
+
+        $this->entityManager->flush();
+    }
 }
