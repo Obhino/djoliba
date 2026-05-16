@@ -125,11 +125,6 @@ class Document
         return $this;
     }
 
-    public function isIsScanned(): ?bool
-    {
-        return $this->isScanned;
-    }
-
     public function setIsScanned(bool $isScanned): static
     {
         $this->isScanned = $isScanned;

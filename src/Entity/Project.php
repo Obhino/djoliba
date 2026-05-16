@@ -20,7 +20,10 @@ class Project
     #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
 
-    #[ORM\Column(length: 255)]
+    /**
+     * Valeurs autorisées : literature_review, reading, writing, thesis
+     */
+    #[ORM\Column(length: 20)]
     #[Groups(['project:read'])]
     private ?string $type = null;
 
@@ -28,7 +31,10 @@ class Project
     #[Groups(['project:read'])]
     private ?string $name = null;
 
-    #[ORM\Column(length: 255, options: ['default' => 'active'])]
+    /**
+     * Valeurs autorisées : active, archived, deleted
+     */
+    #[ORM\Column(length: 10, options: ['default' => 'active'])]
     #[Groups(['project:read'])]
     private ?string $status = 'active';
 
@@ -51,6 +57,9 @@ class Project
     #[ORM\Column(nullable: true)]
     #[Groups(['project:read'])]
     private ?array $metadata = null;
+
+    private const VALID_TYPES = ['literature_review', 'reading', 'writing', 'thesis'];
+    private const VALID_STATUSES = ['active', 'archived', 'deleted'];
 
     public function __construct()
     {
@@ -81,6 +90,11 @@ class Project
 
     public function setType(string $type): static
     {
+        if (!in_array($type, self::VALID_TYPES, true)) {
+            throw new \InvalidArgumentException(
+                sprintf('Type invalide "%s". Valeurs acceptées : %s.', $type, implode(', ', self::VALID_TYPES))
+            );
+        }
         $this->type = $type;
 
         return $this;
@@ -105,6 +119,11 @@ class Project
 
     public function setStatus(string $status): static
     {
+        if (!in_array($status, self::VALID_STATUSES, true)) {
+            throw new \InvalidArgumentException(
+                sprintf('Statut invalide "%s". Valeurs acceptées : %s.', $status, implode(', ', self::VALID_STATUSES))
+            );
+        }
         $this->status = $status;
 
         return $this;
