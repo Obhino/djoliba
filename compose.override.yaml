@@ -1,7 +1,12 @@
 
+# Ce fichier est chargé automatiquement par Docker Compose en développement.
+# Il surcharge compose.yaml pour ajouter des options propres au dev local.
+
 services:
-###> doctrine/doctrine-bundle ###
   database:
     ports:
-      - "5432"
-###< doctrine/doctrine-bundle ###
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"

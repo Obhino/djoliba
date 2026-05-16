@@ -1,25 +1,107 @@
 
+# docker compose up -d
+# docker compose down -v  (supprime aussi les volumes)
+
 services:
-###> doctrine/doctrine-bundle ###
+
+  # ─────────────────────────────────────────────
+  # Base de données PostgreSQL
+  # ─────────────────────────────────────────────
   database:
     image: postgres:${POSTGRES_VERSION:-16}-alpine
+    container_name: djoliba_db
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-app}
-      # You should definitely change the password in production
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
-      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_DB:       ${POSTGRES_DB:-djolibadb}
+      POSTGRES_USER:     ${POSTGRES_USER:-djoliba}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-djoliba_secret}
     healthcheck:
-      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-app}", "-U", "${POSTGRES_USER:-app}"]
+      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-djolibadb}", "-U", "${POSTGRES_USER:-djoliba}"]
+      interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 60s
+      start_period: 30s
     volumes:
       - database_data:/var/lib/postgresql/data:rw
-      # You may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
-      # - ./docker/db/data:/var/lib/postgresql/data:rw
-###< doctrine/doctrine-bundle ###
+    ports:
+      - "5432:5432"
+
+  # ─────────────────────────────────────────────
+  # Cache Redis (sessions + cache IA + Messenger)
+  # ─────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: djoliba_redis
+    restart: unless-stopped
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD:-redis_secret}
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secret}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  # ─────────────────────────────────────────────
+  # Application Symfony (PHP-FPM)
+  # ─────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: djoliba_app
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-djoliba}:${POSTGRES_PASSWORD:-djoliba_secret}@database:5432/${POSTGRES_DB:-djolibadb}?serverVersion=16&charset=utf8
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_API_URL: ${DEEPSEEK_API_URL:-https://api.deepseek.com/v1}
+    volumes:
+      - .:/var/www/html:rw
+      - ./var/uploads:/var/www/html/var/uploads:rw
+    ports:
+      - "8000:8000"
+
+  # ─────────────────────────────────────────────
+  # Worker Messenger — traitement asynchrone
+  # ─────────────────────────────────────────────
+  messenger_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: djoliba_worker
+    restart: unless-stopped
+    depends_on:
+      - app
+      - database
+      - redis
+    command: php bin/console messenger:consume async --time-limit=3600 -vv
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-djoliba}:${POSTGRES_PASSWORD:-djoliba_secret}@database:5432/${POSTGRES_DB:-djolibadb}?serverVersion=16&charset=utf8
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379
+    volumes:
+      - .:/var/www/html:rw
+
+  # ─────────────────────────────────────────────
+  # MailHog — SMTP local pour le dev (emails)
+  # ─────────────────────────────────────────────
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: djoliba_mail
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Interface web : http://localhost:8025
 
 volumes:
-###> doctrine/doctrine-bundle ###
   database_data:
-###< doctrine/doctrine-bundle ###
+  redis_data:

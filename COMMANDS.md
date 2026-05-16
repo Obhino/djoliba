@@ -1,5 +1,33 @@
 # Djoliba — Documentation des Commandes
 
+## Docker Compose
+
+| Commande | Description |
+|---|---|
+| `docker compose up -d` | Lance tous les services (PostgreSQL, Redis, App, Worker, MailHog) en arrière-plan |
+| `docker compose down` | Arrête et supprime les conteneurs (les volumes persistent) |
+| `docker compose down -v` | Arrête, supprime les conteneurs **et les volumes** (⚠️ supprime toutes les données) |
+| `docker compose logs -f app` | Affiche les logs de l'application en temps réel |
+| `docker compose logs -f messenger_worker` | Affiche les logs du worker Messenger |
+| `docker compose exec app bash` | Ouvre un shell dans le conteneur de l'application |
+| `docker compose ps` | Affiche l'état de tous les services |
+
+**Services exposés :**
+| Service | URL / Port |
+|---|---|
+| Application Symfony | http://localhost:8000 |
+| PostgreSQL | localhost:5432 |
+| Redis | localhost:6379 |
+| MailHog (SMTP dev) | http://localhost:8025 |
+
+> **Note :** Lors du 1er démarrage, attendre que les healthchecks soient `healthy` avant d'exécuter les migrations.
+> ```bash
+> docker compose up -d
+> docker compose exec app php bin/console doctrine:migrations:migrate -n
+> ```
+
+---
+
 ## Commandes Symfony Console
 
 ### Installation & Setup
