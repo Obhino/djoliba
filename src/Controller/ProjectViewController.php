@@ -11,8 +11,29 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class ProjectViewController extends AbstractController
 {
     public function __construct(
-        private ProjectManager $projectManager
+        private ProjectManager $projectManager,
+        private \App\Service\Project\ProjectExporterService $exporterService
     ) {}
+
+    #[IsGranted('ROLE_USER')]
+    #[Route('/project/{id}/export/zip', name: 'app_project_export_zip')]
+    public function exportZip(int $id): Response
+    {
+        $project = $this->projectManager->getProject($id);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            throw $this->createNotFoundException('Projet non trouvé.');
+        }
+
+        try {
+            $zipPath = $this->exporterService->exportToZip($project);
+            
+            return $this->file($zipPath, sprintf('%s_export.zip', $this->exporterService->slugify($project->getName())));
+        } catch (\Exception $e) {
+            $this->addFlash('error', "L'export a échoué : " . $e->getMessage());
+            return $this->redirectToRoute('app_project_show', ['id' => $id]);
+        }
+    }
 
     #[Route('/hub', name: 'app_hub')]
     public function hub(): Response
