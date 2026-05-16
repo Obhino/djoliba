@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Service\LiteratureService;
+use App\Service\SuggestionService;
 use App\Service\Project\ProjectManager;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,9 +18,11 @@ class LiteratureController extends AbstractController
 {
     public function __construct(
         private LiteratureService $literatureService,
+        private SuggestionService $suggestionService,
         private ProjectManager $projectManager,
     ) {
     }
+
 
     /**
      * POST /api/literature/review
@@ -62,6 +65,45 @@ class LiteratureController extends AbstractController
                 'success' => false,
                 'error'   => ['code' => 503, 'message' => 'Service IA temporairement indisponible. Veuillez réessayer.']
             ], Response::HTTP_SERVICE_UNAVAILABLE);
+        }
+    }
+
+    /**
+     * POST /api/literature/suggestions
+     * Body JSON: { "query": "string", "limit": 5 (optional) }
+     */
+    #[Route('/suggestions', name: 'api_literature_suggestions', methods: ['POST'])]
+    public function suggestions(Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data['query'])) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 400, 'message' => 'Le champ "query" est requis.']
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        $limit = isset($data['limit']) ? (int) $data['limit'] : 5;
+        $limit = max(1, min($limit, 10)); // Borne entre 1 et 10
+
+        try {
+            $articles = $this->suggestionService->suggest($data['query'], $limit);
+
+            return $this->json([
+                'success' => true,
+                'data'    => $articles,
+            ]);
+        } catch (\RuntimeException $e) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 503, 'message' => 'Service IA temporairement indisponible. Veuillez réessayer.']
+            ], Response::HTTP_SERVICE_UNAVAILABLE);
+        } catch (\UnexpectedValueException $e) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 502, 'message' => 'La réponse de l\'IA est invalide. Veuillez réessayer.']
+            ], Response::HTTP_BAD_GATEWAY);
         }
     }
 }
