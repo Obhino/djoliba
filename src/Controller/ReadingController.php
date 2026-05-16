@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Repository\DocumentRepository;
+use App\Service\File\FileStorageService;
 use App\Service\Project\ProjectManager;
 use App\Service\ReadingService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,9 +19,118 @@ class ReadingController extends AbstractController
 {
     public function __construct(
         private ReadingService     $readingService,
+        private FileStorageService $fileStorageService,
         private ProjectManager     $projectManager,
         private DocumentRepository $documentRepository,
     ) {
+    }
+
+    /**
+     * POST /api/reading/upload
+     * multipart/form-data: { file: UploadedFile, project_id: int }
+     *
+     * Upload, valide, scan et déclenche le traitement asynchrone (ProcessDocumentMessage).
+     */
+    #[Route('/upload', name: 'api_reading_upload', methods: ['POST'])]
+    public function upload(Request $request): JsonResponse
+    {
+        $file      = $request->files->get('file');
+        $projectId = $request->request->get('project_id');
+
+        if (!$file || !$projectId) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 400, 'message' => 'Les champs "file" et "project_id" sont requis.']
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        $project = $this->projectManager->getProject((int) $projectId);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 404, 'message' => 'Projet non trouvé.']
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        try {
+            $document = $this->fileStorageService->upload($file, $project, $this->getUser());
+
+            return $this->json([
+                'success' => true,
+                'data'    => [
+                    'document_id' => $document->getId(),
+                    'filename'    => $document->getFilename(),
+                    'mime_type'   => $document->getMimeType(),
+                    'size_bytes'  => $document->getSizeBytes(),
+                    'message'     => 'Fichier uploadé. La synthèse est générée en arrière-plan.',
+                ],
+            ], Response::HTTP_CREATED);
+
+        } catch (\InvalidArgumentException $e) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 422, 'message' => $e->getMessage()]
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        } catch (\RuntimeException $e) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 500, 'message' => 'Erreur lors de l\'enregistrement du fichier.']
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * POST /api/reading/{id}/chat
+     * Body JSON: { "question": "string" }
+     *
+     * Chat avec un document spécifique par son ID.
+     * Contexte limité à CE document (vs /chat qui agrège tout le projet).
+     */
+    #[Route('/{id}/chat', name: 'api_reading_document_chat', methods: ['POST'])]
+    public function documentChat(int $id, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data['question'])) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 400, 'message' => 'Le champ "question" est requis.']
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // IDOR protection : le document appartient bien à l'utilisateur connecté
+        $document = $this->documentRepository->findOneBy([
+            'id'   => $id,
+            'user' => $this->getUser(),
+        ]);
+
+        if (!$document) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 404, 'message' => 'Document non trouvé.']
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        try {
+            $result = $this->readingService->chat($document->getProject(), $data['question'], $document);
+
+            return $this->json([
+                'success' => true,
+                'data'    => [
+                    'response'         => $result['response'],
+                    'interaction_id'   => $result['interaction']->getId(),
+                    'response_time_ms' => $result['interaction']->getResponseTimeMs(),
+                    'document_id'      => $document->getId(),
+                ],
+            ]);
+        } catch (\RuntimeException $e) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 503, 'message' => 'Service IA temporairement indisponible.']
+            ], Response::HTTP_SERVICE_UNAVAILABLE);
+        }
     }
 
     /**
@@ -55,25 +165,19 @@ class ReadingController extends AbstractController
 
         try {
             $result = $this->readingService->synthesize($document, $project);
-
             return $this->json([
                 'success' => true,
-                'data'    => [
-                    'points'         => $result['points'],
-                    'interaction_id' => $result['interaction']->getId(),
-                ],
+                'data'    => ['points' => $result['points'], 'interaction_id' => $result['interaction']->getId()],
             ]);
         } catch (\RuntimeException $e) {
-            return $this->json([
-                'success' => false,
-                'error'   => ['code' => 503, 'message' => 'Service IA temporairement indisponible.']
-            ], Response::HTTP_SERVICE_UNAVAILABLE);
+            return $this->json(['success' => false, 'error' => ['code' => 503, 'message' => 'Service IA temporairement indisponible.']], Response::HTTP_SERVICE_UNAVAILABLE);
         }
     }
 
     /**
      * POST /api/reading/chat
      * Body JSON: { "project_id": int, "question": "string" }
+     * Chat sur tous les documents du projet (contexte agrégé).
      */
     #[Route('/chat', name: 'api_reading_chat', methods: ['POST'])]
     public function chat(Request $request): JsonResponse
@@ -81,10 +185,7 @@ class ReadingController extends AbstractController
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['project_id']) || empty($data['question'])) {
-            return $this->json([
-                'success' => false,
-                'error'   => ['code' => 400, 'message' => 'Les champs "project_id" et "question" sont requis.']
-            ], Response::HTTP_BAD_REQUEST);
+            return $this->json(['success' => false, 'error' => ['code' => 400, 'message' => 'Les champs "project_id" et "question" sont requis.']], Response::HTTP_BAD_REQUEST);
         }
 
         $project = $this->projectManager->getProject((int) $data['project_id']);
@@ -95,20 +196,12 @@ class ReadingController extends AbstractController
 
         try {
             $result = $this->readingService->chat($project, $data['question']);
-
             return $this->json([
                 'success' => true,
-                'data'    => [
-                    'response'         => $result['response'],
-                    'interaction_id'   => $result['interaction']->getId(),
-                    'response_time_ms' => $result['interaction']->getResponseTimeMs(),
-                ],
+                'data'    => ['response' => $result['response'], 'interaction_id' => $result['interaction']->getId(), 'response_time_ms' => $result['interaction']->getResponseTimeMs()],
             ]);
         } catch (\RuntimeException $e) {
-            return $this->json([
-                'success' => false,
-                'error'   => ['code' => 503, 'message' => 'Service IA temporairement indisponible.']
-            ], Response::HTTP_SERVICE_UNAVAILABLE);
+            return $this->json(['success' => false, 'error' => ['code' => 503, 'message' => 'Service IA temporairement indisponible.']], Response::HTTP_SERVICE_UNAVAILABLE);
         }
     }
 }

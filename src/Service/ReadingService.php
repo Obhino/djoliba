@@ -80,10 +80,12 @@ class ReadingService
      * @return array{response: string, interaction: Interaction}
      * @throws \RuntimeException Si l'API DeepSeek est indisponible.
      */
-    public function chat(Project $project, string $question): array
+    public function chat(Project $project, string $question, ?Document $singleDocument = null): array
     {
-        // Récupérer tous les documents du projet
-        $documents = $this->documentRepository->findBy(['project' => $project]);
+        // Si un document spécifique est passé, on limite le contexte à celui-ci
+        $documents = $singleDocument !== null
+            ? [$singleDocument]
+            : $this->documentRepository->findBy(['project' => $project]);
 
         // Construire le contexte depuis les documents disponibles
         $contextParts = [];
