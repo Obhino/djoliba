@@ -59,6 +59,46 @@ class ProjectExporterService
     }
 
     /**
+     * Exporte un projet complet sous forme d'archive LaTeX (ZIP contenant .tex et .bib).
+     */
+    public function exportToLatex(Project $project): string
+    {
+        $zip = new \ZipArchive();
+        $exportDir = $this->projectDir . '/public/uploads/exports';
+        
+        if (!is_dir($exportDir)) {
+            mkdir($exportDir, 0777, true);
+        }
+
+        $filename = sprintf('%s_latex_%s.zip', $this->slugify($project->getName()), uniqid());
+        $zipPath = $exportDir . '/' . $filename;
+
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            throw new \RuntimeException("Impossible d'ouvrir le fichier ZIP : $zipPath");
+        }
+
+        $chapters = $this->chapterRepository->findBy(['project' => $project, 'parent' => null], ['order' => 'ASC']);
+        $documents = $this->documentRepository->findBy(['project' => $project]);
+
+        // 1. Fichier principal .tex
+        $texContent = $this->twig->render('export/thesis.tex.twig', [
+            'project' => $project,
+            'chapters' => $chapters,
+        ]);
+        $zip->addFromString('main.tex', $texContent);
+
+        // 2. Fichier de bibliographie .bib
+        $bibContent = $this->twig->render('export/references.bib.twig', [
+            'documents' => $documents,
+        ]);
+        $zip->addFromString('references.bib', $bibContent);
+
+        $zip->close();
+
+        return $zipPath;
+    }
+
+    /**
      * Exporte un projet complet sous forme de fichier ZIP.
      * 
      * @param Project $project Le projet à exporter

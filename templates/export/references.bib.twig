@@ -1,0 +1,9 @@
+{% for doc in documents %}
+@misc{ref_{{ doc.id }},
+  author = {Auteur à définir},
+  title = { {{ doc.filename }} },
+  year = { {{ doc.createdAt|date("Y") }} },
+  howpublished = {Djoliba Search Database},
+  note = {Fichier source : {{ doc.filename }}}
+}
+{% endfor %}

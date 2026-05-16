@@ -1,0 +1,48 @@
+\documentclass[12pt,a4paper]{report}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage[backend=bibtex]{biblatex}
+
+% --- Configuration ---
+\geometry{margin=2.5cm}
+\onehalfspacing
+\addbibresource{references.bib}
+
+\titleformat{\chapter}[display]
+  {\normalfont\bfseries\color{blue}}
+  {\chaptertitlename\ \thechapter}{20pt}{\Huge}
+
+% --- Métadonnées ---
+\title{ {{ project.name }} }
+\author{ {{ project.user.username }} }
+\date{ {{ "now"|date("d F Y") }} }
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+{% for chapter in chapters %}
+\chapter{ {{ chapter.title }} }
+{{ chapter.content|default('_Chapitre en cours de rédaction_') }}
+
+{% for sub in chapter.children %}
+\section{ {{ sub.title }} }
+{{ sub.content|default('_Sous-chapitre en cours de rédaction_') }}
+{% endfor %}
+
+{% endfor %}
+
+\printbibliography
+
+\end{document}

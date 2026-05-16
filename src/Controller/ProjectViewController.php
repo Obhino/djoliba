@@ -55,6 +55,26 @@ class ProjectViewController extends AbstractController
         }
     }
 
+    #[IsGranted('ROLE_USER')]
+    #[Route('/project/{id}/export/latex', name: 'app_project_export_latex')]
+    public function exportLatex(int $id): Response
+    {
+        $project = $this->projectManager->getProject($id);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            throw $this->createNotFoundException('Projet non trouvé.');
+        }
+
+        try {
+            $zipPath = $this->exporterService->exportToLatex($project);
+            
+            return $this->file($zipPath, sprintf('%s_latex.zip', $this->exporterService->slugify($project->getName())));
+        } catch (\Exception $e) {
+            $this->addFlash('error', "L'export LaTeX a échoué : " . $e->getMessage());
+            return $this->redirectToRoute('app_project_show', ['id' => $id]);
+        }
+    }
+
     #[Route('/hub', name: 'app_hub')]
     public function hub(): Response
     {
