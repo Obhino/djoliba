@@ -18,8 +18,20 @@ class Interaction
     #[ORM\JoinColumn(nullable: false)]
     private ?Project $project = null;
 
-    #[ORM\Column(length: 255)]
+    /**
+     * Valeurs autorisées : literature_review, reading_chat, writing_check,
+     * writing_suggest_journal, thesis_assist
+     */
+    #[ORM\Column(type: 'string', length: 30)]
     private ?string $type = null;
+
+    private const VALID_TYPES = [
+        'literature_review',
+        'reading_chat',
+        'writing_check',
+        'writing_suggest_journal',
+        'thesis_assist',
+    ];
 
     #[ORM\Column(type: Types::TEXT)]
     private ?string $userPrompt = null;
@@ -68,6 +80,11 @@ class Interaction
 
     public function setType(string $type): static
     {
+        if (!in_array($type, self::VALID_TYPES, true)) {
+            throw new \InvalidArgumentException(
+                sprintf('Type invalide "%s". Valeurs acceptées : %s.', $type, implode(', ', self::VALID_TYPES))
+            );
+        }
         $this->type = $type;
 
         return $this;
