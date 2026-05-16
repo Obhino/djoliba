@@ -6,6 +6,7 @@ use App\Entity\Chapter;
 use App\Entity\Interaction;
 use App\Entity\Project;
 use App\Repository\ChapterRepository;
+use App\Repository\DocumentRepository;
 use App\Service\IA\CacheService;
 use App\Service\IA\DeepSeekService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -14,7 +15,7 @@ class ThesisService
 {
     public function __construct(
         private ChapterRepository      $chapterRepository,
-        private \App\Repository\DocumentRepository $documentRepository,
+        private DocumentRepository     $documentRepository,
         private EntityManagerInterface $entityManager,
         private DeepSeekService        $deepSeekService,
         private CacheService           $cacheService,

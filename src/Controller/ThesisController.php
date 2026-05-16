@@ -210,6 +210,8 @@ class ThesisController extends AbstractController
         } catch (\RuntimeException $e) {
             return $this->json(['success' => false, 'error' => ['code' => 503, 'message' => 'Service IA temporairement indisponible.']], Response::HTTP_SERVICE_UNAVAILABLE);
         }
+    }
+
     /**
      * POST /api/thesis/reorder
      * Body JSON: { "project_id": int, "orders": [{id, parent_id, order}] }
