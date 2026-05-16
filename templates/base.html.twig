@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Djoliba - Plateforme Autonome de Recherche{% endblock %}</title>
+    
+    {# Tailwind CSS via CDN #}
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    {# Configuration Tailwind pour l'esthétique premium #}
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                            950: '#172554',
+                        },
+                        dark: {
+                            900: '#0f172a',
+                            800: '#1e293b',
+                            700: '#334155',
+                        }
+                    },
+                    animation: {
+                        'gradient-x': 'gradient-x 15s ease infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        'gradient-x': {
+                            '0%, 100%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'left center'
+                            },
+                            '50%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'right center'
+                            },
+                        },
+                        'float': {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    {# Polices Google #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', sans-serif; }
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+
+    {% block stylesheets %}{% endblock %}
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col selection:bg-primary-500 selection:text-white">
+
+    {# Header #}
+    <header class="fixed w-full top-0 z-50 glass-nav transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <div class="flex-shrink-0 flex items-center gap-3 cursor-pointer transition-transform hover:scale-105">
+                    <div class="w-10 h-10 bg-gradient-to-br from-primary-600 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                        D
+                    </div>
+                    <span class="font-display font-bold text-2xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-primary-800">
+                        Djoliba
+                    </span>
+                </div>
+                
+                <nav class="hidden md:flex space-x-8">
+                    <a href="#" class="text-slate-600 hover:text-primary-600 font-medium transition-colors">Accueil</a>
+                    <a href="#" class="text-slate-600 hover:text-primary-600 font-medium transition-colors">Fonctionnalités</a>
+                    <a href="#" class="text-slate-600 hover:text-primary-600 font-medium transition-colors">Tarifs</a>
+                </nav>
+
+                <div class="hidden md:flex items-center space-x-4">
+                    {% if app.user %}
+                        <a href="#" class="text-slate-600 hover:text-primary-600 font-medium transition-colors">Mon Espace</a>
+                        <a href="{{ path('app_logout') }}" class="text-slate-500 hover:text-red-600 font-medium transition-colors">Déconnexion</a>
+                    {% else %}
+                        <a href="/login" class="text-slate-600 hover:text-primary-600 font-medium transition-colors">Connexion</a>
+                        <a href="/register" class="bg-slate-900 hover:bg-primary-600 text-white px-5 py-2.5 rounded-full font-medium transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                            S'inscrire
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    {# Contenu principal #}
+    <main class="flex-grow pt-20">
+        {% block content %}{% endblock %}
+    </main>
+
+    {# Footer #}
+    <footer class="bg-white border-t border-slate-200 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="col-span-1 md:col-span-2">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-8 h-8 bg-gradient-to-br from-primary-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                            D
+                        </div>
+                        <span class="font-display font-bold text-xl text-slate-900">Djoliba</span>
+                    </div>
+                    <p class="text-slate-500 max-w-sm">
+                        La 1ère plateforme autonome de recherche scientifique en Afrique. Accélérez vos revues de littérature, lecture et rédaction.
+                    </p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 mb-4">Produit</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-slate-500 hover:text-primary-600 transition-colors">Fonctionnalités</a></li>
+                        <li><a href="#" class="text-slate-500 hover:text-primary-600 transition-colors">Tarifs</a></li>
+                        <li><a href="#" class="text-slate-500 hover:text-primary-600 transition-colors">Tutoriels</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 mb-4">Légal</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-slate-500 hover:text-primary-600 transition-colors">CGU</a></li>
+                        <li><a href="#" class="text-slate-500 hover:text-primary-600 transition-colors">Confidentialité</a></li>
+                        <li><a href="#" class="text-slate-500 hover:text-primary-600 transition-colors">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-12 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                <p class="text-slate-400 text-sm">
+                    &copy; {{ 'now'|date('Y') }} Djoliba. Tous droits réservés.
+                </p>
+                <div class="flex space-x-6">
+                    <a href="#" class="text-slate-400 hover:text-primary-600 transition-colors">Twitter</a>
+                    <a href="#" class="text-slate-400 hover:text-primary-600 transition-colors">LinkedIn</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    {% block javascripts %}{% endblock %}
+</body>
+</html>

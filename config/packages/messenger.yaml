@@ -1,0 +1,19 @@
+framework:
+    messenger:
+        failure_transport: failed
+
+        transports:
+            async: 'doctrine://default'
+            failed: 'doctrine://default?queue_name=failed'
+            sync: 'sync://'
+
+        routing:
+            # On route les futurs messages vers le transport asynchrone
+            'App\Message\ProcessDocumentMessage': async
+            'App\Message\ExportProjectMessage': async
+
+when@test:
+    framework:
+        messenger:
+            transports:
+                async: 'in-memory://'
