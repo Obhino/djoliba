@@ -406,10 +406,24 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
 
         html = formattedBlocks.join('\n');
 
-        // 4. Restaurer les équations LaTeX intactes
+        // 4. Restaurer et compiler les équations en HTML direct via KaTeX (split/join évite les interpolations de $)
         mathBlocks.forEach(({ placeholder, equation, display }) => {
-            const delimiter = display ? '$$' : '$';
-            html = html.replace(placeholder, delimiter + equation + delimiter);
+            if (window.katex && window.katex.renderToString) {
+                try {
+                    const rendered = window.katex.renderToString(equation.trim(), {
+                        displayMode: display,
+                        throwOnError: false
+                    });
+                    html = html.split(placeholder).join(rendered);
+                } catch (e) {
+                    console.warn("KaTeX renderToString error:", e);
+                    const delimiter = display ? '$$' : '$';
+                    html = html.split(placeholder).join(delimiter + equation + delimiter);
+                }
+            } else {
+                const delimiter = display ? '$$' : '$';
+                html = html.split(placeholder).join(delimiter + equation + delimiter);
+            }
         });
 
         return html;
