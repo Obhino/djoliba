@@ -21,20 +21,18 @@ export default class extends Controller {
     renderDefaultText() {
         const defaultMarkdown = `### ✨ Analyse Synthétique Djoliba
 
-Bienvenue dans votre espace de revue de littérature assistée par IA. Cette interface prend en charge :
+Bienvenue dans votre espace de revue de littérature assistée par IA. Cette interface prend en charge le **Markdown** et les équations mathématiques.
 
-#### Mise en forme riche
-- **Titres** et sous-titres structurés
-- **Texte en gras** pour les concepts clés
-- Listes à puces pour les points importants
+#### Équation de démonstration
+La loi de conservation de l'énergie en mécanique quantique s'exprime ainsi :
 
-#### Équations mathématiques
-Les formules s'affichent en rendu mathématique, par exemple en ligne $E = mc^2$ ou en bloc :
+$$\\hat{H}\\psi = i\\hbar\\frac{\\partial\\psi}{\\partial t}$$
 
-$$\\int_{a}^{b} f(x) \\, dx = F(b) - F(a)$$
+Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1$
 
 #### Comment démarrer
-Saisissez votre sujet de recherche dans la barre de recherche ci-dessus et cliquez sur **Analyser** pour générer une revue complète.`;
+- Saisissez un **sujet de recherche** dans la barre ci-dessus
+- Cliquez sur **Analyser** pour générer une revue complète`;
 
         this.outputTarget.innerHTML = this.parseMarkdown(defaultMarkdown);
         this.renderMath();
@@ -59,13 +57,65 @@ Pour combler ces lacunes, les futures contributions scientifiques devront :
 - Développer des cadres méthodologiques hybrides et réutilisables.
 - Mener des validations empiriques transversales sur de plus larges cohortes.
 - Modéliser les répercussions à long terme des facteurs exogènes.
+#### Équation de démonstration
+La loi de conservation de l'énergie en mécanique quantique s'exprime ainsi :
 
+$$\\hat{H}\\psi = i\\hbar\\frac{\\partial\\psi}{\\partial t}$$
+
+Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1$
+
+#### Comment démarrer
 ---
 *Cliquez sur **Analyser** pour générer une synthèse approfondie avec l'IA.*`;
 
-        this.outputTarget.innerHTML = this.parseMarkdown(structuredMarkdown);
-        this.renderMath();
+        this.typewriterEffect(structuredMarkdown);
     }
+
+    /**
+     * Effet machine à écrire : révèle le Markdown progressivement, le parse en HTML à chaque étape
+     * et appelle renderMath() en fin de séquence.
+     */
+    typewriterEffect(fullText) {
+        // Annuler un éventuel effet précédent
+        if (this._typewriterTimer) {
+            clearInterval(this._typewriterTimer);
+            this._typewriterTimer = null;
+        }
+
+        const cursor = '<span class="animate-pulse text-emerald_ia font-bold ml-0.5">|</span>';
+        let position = 0;
+        const charsPerTick = 4;   // Vitesse : caractères révélés par intervalle
+        const intervalMs = 16;  // ~60 fps
+
+        // Activer le point de statut (LED verte)
+        this.statusTarget.classList.remove('hidden');
+
+        this._typewriterTimer = setInterval(() => {
+            position = Math.min(position + charsPerTick, fullText.length);
+            const visible = fullText.slice(0, position);
+
+            if (position < fullText.length) {
+                this.outputTarget.innerHTML = this.parseMarkdown(visible) + cursor;
+            } else {
+                // Fin : rendu complet propre + math
+                this.outputTarget.innerHTML = this.parseMarkdown(fullText);
+                this.renderMath();
+                this.statusTarget.classList.add('hidden');
+                clearInterval(this._typewriterTimer);
+                this._typewriterTimer = null;
+
+                // Auto-scroll final
+                const scrollContainer = this.outputTarget.parentElement;
+                if (scrollContainer) scrollContainer.scrollTop = scrollContainer.scrollHeight;
+            }
+
+            // Scroll automatique pendant la frappe
+            const scrollContainer = this.outputTarget.parentElement;
+            if (scrollContainer) scrollContainer.scrollTop = scrollContainer.scrollHeight;
+
+        }, intervalMs);
+    }
+
 
     /**
      * Lance la recherche avec streaming SSE (via fetch + readable stream pour le POST)
@@ -103,7 +153,7 @@ Pour combler ces lacunes, les futures contributions scientifiques devront :
                 if (done) break;
 
                 buffer += decoder.decode(value, { stream: true });
-                
+
                 // On traite les événements SSE du buffer
                 const lines = buffer.split('\n\n');
                 buffer = lines.pop(); // On garde le dernier morceau incomplet
@@ -112,7 +162,7 @@ Pour combler ces lacunes, les futures contributions scientifiques devront :
                     if (line.startsWith('data: ')) {
                         const data = line.replace('data: ', '');
                         if (data === '[DONE]') break;
-                        
+
                         try {
                             const parsed = JSON.parse(data);
                             if (parsed.chunk) {
@@ -126,7 +176,7 @@ Pour combler ces lacunes, les futures contributions scientifiques devront :
                     }
                 }
             }
-            
+
             // Fin du streaming
             this.finishStreaming();
 
@@ -164,13 +214,13 @@ Pour combler ces lacunes, les futures contributions scientifiques devront :
     appendChunk(chunk) {
         this.responseText += chunk;
         const cursorHtml = '<span class="animate-pulse text-emerald_ia font-bold ml-1">|</span>';
-        
+
         // Rendu HTML formaté à partir du Markdown avec le curseur clignotant
         this.outputTarget.innerHTML = this.parseMarkdown(this.responseText) + cursorHtml;
-        
+
         // Rendre les équations LaTeX via KaTeX
         this.renderMath();
-        
+
         // Scroll automatique ciblé sur le conteneur interne de texte
         const scrollContainer = this.outputTarget.parentElement;
         if (scrollContainer) {
@@ -181,15 +231,15 @@ Pour combler ces lacunes, les futures contributions scientifiques devront :
     async finishStreaming() {
         // Enlève le curseur et affiche le HTML final
         this.outputTarget.innerHTML = this.parseMarkdown(this.responseText);
-        
+
         // Rendre les équations LaTeX finales
         this.renderMath();
-        
+
         // Sauvegarde la réponse complète
         this.fullResponse = this.responseText;
-        
+
         console.log("Streaming terminé, sauvegarde en cours...");
-        
+
         try {
             const query = this.inputTarget.value.trim();
             const response = await fetch('/api/interaction', {
@@ -295,9 +345,26 @@ Pour combler ces lacunes, les futures contributions scientifiques devront :
 
     parseMarkdown(text) {
         if (!text) return '';
-        
+
+        const mathBlocks = [];
         let html = text;
 
+        // 1. Extraire les blocs d'équations ($$ ... $$)
+        html = html.replace(/\$\$([\s\S]*?)\$\$/g, (match, equation) => {
+            const placeholder = `__MATH_BLOCK_${mathBlocks.length}__`;
+            mathBlocks.push({ placeholder, equation, display: true });
+            return placeholder;
+        });
+
+        // 2. Extraire les équations en ligne ($ ... $)
+        // Évite d'extraire les chaînes vides, de simples espaces ou des dollars orphelins
+        html = html.replace(/\$([^\s$](?:[^\n$]*?[^\s$])?)\$/g, (match, equation) => {
+            const placeholder = `__MATH_INLINE_${mathBlocks.length}__`;
+            mathBlocks.push({ placeholder, equation, display: false });
+            return placeholder;
+        });
+
+        // 3. Traiter le Markdown standard
         // Échapper les balises HTML basiques pour éviter les injections XSS
         html = html
             .replace(/&/g, '&amp;')
@@ -324,37 +391,60 @@ Pour combler ces lacunes, les futures contributions scientifiques devront :
         const formattedBlocks = blocks.map(block => {
             const trimmed = block.trim();
             if (!trimmed) return '';
-            
-            // Si c'est déjà un titre, une liste ou une règle, ne pas encapsuler dans <p>
-            if (trimmed.startsWith('<h') || trimmed.startsWith('<li') || trimmed.startsWith('<hr')) {
+
+            // Si c'est déjà un titre, une liste, une règle ou un bloc math, ne pas encapsuler dans <p>
+            if (trimmed.startsWith('<h') || trimmed.startsWith('<li') || trimmed.startsWith('<hr') || trimmed.startsWith('__MATH_BLOCK_')) {
                 if (trimmed.startsWith('<li')) {
                     return `<ul class="list-disc pl-5 my-2 space-y-1">${trimmed}</ul>`;
                 }
                 return trimmed;
             }
-            
+
             const withBr = trimmed.replace(/\n/g, '<br>');
             return `<p class="text-xs text-slate-600 leading-relaxed mb-4">${withBr}</p>`;
         });
 
-        return formattedBlocks.join('\n');
+        html = formattedBlocks.join('\n');
+
+        // 4. Restaurer les équations LaTeX intactes
+        mathBlocks.forEach(({ placeholder, equation, display }) => {
+            const delimiter = display ? '$$' : '$';
+            html = html.replace(placeholder, delimiter + equation + delimiter);
+        });
+
+        return html;
     }
 
     renderMath() {
-        if (window.renderMathInElement) {
+        const target = this.outputTarget;
+        const doRender = () => {
             try {
-                window.renderMathInElement(this.outputTarget, {
+                window.renderMathInElement(target, {
                     delimiters: [
-                        {left: "$$", right: "$$", display: true},
-                        {left: "$", right: "$", display: false},
-                        {left: "\\(", right: "\\)", display: false},
-                        {left: "\\[", right: "\\]", display: true}
+                        { left: "$$", right: "$$", display: true },
+                        { left: "$", right: "$", display: false },
+                        { left: "\\(", right: "\\)", display: false },
+                        { left: "\\[", right: "\\]", display: true }
                     ],
                     throwOnError: false
                 });
             } catch (e) {
                 console.warn("KaTeX render error:", e);
             }
+        };
+
+        if (window.renderMathInElement) {
+            doRender();
+        } else {
+            // KaTeX pas encore chargé (scripts defer) — on attend
+            const poll = setInterval(() => {
+                if (window.renderMathInElement) {
+                    clearInterval(poll);
+                    doRender();
+                }
+            }, 50);
+            // Sécurité : abandon après 5s
+            setTimeout(() => clearInterval(poll), 5000);
         }
     }
 

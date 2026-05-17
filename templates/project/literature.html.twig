@@ -45,8 +45,8 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {# Zone principale : Revue de littérature #}
         <div class="lg:col-span-2 space-y-6">
-            <div class="bg-white rounded-3xl shadow-sm border border-slate-100 h-[500px] flex flex-col overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-100 h-[520px] flex flex-col">
+                <div class="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/30 rounded-t-3xl flex-shrink-0">
                     <h2 class="text-sm font-bold text-djoliba flex items-center gap-2">
                         <svg class="w-4 h-4 text-emerald_ia" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                         Analyse Synthétique
@@ -55,11 +55,12 @@
                         <span class="flex h-2 w-2 rounded-full bg-emerald_ia animate-pulse"></span>
                     </div>
                 </div>
-                
-                <div class="p-8 flex-grow overflow-y-auto">
+
+                <div class="p-8 flex-grow overflow-y-auto synth-scroll">
                     <div data-literature-target="output" class="prose prose-slate max-w-none text-slate-700 leading-relaxed"></div>
                 </div>
             </div>
+
         </div>
 
         {# Zone latérale : Suggestions d'articles #}
@@ -78,4 +79,29 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    /* Scrollbar fine et élégante pour la zone d'analyse */
+    .synth-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-djoliba, #1a3c5e) transparent;
+    }
+    .synth-scroll::-webkit-scrollbar {
+        width: 5px;
+    }
+    .synth-scroll::-webkit-scrollbar-track {
+        background: transparent;
+        border-radius: 10px;
+    }
+    .synth-scroll::-webkit-scrollbar-thumb {
+        background: rgba(26, 60, 94, 0.2);
+        border-radius: 10px;
+        transition: background 0.2s;
+    }
+    .synth-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(26, 60, 94, 0.5);
+    }
+</style>
 {% endblock %}
