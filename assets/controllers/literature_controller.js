@@ -124,6 +124,21 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
         const query = this.inputTarget.value.trim();
         if (!query || this.isSearching) return;
 
+        // Si redirigé depuis le hub en mode démo (autostart=true), on simule le rendu localement
+        if (this.autostartValue === 'true') {
+            this.isSearching = true;
+            this.toggleLoading(true);
+            this.suggestionsTarget.innerHTML = this.renderSkeleton();
+
+            setTimeout(() => {
+                this.toggleLoading(false);
+                this.isSearching = false;
+                this.renderStructuredSynthesis(query);
+                this.loadSuggestions(query);
+            }, 300);
+            return;
+        }
+
         this.isSearching = true;
         this.toggleLoading(true);
         this.responseText = '';
