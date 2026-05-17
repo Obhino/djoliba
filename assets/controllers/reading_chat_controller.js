@@ -226,9 +226,6 @@ export default class extends Controller {
         }
     }
 
-    /**
-     * Affiche les points de synthèse dans le DOM
-     */
     renderSynthesis(points) {
         if (!this.hasPointsListTarget) return;
 
@@ -236,9 +233,9 @@ export default class extends Controller {
             <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-djoliba/20 transition-all group">
                 <div class="flex items-center gap-2 mb-2">
                     <span class="w-5 h-5 rounded-full bg-djoliba text-white flex items-center justify-center text-[10px] font-bold">${index + 1}</span>
-                    <h4 class="text-xs font-bold text-djoliba">${p.point}</h4>
+                    <h4 class="text-xs font-bold text-djoliba">${this.parseMarkdown(p.point)}</h4>
                 </div>
-                <p class="text-[11px] text-slate-600 leading-relaxed">${p.explication}</p>
+                <div class="text-[11px] text-slate-600 leading-relaxed">${this.parseMarkdown(p.explication)}</div>
             </div>
         `).join('');
 
@@ -406,13 +403,8 @@ export default class extends Controller {
         const bubble = document.createElement('div');
         bubble.classList.add('message', `message--${role}`);
         
-        // Convert Markdown bold/italic to HTML for history messages
-        const formattedText = text
-            .replace(/\n/g, '<br>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>');
-            
-        bubble.innerHTML = formattedText;
+        // Utiliser le parseur Markdown premium avec KaTeX
+        bubble.innerHTML = this.parseMarkdown(text);
 
         const timestamp = document.createElement('span');
         timestamp.classList.add('message__time');
@@ -433,11 +425,9 @@ export default class extends Controller {
     #appendChunk(chunk) {
         if (!this.hasResponseTarget) return;
         this.#currentResponseText = (this.#currentResponseText ?? '') + chunk;
-        // Rendu Markdown basique : saut de ligne
-        this.responseTarget.innerHTML = this.#currentResponseText
-            .replace(/\n/g, '<br>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>');
+        
+        // Utiliser le parseur Markdown premium avec KaTeX
+        this.responseTarget.innerHTML = this.parseMarkdown(this.#currentResponseText);
         this.messagesTarget?.scrollTo({ top: this.messagesTarget.scrollHeight, behavior: 'smooth' });
     }
 
@@ -452,6 +442,92 @@ export default class extends Controller {
         this.responseTarget.innerHTML = '';
         this.responseTarget.classList.remove('message--streaming');
         this.#currentResponseText = '';
+    }
+
+    parseMarkdown(text) {
+        if (!text) return '';
+
+        const mathBlocks = [];
+        let html = text;
+
+        // 1. Extraire les blocs d'équations ($$ ... $$)
+        html = html.replace(/\$\$([\s\S]*?)\$\$/g, (match, equation) => {
+            const placeholder = `__MATH_BLOCK_${mathBlocks.length}__`;
+            mathBlocks.push({ placeholder, equation, display: true });
+            return placeholder;
+        });
+
+        // 2. Extraire les équations en ligne ($ ... $)
+        // Évite d'extraire les chaînes vides, de simples espaces ou des dollars orphelins
+        html = html.replace(/\$([^\s$](?:[^\n$]*?[^\s$])?)\$/g, (match, equation) => {
+            const placeholder = `__MATH_INLINE_${mathBlocks.length}__`;
+            mathBlocks.push({ placeholder, equation, display: false });
+            return placeholder;
+        });
+
+        // 3. Traiter le Markdown standard
+        // Échapper les balises HTML basiques pour éviter les injections XSS
+        html = html
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+
+        // Remplacer les titres ###
+        html = html.replace(/^###\s+(.+)$/gm, '<h3 class="text-lg font-bold text-djoliba mt-6 mb-3 flex items-center gap-2">$1</h3>');
+
+        // Remplacer les titres ####
+        html = html.replace(/^####\s+(.+)$/gm, '<h4 class="text-sm font-bold text-djoliba/80 mt-4 mb-2">$1</h4>');
+
+        // Remplacer les listes non ordonnées (- élément)
+        html = html.replace(/^-\s+(.+)$/gm, '<li class="text-xs text-slate-600 ml-4">$1</li>');
+
+        // Remplacer les gras **texte**
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-djoliba">$1</strong>');
+
+        // Remplacer les règles horizontales ---
+        html = html.replace(/^---$/gm, '<hr class="my-4 border-slate-100">');
+
+        // Gérer les paragraphes et les retours à la ligne
+        const blocks = html.split(/\n\n+/);
+        const formattedBlocks = blocks.map(block => {
+            const trimmed = block.trim();
+            if (!trimmed) return '';
+
+            // Si c'est déjà un titre, une liste, une règle ou un bloc math, ne pas encapsuler dans <p>
+            if (trimmed.startsWith('<h') || trimmed.startsWith('<li') || trimmed.startsWith('<hr') || trimmed.startsWith('__MATH_BLOCK_')) {
+                if (trimmed.startsWith('<li')) {
+                    return `<ul class="list-disc pl-5 my-2 space-y-1">${trimmed}</ul>`;
+                }
+                return trimmed;
+            }
+
+            const withBr = trimmed.replace(/\n/g, '<br>');
+            return `<p class="text-xs text-slate-600 leading-relaxed mb-4">${withBr}</p>`;
+        });
+
+        html = formattedBlocks.join('\n');
+
+        // 4. Restaurer et compiler les équations en HTML direct via KaTeX (split/join évite les interpolations de $)
+        mathBlocks.forEach(({ placeholder, equation, display }) => {
+            if (window.katex && window.katex.renderToString) {
+                try {
+                    const rendered = window.katex.renderToString(equation.trim(), {
+                        displayMode: display,
+                        throwOnError: false
+                    });
+                    html = html.split(placeholder).join(rendered);
+                } catch (e) {
+                    console.warn("KaTeX renderToString error:", e);
+                    const delimiter = display ? '$$' : '$';
+                    html = html.split(placeholder).join(delimiter + equation + delimiter);
+                }
+            } else {
+                const delimiter = display ? '$$' : '$';
+                html = html.split(placeholder).join(delimiter + equation + delimiter);
+            }
+        });
+
+        return html;
     }
 
     #cancelStream() {

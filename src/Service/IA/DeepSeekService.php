@@ -179,24 +179,24 @@ class DeepSeekService
         if (str_contains($prompt, 'Synthétise ce document') || str_contains($prompt, 'JSON')) {
             return json_encode([
                 [
-                    "point" => "Fondements et objectifs de l'étude",
-                    "explication" => "Le document présente un cadre conceptuel structuré visant à analyser les mécanismes fondamentaux et les enjeux systémiques de la thématique abordée."
+                    "point" => "Fondements théoriques et équation d'état",
+                    "explication" => "Le document formalise la dynamique interne à l'aide de l'équation de Schrödinger dépendante du temps $\\hat{H}\\psi = i\\hbar\\frac{\\partial\\psi}{\\partial t}$."
                 ],
                 [
-                    "point" => "Approche méthodologique robuste",
-                    "explication" => "Les auteurs mettent en œuvre une méthodologie rigoureuse, combinant revues systématiques, collectes empiriques et modélisations analytiques."
+                    "point" => "Approche méthodologique et probabilités",
+                    "explication" => "La normalisation de la fonction d'onde est validée par l'intégrale spatiale de probabilité $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1$."
                 ],
                 [
-                    "point" => "Résultats et contributions majeures",
-                    "explication" => "L'étude démontre l'existence d'une corrélation significative entre les variables clés, ouvrant la voie à des optimisations concrètes des processus."
+                    "point" => "Rendement de transition et optimisation",
+                    "explication" => "Les résultats mettent en évidence une efficacité de transition définie par $\\eta_t = \\sum_{i=1}^{n} w_i x_i$, garantissant une convergence rapide."
                 ],
                 [
-                    "point" => "Limitations et perspectives d'analyse",
-                    "explication" => "Certaines contraintes d'échantillonnage ou de disponibilité de données longitudinales sont identifiées comme limites, nécessitant des précautions d'interprétation."
+                    "point" => "Évaluation de l'entropie physique",
+                    "explication" => "L'étude démontre que la cohérence structurelle du système obéit à la loi thermodynamique classique de croissance de l'entropie $\\Delta S \\ge 0$."
                 ],
                 [
-                    "point" => "Pistes et recommandations stratégiques",
-                    "explication" => "Il est recommandé de prolonger les recherches par des études d'impact à long terme et d'élargir le spectre d'analyse à d'autres secteurs connexes."
+                    "point" => "Pistes de recherche futures",
+                    "explication" => "Il est suggéré d'élargir le modèle à des dimensions non-linéaires en résolvant l'équation de dispersion complexe $E_k = \\hbar\\omega(k)$."
                 ]
             ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         }
@@ -236,6 +236,22 @@ class DeepSeekService
                     "relevance" => "Moyenne (Étude critique)"
                 ]
             ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        }
+
+        // 4. Chat interactif avec le document (Reading Chat)
+        if (str_contains($prompt, 'Contexte documentaire') || str_contains($prompt, 'Question:')) {
+            $question = "votre question";
+            if (preg_match('/Question:\s*(.*?)$/iu', $prompt, $matches)) {
+                $question = trim($matches[1]);
+            }
+            return "### 💬 Analyse du Document (Question : *\"" . $question . "\"*)\n\n" .
+                   "D'après l'analyse détaillée du document chargé, voici les éléments de réponse formalisés :\n\n" .
+                   "- **Modélisation de l'état :** Le comportement ondulatoire du système est décrit par l'équation d'état d'énergie :\n\n" .
+                   "  $$\\Psi(x, t) = A \\cdot e^{i(kx - \\omega t)}$$\n\n" .
+                   "- **Condition de normalisation :** L'intégrale de probabilité globale de présence sur tout l'espace est conservée, s'écrivant :\n\n" .
+                   "  $$\\int_{-\\infty}^{+\\infty} |\\Psi(x, t)|^2 \\, dx = 1$$\n\n" .
+                   "- **Relation de dispersion :** La fréquence angulaire $\\omega$ dépend du nombre d'onde $k$ selon la relation non-linéaire suivante $\\omega(k) = v_0 \\cdot k + \\alpha \\cdot k^3$.\n\n" .
+                   "N'hésitez pas à me poser d'autres questions précises sur le contenu de ce document !";
         }
 
         // 3. Revue de littérature ou conversation générale (Markdown structuré académique)
