@@ -65,9 +65,9 @@
                     </span>
                 </div>
 
-                <div class="p-8 flex-grow flex flex-col justify-center" data-reading-chat-target="synthesisContainer">
+                <div class="p-8 flex-grow flex flex-col justify-start overflow-y-auto max-h-[380px] custom-scrollbar" data-reading-chat-target="synthesisContainer">
                     {# Message initial #}
-                    <div class="text-center max-w-sm mx-auto space-y-3 {% if document_id is defined and document_id > 0 %}hidden{% endif %}" data-reading-chat-target="emptyState">
+                    <div class="text-center max-w-sm mx-auto my-auto space-y-3 {% if document_id is defined and document_id > 0 %}hidden{% endif %}" data-reading-chat-target="emptyState">
                         <div class="w-12 h-12 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto">
                             <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                         </div>
@@ -76,7 +76,7 @@
                     </div>
 
                     {# Skeleton Loader pendant la synthèse #}
-                    <div class="space-y-4 hidden" data-reading-chat-target="loader">
+                    <div class="space-y-4 my-auto hidden" data-reading-chat-target="loader">
                         <div class="animate-pulse flex space-x-4">
                             <div class="flex-1 space-y-4 py-1">
                                <div class="h-4 bg-slate-200 rounded w-1/4"></div>
@@ -98,7 +98,7 @@
                     </div>
 
                     {# Liste des points de synthèse #}
-                    <div class="space-y-6 hidden text-xs text-slate-700 leading-relaxed" data-reading-chat-target="pointsList">
+                    <div class="space-y-6 hidden text-xs text-slate-700 leading-relaxed w-full" data-reading-chat-target="pointsList">
                         {# Rempli dynamiquement via JS #}
                     </div>
                 </div>
