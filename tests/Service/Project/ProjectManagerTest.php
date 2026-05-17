@@ -61,4 +61,21 @@ class ProjectManagerTest extends TestCase
 
         $this->assertEquals('archived', $project->getStatus());
     }
+
+    public function testGetUserProjectsWithFiltering(): void
+    {
+        $user = new User();
+        $user->setEmail('test@example.com');
+
+        $this->projectRepository->expects($this->once())
+            ->method('findBy')
+            ->with(
+                ['user' => $user, 'type' => 'reading'],
+                ['updatedAt' => 'DESC', 'createdAt' => 'DESC']
+            )
+            ->willReturn([]);
+
+        $projects = $this->manager->getUserProjects($user, 'reading');
+        $this->assertIsArray($projects);
+    }
 }

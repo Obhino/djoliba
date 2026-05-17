@@ -18,7 +18,20 @@ export default class extends Controller {
             const linkPath = link.getAttribute('href');
             if (!linkPath || linkPath === '#') return;
             
-            if (currentPath === linkPath || (linkPath !== '/' && currentPath.startsWith(linkPath))) {
+            let isActive = false;
+            if (linkPath.includes('/literature')) {
+                isActive = currentPath === '/literature';
+            } else if (linkPath.includes('/reading')) {
+                isActive = currentPath === '/reading' || currentPath.includes('/reading');
+            } else if (linkPath.includes('/synthesis')) {
+                isActive = currentPath === '/synthesis' || currentPath.includes('/synthesis') || (currentPath.includes('/literature') && currentPath !== '/literature');
+            } else if (linkPath.includes('/writing')) {
+                isActive = currentPath === '/writing' || currentPath.includes('/writing');
+            } else if (linkPath.includes('/thesis')) {
+                isActive = currentPath === '/thesis' || currentPath.includes('/thesis');
+            }
+
+            if (isActive) {
                 link.classList.add('bg-djoliba/10', 'text-djoliba', 'border-djoliba');
                 link.classList.remove('text-slate-500', 'border-transparent');
             } else {

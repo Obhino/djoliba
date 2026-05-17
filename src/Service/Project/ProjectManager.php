@@ -43,15 +43,21 @@ class ProjectManager
     }
 
     /**
-     * Récupère tous les projets non supprimés d'un utilisateur.
+     * Récupère tous les projets non supprimés d'un utilisateur, éventuellement filtrés par type.
      *
      * @param User $user
+     * @param string|null $type
      * @return Project[]
      */
-    public function getUserProjects(User $user): array
+    public function getUserProjects(User $user, ?string $type = null): array
     {
+        $criteria = ['user' => $user];
+        if ($type) {
+            $criteria['type'] = $type;
+        }
+
         return $this->projectRepository->findBy(
-            ['user' => $user],
+            $criteria,
             ['updatedAt' => 'DESC', 'createdAt' => 'DESC']
         );
     }

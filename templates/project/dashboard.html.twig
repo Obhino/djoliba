@@ -59,10 +59,10 @@
                     <h1 class="text-3xl font-display font-extrabold text-djoliba">Bienvenue, {{ app.user.firstName|default(app.user.userIdentifier) }}</h1>
                     <p class="text-slate-500">Prêt à accélérer vos recherches aujourd'hui ?</p>
                 </div>
-                <button class="btn-premium btn-primary shadow-lg shadow-djoliba/20">
+                <a href="{{ path('app_hub') }}" class="btn-premium btn-primary shadow-lg shadow-djoliba/20 flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                     Nouveau Projet
-                </button>
+                </a>
             </div>
 
             <!-- Stats Grid -->
@@ -107,7 +107,7 @@
                     <a href="{{ path('app_project_show', {id: project.id}) }}" class="group">
                         <div class="card-premium h-full flex flex-col hover:border-djoliba transition-all">
                             <div class="flex justify-between items-start mb-4">
-                                <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 group-hover:bg-slate-200 transition-colors">
+                                <div class="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center text-djoliba transition-colors">
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
                                 </div>
                                 <span class="px-2 py-1 bg-emerald-50 rounded text-[10px] font-bold uppercase text-emerald_ia">{{ project.type }}</span>
@@ -132,9 +132,9 @@
                         </div>
                         <h3 class="text-lg font-bold text-djoliba">Aucun projet pour le moment</h3>
                         <p class="text-slate-500 mb-6">Commencez par créer votre premier projet de recherche.</p>
-                        <button class="btn-premium btn-primary inline-flex shadow-lg shadow-djoliba/20">
+                        <a href="{{ path('app_hub') }}" class="btn-premium btn-primary inline-flex shadow-lg shadow-djoliba/20">
                             Créer mon 1er projet
-                        </button>
+                        </a>
                     </div>
                 {% endfor %}
             </div>
