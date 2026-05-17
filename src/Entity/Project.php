@@ -109,6 +109,9 @@ class Project
 
     public function setName(string $name): static
     {
+        if (mb_strlen($name) > 50) {
+            $name = mb_substr($name, 0, 47) . '...';
+        }
         $this->name = $name;
 
         return $this;

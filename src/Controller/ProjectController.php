@@ -73,9 +73,14 @@ class ProjectController extends AbstractController
             $session = $request->getSession();
             $projects = $session->get('test_projects', []);
             
+            $name = $data['name'];
+            if (mb_strlen($name) > 50) {
+                $name = mb_substr($name, 0, 47) . '...';
+            }
+            
             $project = [
                 'id' => count($projects) + 1,
-                'name' => $data['name'],
+                'name' => $name,
                 'type' => $data['type'],
                 'createdAt' => (new \DateTime())->format('c'),
                 'status' => 'active'

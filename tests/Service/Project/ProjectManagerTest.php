@@ -78,4 +78,21 @@ class ProjectManagerTest extends TestCase
         $projects = $this->manager->getUserProjects($user, 'reading');
         $this->assertIsArray($projects);
     }
+
+    public function testCreateProjectWithLongNameTruncation(): void
+    {
+        $user = new User();
+        $user->setEmail('test@example.com');
+
+        $this->entityManager->expects($this->once())->method('persist');
+        $this->entityManager->expects($this->once())->method('flush');
+
+        // Name is 60 characters long
+        $longName = str_repeat('A', 60);
+        $project = $this->manager->createProject($user, 'thesis', $longName);
+
+        $this->assertInstanceOf(Project::class, $project);
+        $this->assertEquals(50, strlen($project->getName()));
+        $this->assertEquals(str_repeat('A', 47) . '...', $project->getName());
+    }
 }
