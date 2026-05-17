@@ -66,6 +66,19 @@ export default class extends Controller {
 
     selectType(event) {
         event.preventDefault();
+        
+        const name = this.inputTarget.value.trim();
+        if (!name) {
+            this.inputTarget.focus();
+            // Flash the input border in red to prompt the user
+            this.inputTarget.classList.add('border-red-500', 'ring-red-100');
+            setTimeout(() => {
+                this.inputTarget.classList.remove('border-red-500', 'ring-red-100');
+            }, 1000);
+            this.showToast('Veuillez saisir un nom pour votre projet.', 'error');
+            return;
+        }
+
         const selectedType = event.currentTarget.dataset.type;
         this.typeInputTarget.value = selectedType;
 
@@ -77,6 +90,9 @@ export default class extends Controller {
                 card.classList.remove('active');
             }
         });
+
+        // Trigger instant submission!
+        this.submitForm();
     }
 
     close() {
@@ -92,20 +108,42 @@ export default class extends Controller {
     }
 
     async submit(event) {
-        event.preventDefault();
+        if (event) event.preventDefault();
+        await this.submitForm();
+    }
+
+    async submitForm() {
         const name = this.inputTarget.value.trim();
         const type = this.typeInputTarget.value;
 
-        if (!name) return;
+        if (!name) {
+            this.inputTarget.focus();
+            return;
+        }
 
-        // Disable submit button and show loading state
-        this.submitBtnTarget.disabled = true;
-        this.submitBtnTarget.innerHTML = `
-            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg> Création...
-        `;
+        // Disable all cards and submit button, and show loading states
+        this.typeCardTargets.forEach(card => card.style.pointerEvents = 'none');
+        if (this.hasSubmitBtnTarget) {
+            this.submitBtnTarget.disabled = true;
+            this.submitBtnTarget.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg> Création...
+            `;
+        }
+
+        // Show a loading text or indicator inside the clicked card!
+        const activeCard = this.typeCardTargets.find(card => card.classList.contains('active'));
+        if (activeCard) {
+            activeCard.innerHTML = `
+                <svg class="animate-spin h-6 w-6 text-djoliba mx-auto mb-1" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-[11px] font-bold text-djoliba block leading-tight">Création...</span>
+            `;
+        }
 
         try {
             const response = await fetch('/api/projects', {
@@ -142,8 +180,26 @@ export default class extends Controller {
         } catch (error) {
             console.error(error);
             this.showToast('Impossible de créer le projet : ' + error.message, 'error');
-            this.submitBtnTarget.disabled = false;
-            this.submitBtnTarget.textContent = 'Créer le projet';
+            
+            // Restore visual state
+            this.typeCardTargets.forEach(card => card.style.pointerEvents = 'auto');
+            if (activeCard) {
+                const labels = {
+                    literature_review: { icon: '📚', text: 'Synthèse / Revue' },
+                    reading: { icon: '📖', text: 'Lecture / PDF' },
+                    writing: { icon: '✍️', text: 'Rédaction / Pub' },
+                    thesis: { icon: '🎓', text: 'Thèse / Mémoire' }
+                };
+                const info = labels[type] || { icon: '🔍', text: 'Projet' };
+                activeCard.innerHTML = `
+                    <span class="text-2xl mb-1">${info.icon}</span>
+                    <span class="text-[11px] font-bold text-djoliba block leading-tight">${info.text}</span>
+                `;
+            }
+            if (this.hasSubmitBtnTarget) {
+                this.submitBtnTarget.disabled = false;
+                this.submitBtnTarget.textContent = 'Créer le projet';
+            }
         }
     }
 
