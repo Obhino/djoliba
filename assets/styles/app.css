@@ -211,3 +211,22 @@ h1, h2, h3, h4, h5, h6 {
     background: #94a3b8; /* slate-400 */
 }
 
+/* Custom Project Creation Modal & Type Selector Cards */
+.project-type-card {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: var(--slate-50);
+}
+
+.project-type-card.active {
+    border-color: var(--color-djoliba) !important;
+    background-color: rgba(11, 37, 69, 0.04) !important;
+    box-shadow: 0 10px 20px -10px rgba(11, 37, 69, 0.15) !important;
+    transform: translateY(-2px);
+}
+
+.project-type-card:not(.active):hover {
+    border-color: var(--slate-300);
+    background-color: white;
+    transform: translateY(-1px);
+}
+

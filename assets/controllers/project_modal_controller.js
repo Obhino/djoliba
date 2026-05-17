@@ -2,7 +2,7 @@ import { Controller } from '@hotwired/stimulus';
 
 /* stimulusFetch: 'eager' */
 export default class extends Controller {
-    static targets = ['modal', 'card', 'input', 'typeSelect', 'title', 'submitBtn', 'typeSection'];
+    static targets = ['modal', 'card', 'input', 'typeInput', 'typeCard', 'title', 'submitBtn', 'typeSection'];
 
     connect() {
         // Listen to global open event
@@ -15,18 +15,16 @@ export default class extends Controller {
     }
 
     handleOpen(event) {
-        const type = event.detail.type || ''; // e.g. 'reading', 'literature_review', etc.
+        const type = event.detail.type || '';
         this.open(type);
     }
 
     open(type = '') {
-        // Reset form
         this.inputTarget.value = '';
         
-        // Show/Hide or pre-select type
         if (type) {
-            // Pre-selected type, hide the selector to keep it simple
-            this.typeSelectTarget.value = type;
+            // Pre-selected type, hide selection section
+            this.typeInputTarget.value = type;
             this.typeSectionTarget.classList.add('hidden');
             
             const labels = {
@@ -37,10 +35,20 @@ export default class extends Controller {
             };
             this.titleTarget.textContent = `Nouveau Projet : ${labels[type] || 'Recherche'}`;
         } else {
-            // General creation, show type selector
+            // General creation, show selector and set default to 'literature_review'
             this.typeSectionTarget.classList.remove('hidden');
-            this.typeSelectTarget.value = 'literature_review'; // default
+            this.typeInputTarget.value = 'literature_review';
             this.titleTarget.textContent = 'Créer un nouveau projet';
+            
+            // Set first card visual state to active
+            this.typeCardTargets.forEach(card => {
+                const cardType = card.dataset.type;
+                if (cardType === 'literature_review') {
+                    card.classList.add('active');
+                } else {
+                    card.classList.remove('active');
+                }
+            });
         }
 
         // Open animation
@@ -54,6 +62,21 @@ export default class extends Controller {
             
             this.inputTarget.focus();
         }, 50);
+    }
+
+    selectType(event) {
+        event.preventDefault();
+        const selectedType = event.currentTarget.dataset.type;
+        this.typeInputTarget.value = selectedType;
+
+        // Visual toggle active classes
+        this.typeCardTargets.forEach(card => {
+            if (card === event.currentTarget) {
+                card.classList.add('active');
+            } else {
+                card.classList.remove('active');
+            }
+        });
     }
 
     close() {
@@ -71,7 +94,7 @@ export default class extends Controller {
     async submit(event) {
         event.preventDefault();
         const name = this.inputTarget.value.trim();
-        const type = this.typeSelectTarget.value;
+        const type = this.typeInputTarget.value;
 
         if (!name) return;
 

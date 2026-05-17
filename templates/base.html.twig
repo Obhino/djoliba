@@ -107,10 +107,11 @@
 
         {# Modal Box #}
         <div data-project-modal-target="card" 
-             class="relative bg-white w-full max-w-lg rounded-3xl p-8 border border-slate-100 shadow-2xl transform scale-95 opacity-0 transition-all duration-300 ease-out z-10">
+             style="max-width: 440px; width: 100%;"
+             class="relative bg-white rounded-3xl p-8 border border-slate-100 shadow-2xl transform scale-95 opacity-0 transition-all duration-300 ease-out z-10">
             
             {# Close Button #}
-            <button data-action="click->project-modal#close" class="absolute top-6 right-6 text-slate-400 hover:text-djoliba transition-colors">
+            <button type="button" data-action="click->project-modal#close" class="absolute top-6 right-6 text-slate-400 hover:text-djoliba transition-colors">
                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
 
@@ -132,16 +133,32 @@
                            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold placeholder:text-slate-300">
                 </div>
 
-                <div data-project-modal-target="typeSection">
-                    <label for="project-type-select" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Type d'analyse</label>
-                    <select id="project-type-select" 
-                            data-project-modal-target="typeSelect" 
-                            class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-bold bg-white cursor-pointer">
-                        <option value="literature_review">📚 Revue de Littérature / Synthèse</option>
-                        <option value="reading">📖 Lecture / Analyse PDF</option>
-                        <option value="writing">✍️ Rédaction / Publication</option>
-                        <option value="thesis">🎓 Thèse / Mémoire</option>
-                    </select>
+                <div data-project-modal-target="typeSection" class="space-y-3">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">Type d'analyse</label>
+                    <input type="hidden" data-project-modal-target="typeInput" value="literature_review">
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        {# Option 1: Literature Review #}
+                        <div data-action="click->project-modal#selectType" data-type="literature_review" data-project-modal-target="typeCard" class="project-type-card active flex flex-col p-4 rounded-2xl border border-slate-200 cursor-pointer text-center select-none h-28 justify-center">
+                            <span class="text-2xl mb-1">📚</span>
+                            <span class="text-[11px] font-bold text-djoliba block leading-tight">Synthèse / Revue</span>
+                        </div>
+                        {# Option 2: Reading #}
+                        <div data-action="click->project-modal#selectType" data-type="reading" data-project-modal-target="typeCard" class="project-type-card flex flex-col p-4 rounded-2xl border border-slate-200 cursor-pointer text-center select-none h-28 justify-center">
+                            <span class="text-2xl mb-1">📖</span>
+                            <span class="text-[11px] font-bold text-djoliba block leading-tight">Lecture / PDF</span>
+                        </div>
+                        {# Option 3: Writing #}
+                        <div data-action="click->project-modal#selectType" data-type="writing" data-project-modal-target="typeCard" class="project-type-card flex flex-col p-4 rounded-2xl border border-slate-200 cursor-pointer text-center select-none h-28 justify-center">
+                            <span class="text-2xl mb-1">✍️</span>
+                            <span class="text-[11px] font-bold text-djoliba block leading-tight">Rédaction / Pub</span>
+                        </div>
+                        {# Option 4: Thesis #}
+                        <div data-action="click->project-modal#selectType" data-type="thesis" data-project-modal-target="typeCard" class="project-type-card flex flex-col p-4 rounded-2xl border border-slate-200 cursor-pointer text-center select-none h-28 justify-center">
+                            <span class="text-2xl mb-1">🎓</span>
+                            <span class="text-[11px] font-bold text-djoliba block leading-tight">Thèse / Mémoire</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex justify-end gap-3 pt-4 border-t border-slate-50">
