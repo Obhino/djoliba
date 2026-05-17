@@ -328,7 +328,7 @@ export default class extends Controller {
             method:  'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept':       'text/event-stream',
+                'Accept':       'application/json, text/event-stream',
             },
             body,
             signal: this.abortController.signal,
@@ -339,7 +339,22 @@ export default class extends Controller {
             throw new Error(data?.error?.message ?? `HTTP ${response.status}`);
         }
 
-        // Lecture du flux SSE ligne par ligne
+        const contentType = response.headers.get('content-type') || '';
+
+        // Gestion de la réponse JSON standard (non streamée)
+        if (contentType.includes('application/json')) {
+            const data = await response.json();
+            if (data.data?.response) {
+                this.#appendChunk(data.data.response);
+                this.#finalizeResponse();
+            } else if (data.error) {
+                this.#setStatus(`Erreur : ${data.error.message || data.error}`);
+            }
+            this.#setStatus('');
+            return;
+        }
+
+        // Lecture du flux SSE ligne par ligne (stream)
         const reader = response.body.getReader();
         const decoder = new TextDecoder('utf-8');
         let buffer = '';
