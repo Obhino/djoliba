@@ -433,6 +433,7 @@ export default class extends Controller {
     #prepareResponseArea() {
         if (!this.hasResponseTarget) return;
         this.responseTarget.innerHTML = '';
+        this.responseTarget.classList.remove('hidden');
         this.responseTarget.classList.add('message', 'message--ai', 'message--streaming');
         this.#currentResponseText = '';
     }
@@ -451,11 +452,12 @@ export default class extends Controller {
 
         // Déplacer la bulle de réponse dans l'historique
         const finalBubble = this.responseTarget.cloneNode(true);
-        finalBubble.classList.remove('message--streaming');
+        finalBubble.classList.remove('message--streaming', 'hidden');
         this.messagesTarget?.appendChild(finalBubble);
 
         this.responseTarget.innerHTML = '';
         this.responseTarget.classList.remove('message--streaming');
+        this.responseTarget.classList.add('hidden');
         this.#currentResponseText = '';
     }
 
