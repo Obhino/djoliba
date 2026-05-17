@@ -247,10 +247,10 @@ class DeepSeekService
             return "### 💬 Analyse du Document (Question : *\"" . $question . "\"*)\n\n" .
                    "D'après l'analyse détaillée du document chargé, voici les éléments de réponse formalisés :\n\n" .
                    "- **Modélisation de l'état :** Le comportement ondulatoire du système est décrit par l'équation d'état d'énergie :\n\n" .
-                   "  $$\\Psi(x, t) = A \\cdot e^{i(kx - \\omega t)}$$\n\n" .
+                   "  \$\$\\Psi(x, t) = A \\cdot e^{i(kx - \\omega t)}\$\$\n\n" .
                    "- **Condition de normalisation :** L'intégrale de probabilité globale de présence sur tout l'espace est conservée, s'écrivant :\n\n" .
-                   "  $$\\int_{-\\infty}^{+\\infty} |\\Psi(x, t)|^2 \\, dx = 1$$\n\n" .
-                   "- **Relation de dispersion :** La fréquence angulaire $\\omega$ dépend du nombre d'onde $k$ selon la relation non-linéaire suivante $\\omega(k) = v_0 \\cdot k + \\alpha \\cdot k^3$.\n\n" .
+                   "  \$\$\\int_{-\\infty}^{+\\infty} |\\Psi(x, t)|^2 \\, dx = 1\$\$\n\n" .
+                   "- **Relation de dispersion :** La fréquence angulaire \$\\omega\$ dépend du nombre d'onde \$k\$ selon la relation non-linéaire suivante \$\\omega(k) = v_0 \\cdot k + \\alpha \\cdot k^3\$.\n\n" .
                    "N'hésitez pas à me poser d'autres questions précises sur le contenu de ce document !";
         }
 

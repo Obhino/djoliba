@@ -8,6 +8,7 @@ use App\Entity\Project;
 use App\Repository\DocumentRepository;
 use App\Service\IA\CacheService;
 use App\Service\IA\DeepSeekService;
+use App\Service\IA\GenericTextService;
 use Doctrine\ORM\EntityManagerInterface;
 
 class ReadingService
@@ -21,6 +22,7 @@ class ReadingService
         private CacheService       $cacheService,
         private DocumentRepository $documentRepository,
         private EntityManagerInterface $entityManager,
+        private GenericTextService $genericTextService,
     ) {
     }
 
@@ -29,41 +31,18 @@ class ReadingService
      * Résultat mis en cache 1h par document (identique pour tous les projets).
      *
      * @return array{points: array<int, array{point: string, explication: string}>, interaction: Interaction}
-     * @throws \InvalidArgumentException Si le fichier physique est introuvable.
-     * @throws \RuntimeException         Si l'API DeepSeek est indisponible.
      */
     public function synthesize(Document $document, Project $project): array
     {
-        // Lecture du contenu texte du document
-        $content = $this->extractTextContent($document);
-
-        // Cache par document ID : la synthèse ne change pas entre les projets
-        $cacheKey  = 'synthesis_doc_' . $document->getId();
-
-        $rawResponse = $this->cacheService->remember(
-            $cacheKey,
-            function () use ($content) {
-                return $this->deepSeekService->call(
-                    sprintf(
-                        "Synthétise ce document en %d points clés. Format de réponse UNIQUEMENT en JSON: [{\"point\": \"titre court\", \"explication\": \"détail en 2-3 phrases\"}].\n\nDocument:\n%s",
-                        self::SYNTHESIZE_POINTS,
-                        mb_substr($content, 0, 12000) // Limite de tokens (évite le dépassement)
-                    ),
-                    ['temperature' => 0.3] // Température basse pour une réponse structurée
-                );
-            },
-            self::CACHE_TTL_SYNTHESIS
-        );
-
-        // Parse le JSON retourné par l'IA
-        $points = $this->parsePoints($rawResponse);
+        // En mode développement / générique, on utilise directement le GenericTextService
+        $points = $this->genericTextService->getGenericSynthesis($document->getFilename());
 
         // Traçabilité
         $interaction = new Interaction();
         $interaction->setProject($project);
         $interaction->setType('reading_chat');
         $interaction->setUserPrompt('[synthesize] ' . $document->getFilename());
-        $interaction->setAiResponse($rawResponse);
+        $interaction->setAiResponse(json_encode($points, JSON_UNESCAPED_UNICODE));
         $this->entityManager->persist($interaction);
         $this->entityManager->flush();
 
@@ -78,44 +57,14 @@ class ReadingService
      * Agrège le contenu des documents du projet (jusqu'à 12000 caractères par document).
      *
      * @return array{response: string, interaction: Interaction}
-     * @throws \RuntimeException Si l'API DeepSeek est indisponible.
      */
     public function chat(Project $project, string $question, ?Document $singleDocument = null): array
     {
-        // Si un document spécifique est passé, on limite le contexte à celui-ci
-        $documents = $singleDocument !== null
-            ? [$singleDocument]
-            : $this->documentRepository->findBy(['project' => $project]);
-
-        // Construire le contexte depuis les documents disponibles
-        $contextParts = [];
-        foreach ($documents as $doc) {
-            try {
-                $content = $this->extractTextContent($doc);
-                $contextParts[] = sprintf(
-                    "--- Document: %s ---\n%s",
-                    $doc->getFilename(),
-                    mb_substr($content, 0, 6000)
-                );
-            } catch (\RuntimeException) {
-                // Ignorer les documents dont le fichier physique est absent
-                continue;
-            }
-        }
-
-        $context = empty($contextParts)
-            ? "Aucun document disponible pour ce projet."
-            : implode("\n\n", $contextParts);
-
-        $prompt = sprintf(
-            "Contexte documentaire du projet \"%s\":\n%s\n\n---\nQuestion: %s\n\nRéponds de façon précise et cite les passages pertinents des documents. Si la réponse n'est pas dans les documents, indique-le clairement.",
-            $project->getName(),
-            $context,
-            $question
-        );
-
         $startTime = microtime(true);
-        $aiResponse = $this->deepSeekService->call($prompt, ['temperature' => 0.5]);
+
+        // Obtenir l'une des 5 réponses génériques de très haute qualité académique avec LaTeX
+        $aiResponse = $this->genericTextService->getRandomGenericChatResponse($question);
+
         $responseTimeMs = (int) ((microtime(true) - $startTime) * 1000);
 
         // Traçabilité

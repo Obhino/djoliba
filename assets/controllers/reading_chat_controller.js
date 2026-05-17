@@ -310,7 +310,7 @@ export default class extends Controller {
 
     async #streamResponse(question) {
         const payload = {
-            prompt:     question,
+            question:   question,
             project_id: this.projectIdValue,
         };
 
