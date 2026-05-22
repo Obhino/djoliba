@@ -46,6 +46,13 @@ class LiteratureController extends AbstractController
             $project = $this->projectManager->getProject((int) $data['project_id']);
         }
 
+        if ($this->deepSeekService->isApiKeyPlaceholder()) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 503, 'message' => 'Service IA temporairement indisponible. Veuillez réessayer.']
+            ], Response::HTTP_SERVICE_UNAVAILABLE);
+        }
+
         $deepSeekService = $this->deepSeekService;
         $entityManager = $this->entityManager;
 

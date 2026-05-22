@@ -82,6 +82,9 @@ class DeepSeekService
 
             throw new \RuntimeException('DeepSeek API : nombre de tentatives dépassé.');
         } catch (\Exception $e) {
+            if (($_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? '') === 'test') {
+                throw $e;
+            }
             $this->logger->error('[DeepSeek Fallback] Retour au mock à cause de l\'erreur : ' . $e->getMessage());
             return $this->getMockResponse($prompt);
         }
@@ -158,6 +161,9 @@ class DeepSeekService
                 }
             }
         } catch (\Exception $e) {
+            if (($_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? '') === 'test') {
+                throw $e;
+            }
             $this->logger->error('[DeepSeek Fallback Stream] Retour au mock à cause de l\'erreur : ' . $e->getMessage());
             $mockText = $this->getMockResponse($prompt);
             
@@ -270,7 +276,7 @@ class DeepSeekService
                "#### 2. Tendances Récentes et Avancées (2023-2026)\n" .
                "Les travaux récents s'orientent vers des modélisations plus complexes intégrant des approches probabilistes. Ainsi, l'évaluation du rendement optimal de transition \\\$\\eta_t\\\$ s'exprime selon la relation linéaire :\n\n" .
                "\\\$\\\$\\eta_t = \\sum_{i=1}^{n} w_i \\cdot x_i - \\lambda \\cdot \\sigma^2\\\$\\\$\n\n" .
-               "Ces formulations permettent d'intégrer des technologies avancées de contrôle automatisé intelligent et d'optimiser l'allocation de poids \\$w_i.\n\n" .
+               "Ces formulations permettent d'intégrer des technologies avancées de contrôle automatisé intelligent et d'optimiser l'allocation de poids \\\$w_i.\n\n" .
                "#### 3. Lacunes et Limites Identifiées\n" .
                "Malgré ce cadre formalisé, la recherche souffre d'un manque d'études longitudinales empiriques pour valider les paramètres du modèle dans des conditions réelles extrêmes.\n\n" .
                "#### 4. Pistes de Recherche Futures\n" .
@@ -306,5 +312,13 @@ class DeepSeekService
             'Content-Type'  => 'application/json',
             'Accept'        => 'application/json',
         ];
+    }
+
+    /**
+     * Vérifie si la clé API est un simple placeholder de test.
+     */
+    public function isApiKeyPlaceholder(): bool
+    {
+        return $this->apiKey === 'test_key' || empty($this->apiKey);
     }
 }
