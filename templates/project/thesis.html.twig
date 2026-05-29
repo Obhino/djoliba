@@ -1,0 +1,261 @@
+{# templates/project/thesis.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Structure de la Thèse - {{ project.name }} - Djoliba{% endblock %}
+
+{% block stylesheets %}
+<style>
+    /* Design System & Visual Polish for Thesis Module */
+    .thesis-header {
+        background-color: var(--primary);
+        padding: 3.5rem 2rem;
+        color: white;
+        border-radius: 0 0 3rem 3rem;
+        margin-top: -20px;
+        position: relative;
+        overflow: hidden;
+    }
+    .thesis-header::before {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -20%;
+        width: 140%;
+        height: 200%;
+        background: radial-gradient(circle at center, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
+        pointer-events: none;
+    }
+    
+    /* Blank state toggle based on editor visibility */
+    [data-thesis-editor-target="editor"].hidden ~ #thesis-editor-blank-state {
+        display: flex !important;
+    }
+    #thesis-editor-blank-state {
+        display: none !important;
+    }
+
+    /* Chapter Tree Interactive Styling */
+    .thesis-tree-list {
+        list-style-type: none !important;
+        margin: 0;
+        padding-left: 1rem;
+        position: relative;
+    }
+    
+    .thesis-tree-item {
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    /* Gutter line for nested elements */
+    .nested-sortable {
+        position: relative;
+        min-height: 10px;
+    }
+    .nested-sortable::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 8px;
+        bottom: 0;
+        width: 1px;
+        background: #cbd5e1; /* slate-300 */
+        opacity: 0.5;
+    }
+
+    .thesis-tree-item .cursor-move {
+        cursor: grab;
+        transition: transform 0.2s ease;
+    }
+    .thesis-tree-item .cursor-move:active {
+        cursor: grabbing;
+        transform: scale(1.1);
+    }
+</style>
+{% endblock %}
+
+{% block main %}
+<div data-controller="thesis-editor"
+     data-thesis-editor-project-id-value="{{ project.id }}"
+     class="space-y-8">
+
+    {# 1. EN-TÊTE DU MODULE THÈSE #}
+    <div class="thesis-header fade-in">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
+            <div>
+                {# Fil d'Ariane #}
+                <nav class="flex text-xs text-slate-300 mb-3" aria-label="Breadcrumb">
+                    <ol class="flex items-center space-x-2">
+                        <li><a href="{{ path('app_hub') }}" class="hover:text-white transition-colors">Hub</a></li>
+                        <li><svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></li>
+                        <li><a href="{{ path('app_project_show', {id: project.id}) }}" class="hover:text-white transition-colors">{{ project.name }}</a></li>
+                        <li><svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></li>
+                        <li class="text-white font-medium">Thèse & Structure</li>
+                    </ol>
+                </nav>
+                <div class="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur rounded-full text-[10px] font-bold uppercase tracking-widest text-emerald-400 mb-3 border border-white/10">
+                    <span class="w-2 h-2 rounded-full bg-emerald_ia animate-pulse"></span>
+                    Module Thèse / Mémoire
+                </div>
+                <h1 class="text-3xl md:text-4xl font-display font-black text-white">Structure & Plan du Manuscrit</h1>
+                <p class="text-slate-300 max-w-xl text-xs leading-relaxed mt-2">
+                    Organisez vos chapitres par glisser-déposer, planifiez vos sous-parties et validez la cohérence globale de vos travaux de recherche.
+                </p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button type="button"
+                        data-action="click->thesis-editor#checkPlanConsistency"
+                        class="px-5 py-3 bg-emerald_ia text-white hover:bg-emerald_ia/90 text-xs font-bold rounded-xl flex items-center gap-2 shadow-lg shadow-emerald_ia/20 transition-all border border-emerald_ia/30">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                    Analyser la Cohérence (IA)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {# 2. DEUX COLONNES PRINCIPALES (30% / 70%) #}
+    <div class="max-w-6xl mx-auto px-4">
+        <div class="grid grid-cols-1 lg:grid-cols-10 gap-8 items-stretch">
+            
+            {# COLONNE GAUCHE : ARBORESCENCE (30% -> lg:col-span-3) #}
+            <div class="lg:col-span-3 flex flex-col gap-6">
+                <div class="card-premium h-full flex flex-col min-h-[500px]">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-djoliba">Plan de thèse</h3>
+                            <p class="text-[10px] text-slate-400">Glissez-déposez pour réorganiser</p>
+                        </div>
+                    </div>
+
+                    {# Boutons d'action rapides d'ajout #}
+                    <div class="flex gap-2 mb-6">
+                        <button type="button"
+                                data-action="click->thesis-editor#addChapter"
+                                class="flex-1 px-3.5 py-2.5 bg-djoliba text-white text-[11px] font-bold rounded-xl hover:opacity-95 transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-djoliba/10"
+                                title="Ajouter un chapitre principal (Racine)">
+                            <span class="text-sm">+</span> Chapitre
+                        </button>
+                        <button type="button"
+                                data-action="click->thesis-editor#addSubChapter"
+                                class="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-djoliba text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                                title="Ajouter un sous-chapitre sous la partie sélectionnée">
+                            <span class="text-sm">+</span> Sous-partie
+                        </button>
+                    </div>
+
+                    {# Arborescence des chapitres #}
+                    <div class="flex-grow overflow-y-auto custom-scrollbar pr-1 max-h-[460px]">
+                        <div data-thesis-editor-target="tree" class="text-xs text-slate-600">
+                            {# Rempli dynamiquement par JS #}
+                            <div class="text-center py-12 text-slate-400 italic">
+                                <svg class="w-8 h-8 mx-auto mb-2 animate-spin text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18" /></svg>
+                                Chargement de la structure...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# COLONNE DROITE : ÉDITEUR (70% -> lg:col-span-7) #}
+            <div class="lg:col-span-7 flex flex-col">
+                
+                {# Éditeur de texte (Masqué par défaut, affiché lors de l'édition) #}
+                <div data-thesis-editor-target="editor"
+                     class="hidden bg-white rounded-3xl border border-slate-100 p-8 shadow-sm flex flex-col min-h-[560px] space-y-6">
+                    
+                    {# En-tête de l'éditeur #}
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-djoliba/5 flex items-center justify-center text-djoliba">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-djoliba">Éditeur de Partie</h3>
+                                <p class="text-[10px] text-slate-400">Modifiez le titre et rédigez le manuscrit</p>
+                            </div>
+                        </div>
+
+                        {# Statut d'autosave ou d'action #}
+                        <div data-thesis-editor-target="status" class="text-xs text-slate-400 italic"></div>
+                    </div>
+
+                    {# Titre du chapitre #}
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Titre de la section</label>
+                        <input type="text"
+                               data-thesis-editor-target="titleInput"
+                               class="w-full px-5 py-3.5 border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-bold rounded-2xl placeholder:text-slate-300">
+                    </div>
+
+                    {# Zone d'écriture et de code (LaTeX / Markdown) #}
+                    <div class="flex-grow flex flex-col space-y-4">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contenu scientifique</label>
+                            
+                            <div class="flex items-center gap-2">
+                                {# Bouton Rédaction par IA #}
+                                <button type="button"
+                                        data-thesis-editor-target="writeBtn"
+                                        data-action="click->thesis-editor#writeWithAI"
+                                        class="px-3.5 py-1.5 bg-gold_prestige/10 border border-gold_prestige/20 hover:bg-gold_prestige/20 text-gold_prestige text-[10px] font-bold rounded-lg transition-all flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                                    Rédiger avec IA
+                                </button>
+                                
+                                {# Bouton Vérifier Cohérence #}
+                                <button type="button"
+                                        data-action="click->thesis-editor#checkConsistency"
+                                        class="px-3.5 py-1.5 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100/70 text-emerald-600 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 shadow-sm">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                                    Vérifier cohérence
+                                </button>
+                                
+                                {# Bouton Enregistrer #}
+                                <button type="button"
+                                        data-thesis-editor-target="saveBtn"
+                                        data-action="click->thesis-editor#saveChapter"
+                                        class="px-3.5 py-1.5 bg-djoliba text-white text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 shadow-sm shadow-djoliba/10">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                                    Enregistrer
+                                </button>
+                            </div>
+                        </div>
+
+                        {# Zone de l'éditeur scientifique réutilisable #}
+                        <div class="border border-slate-100 rounded-3xl p-1 bg-slate-50/10">
+                            {% include 'project/_writing_editor.html.twig' with {
+                                'project': project,
+                                'save_url': '',
+                                'placeholder': 'Rédigez le texte scientifique, les chapitres de thèse ou le plan détaillé. Le Markdown et le LaTeX sont pleinement supportés...',
+                                'storage_key': 'thesis_chapter_draft_' ~ project.id
+                            } %}
+                        </div>
+                    </div>
+                </div>
+
+                {# ÉTAT VIDE (BLANK STATE) : Affiché lorsque aucun chapitre n'est sélectionné #}
+                <div id="thesis-editor-blank-state"
+                     class="bg-white rounded-3xl border border-slate-100 p-12 text-center flex flex-col items-center justify-center gap-4 flex-grow min-h-[560px] shadow-sm">
+                    <div class="w-16 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 shadow-inner">
+                        <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-djoliba">Sélectionnez un Chapitre</h3>
+                        <p class="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
+                            Choisissez une section dans l'arborescence à gauche pour commencer à rédiger. Vous pouvez également cliquer sur <strong>"+ Chapitre"</strong> pour démarrer un nouveau plan.
+                        </p>
+                    </div>
+                </div>
+
+                {# RÉSULTATS DE L'ANALYSE DE COHÉRENCE IA #}
+                <div data-thesis-editor-target="results" class="mt-6">
+                    {# Injecté dynamiquement par JS #}
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -9,15 +9,22 @@ import Sortable from 'sortablejs';
  * Supporte également la génération assistée par IA (write) et le contrôle de cohérence.
  */
 export default class extends Controller {
-    static targets = ['tree', 'editor', 'titleInput', 'contentInput', 'saveBtn', 'writeBtn', 'status', 'results'];
+    static targets = ['tree', 'editor', 'titleInput', 'saveBtn', 'writeBtn', 'status', 'results'];
     static values = {
         projectId: Number
     };
 
     connect() {
         this.currentChapterId = null;
+        this.autosaveInterval = null;
         this.loadStructure();
         this.#log('thesis-editor connecté');
+    }
+
+    disconnect() {
+        if (this.autosaveInterval) {
+            clearInterval(this.autosaveInterval);
+        }
     }
 
     async loadStructure() {
@@ -41,7 +48,7 @@ export default class extends Controller {
         if (!title) return;
 
         try {
-            const response = await fetch('/api/thesis/chapter', {
+            const response = await fetch('/api/thesis/structure', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -59,22 +66,125 @@ export default class extends Controller {
         }
     }
 
-    editChapter(event) {
-        const id = event.currentTarget.dataset.id;
-        const title = event.currentTarget.dataset.title;
-        const content = event.currentTarget.dataset.content || '';
+    async addSubChapter() {
+        if (!this.currentChapterId) {
+            alert("Veuillez d'abord sélectionner un chapitre dans la liste pour y ajouter un sous-chapitre.");
+            return;
+        }
+        const title = prompt('Titre du nouveau sous-chapitre :');
+        if (!title) return;
 
+        try {
+            const response = await fetch('/api/thesis/structure', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    project_id: this.projectIdValue,
+                    title: title,
+                    parent_id: parseInt(this.currentChapterId)
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                this.loadStructure();
+            }
+        } catch (error) {
+            alert('Erreur lors de l\'ajout du sous-chapitre');
+        }
+    }
+
+    async editChapter(event) {
+        const id = event.currentTarget.dataset.id;
         this.currentChapterId = id;
-        this.titleInputTarget.value = title;
-        this.contentInputTarget.value = content;
         
-        // Afficher l'éditeur
-        this.editorTarget.classList.remove('hidden');
-        this.#setStatus(`Édition de : ${title}`);
+        this.#setStatus('Chargement du chapitre...');
+        
+        try {
+            const response = await fetch(`/api/thesis/chapter/${id}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const chapter = data.data.chapter;
+                this.titleInputTarget.value = chapter.title;
+                const content = chapter.content || '';
+                
+                // Trouver l'instance du contrôleur writing-editor et lui injecter le contenu
+                const editorEl = this.element.querySelector('[data-controller="writing-editor"]');
+                if (editorEl) {
+                    const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
+                    if (writingEditor) {
+                        writingEditor.setEditorContent(content, content, writingEditor.currentMode || 'wysiwyg');
+                    }
+                }
+                
+                // Afficher l'éditeur
+                this.editorTarget.classList.remove('hidden');
+                this.#setStatus('');
+                
+                // Configurer la sauvegarde automatique toutes les 30 secondes
+                if (this.autosaveInterval) {
+                    clearInterval(this.autosaveInterval);
+                }
+                this.autosaveInterval = setInterval(() => {
+                    this.autosave();
+                }, 30000);
+            } else {
+                this.#setStatus('Erreur lors du chargement du chapitre', true);
+            }
+        } catch (error) {
+            console.error('Erreur de chargement du chapitre :', error);
+            this.#setStatus('Erreur de connexion', true);
+        }
+    }
+
+    async autosave() {
+        if (!this.currentChapterId) return;
+
+        let content = '';
+        const editorEl = this.element.querySelector('[data-controller="writing-editor"]');
+        if (editorEl) {
+            const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
+            if (writingEditor) {
+                content = writingEditor.getMarkdownContent();
+            }
+        }
+
+        this.#setStatus('Sauvegarde automatique...');
+        try {
+            const response = await fetch(`/api/thesis/chapter/${this.currentChapterId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: this.titleInputTarget.value,
+                    content: content
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                this.#setStatus('Sauvegardé');
+                setTimeout(() => {
+                    if (this.statusTarget.textContent === 'Sauvegardé') {
+                        this.#setStatus('');
+                    }
+                }, 3000);
+            }
+        } catch (error) {
+            console.warn('Échec d\'autosave chapitre :', error);
+            this.#setStatus('Échec de la sauvegarde automatique', true);
+        }
     }
 
     async saveChapter() {
         if (!this.currentChapterId) return;
+
+        let content = '';
+        const editorEl = this.element.querySelector('[data-controller="writing-editor"]');
+        if (editorEl) {
+            const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
+            if (writingEditor) {
+                content = writingEditor.getMarkdownContent();
+            }
+        }
 
         this.#setLoading(true, 'Enregistrement...');
         try {
@@ -83,14 +193,26 @@ export default class extends Controller {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title: this.titleInputTarget.value,
-                    content: this.contentInputTarget.value
+                    content: content
                 })
             });
             const data = await response.json();
             if (data.success) {
                 this.loadStructure();
-                this.#setStatus('Enregistré avec succès');
-                setTimeout(() => this.#setStatus(''), 2000);
+                this.#setStatus('Sauvegardé');
+                setTimeout(() => {
+                    if (this.statusTarget.textContent === 'Sauvegardé') {
+                        this.#setStatus('');
+                    }
+                }, 3000);
+
+                // Réinitialiser le timer de sauvegarde automatique
+                if (this.autosaveInterval) {
+                    clearInterval(this.autosaveInterval);
+                }
+                this.autosaveInterval = setInterval(() => {
+                    this.autosave();
+                }, 30000);
             }
         } catch (error) {
             this.#setStatus('Erreur d\'enregistrement', true);
@@ -108,6 +230,11 @@ export default class extends Controller {
             this.loadStructure();
             if (this.currentChapterId == id) {
                 this.editorTarget.classList.add('hidden');
+                if (this.autosaveInterval) {
+                    clearInterval(this.autosaveInterval);
+                    this.autosaveInterval = null;
+                }
+                this.currentChapterId = null;
             }
         } catch (error) {
             alert('Erreur lors de la suppression');
@@ -115,27 +242,169 @@ export default class extends Controller {
     }
 
     async checkConsistency() {
+        if (!this.currentChapterId) {
+            alert("Veuillez d'abord sélectionner un chapitre.");
+            return;
+        }
+
         this.#setStatus('Analyse de cohérence en cours...');
-        this.resultsTarget.innerHTML = '';
-        
+        this.resultsTarget.innerHTML = `
+            <div class="text-center py-6 text-slate-400 italic">
+                <svg class="w-6 h-6 mx-auto mb-2 animate-spin text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18" /></svg>
+                Génération des suggestions d'amélioration de la cohérence...
+            </div>
+        `;
+
+        const promptText = `Tu es un réviseur académique expert. Analyse la cohérence scientifique du texte de ce chapitre en relation avec le reste de ma thèse (les autres chapitres).
+Identifie 3 incohérences, manques logiques ou opportunités d'amélioration concrètes.
+Renvoie STRICTEMENT un tableau JSON de suggestions sans aucun texte explicatif avant ou après.
+Le format attendu est :
+[
+  {
+    "id": 1,
+    "text": "Description claire et constructive de la suggestion (ex: Insérer une phrase de transition liant cette section avec l'étude des matériaux au Chapitre 2)",
+    "prompt": "Consigne précise pour l'IA pour récrire le texte du chapitre afin d'appliquer cette suggestion"
+  }
+]`;
+
         try {
-            const response = await fetch('/api/thesis/consistency', {
+            const response = await fetch('/api/thesis/write', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ project_id: this.projectIdValue })
+                body: JSON.stringify({
+                    chapter_id: this.currentChapterId,
+                    prompt: promptText
+                })
             });
             const data = await response.json();
             if (data.success) {
-                this.resultsTarget.innerHTML = `
-                    <div class="bg-indigo-50 p-4 rounded border border-indigo-200 mt-4">
-                        <h4 class="font-bold text-indigo-800 mb-2">Analyse de cohérence</h4>
-                        <div class="text-sm whitespace-pre-wrap text-slate-700">${data.data.response}</div>
-                    </div>
-                `;
-                this.#setStatus('');
+                const suggestions = this.#extractJson(data.data.response);
+                if (suggestions && suggestions.length > 0) {
+                    this.#renderSuggestions(suggestions);
+                    this.#setStatus('');
+                } else {
+                    // Fallback si le format JSON n'est pas respecté
+                    this.resultsTarget.innerHTML = `
+                        <div class="bg-indigo-50 p-4 rounded border border-indigo-200 mt-4">
+                            <h4 class="font-bold text-indigo-800 mb-2">Suggestions de Cohérence</h4>
+                            <div class="text-sm whitespace-pre-wrap text-slate-700">${data.data.response}</div>
+                        </div>
+                    `;
+                    this.#setStatus('Analyse terminée (format non structuré)');
+                }
+            } else {
+                this.#setStatus('Erreur lors de l\'analyse', true);
             }
         } catch (error) {
-            this.#setStatus('Erreur d\'analyse', true);
+            console.error('Erreur lors de checkConsistency :', error);
+            this.#setStatus('Erreur de connexion', true);
+        }
+    }
+
+    #extractJson(text) {
+        const match = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (match) {
+            try {
+                return JSON.parse(match[0]);
+            } catch (e) {
+                console.error("Erreur de parsing JSON extrait :", e);
+            }
+        }
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error("Erreur de parsing direct :", e);
+        }
+        return null;
+    }
+
+    #renderSuggestions(suggestions) {
+        let html = `
+            <div class="bg-slate-50 rounded-2xl border border-slate-200 p-6 space-y-4 shadow-inner mt-4">
+                <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+                    <h4 class="font-bold text-djoliba text-xs">Suggestions de Cohérence (IA)</h4>
+                    <span class="text-[10px] text-slate-400 italic">${suggestions.length} suggestions trouvées</span>
+                </div>
+                <div class="space-y-3">
+        `;
+
+        suggestions.forEach(s => {
+            html += `
+                <div class="bg-white rounded-xl border border-slate-100 p-4 shadow-sm flex items-center justify-between gap-4 transition-all hover:shadow-md">
+                    <div class="flex-grow text-[11px] text-slate-700 font-semibold leading-relaxed">
+                        ${s.text}
+                    </div>
+                    <button type="button" 
+                            data-action="click->thesis-editor#applySuggestion" 
+                            data-prompt="${encodeURIComponent(s.prompt)}" 
+                            class="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 whitespace-nowrap">
+                        Appliquer
+                    </button>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+        `;
+        this.resultsTarget.innerHTML = html;
+    }
+
+    async applySuggestion(event) {
+        if (!this.currentChapterId) return;
+        const suggestionPrompt = decodeURIComponent(event.currentTarget.dataset.prompt);
+
+        this.#setLoading(true, 'Application de l\'amélioration par l\'IA...');
+        
+        let currentContent = '';
+        const editorEl = this.element.querySelector('[data-controller="writing-editor"]');
+        if (editorEl) {
+            const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
+            if (writingEditor) {
+                currentContent = writingEditor.getMarkdownContent();
+            }
+        }
+
+        const promptText = `Voici mon texte scientifique actuel du chapitre :
+"${currentContent}"
+
+Applique l'amélioration suivante de manière fluide et professionnelle en conservant le style académique : "${suggestionPrompt}".
+Renvoie UNIQUEMENT le texte complet du chapitre mis à jour (aucun commentaire d'introduction ou de conclusion).`;
+
+        try {
+            const response = await fetch('/api/thesis/write', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chapter_id: this.currentChapterId,
+                    prompt: promptText
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                const updatedContent = data.data.response;
+                
+                // Injecter le contenu mis à jour dans le writing-editor
+                if (editorEl) {
+                    const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
+                    if (writingEditor) {
+                        writingEditor.setEditorContent(updatedContent, updatedContent, writingEditor.currentMode || 'wysiwyg');
+                    }
+                }
+                
+                this.#setStatus('Amélioration appliquée');
+                // Nettoyer la liste des suggestions appliquée
+                this.resultsTarget.innerHTML = '';
+                
+                // Sauvegarder automatiquement
+                this.autosave();
+            }
+        } catch (error) {
+            console.error('Erreur lors de applySuggestion :', error);
+            this.#setStatus('Erreur lors de l\'application de la suggestion', true);
+        } finally {
+            this.#setLoading(false);
         }
     }
 
@@ -156,7 +425,17 @@ export default class extends Controller {
             });
             const data = await response.json();
             if (data.success) {
-                this.contentInputTarget.value = data.data.response;
+                const generatedContent = data.data.response;
+                
+                // Injecter le contenu généré dans le writing-editor
+                const editorEl = this.element.querySelector('[data-controller="writing-editor"]');
+                if (editorEl) {
+                    const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
+                    if (writingEditor) {
+                        writingEditor.setEditorContent(generatedContent, generatedContent, writingEditor.currentMode || 'wysiwyg');
+                    }
+                }
+                
                 this.#setStatus('Contenu généré par l\'IA');
             }
         } catch (error) {
@@ -170,32 +449,63 @@ export default class extends Controller {
     // Rendu et Drag & Drop
     // ─────────────────────────────────────────────
 
+    async checkPlanConsistency() {
+        this.#setStatus('Analyse de cohérence du plan en cours...');
+        this.resultsTarget.innerHTML = `
+            <div class="text-center py-6 text-slate-400 italic">
+                <svg class="w-6 h-6 mx-auto mb-2 animate-spin text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18" /></svg>
+                Analyse de la cohérence de la structure du plan...
+            </div>
+        `;
+        
+        try {
+            const response = await fetch('/api/thesis/consistency', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ project_id: this.projectIdValue })
+            });
+            const data = await response.json();
+            if (data.success) {
+                this.resultsTarget.innerHTML = `
+                    <div class="bg-indigo-50 p-4 rounded border border-indigo-200 mt-4">
+                        <h4 class="font-bold text-indigo-800 mb-2">Analyse de cohérence globale</h4>
+                        <div class="text-sm whitespace-pre-wrap text-slate-700">${data.data.response}</div>
+                    </div>
+                `;
+                this.#setStatus('');
+            }
+        } catch (error) {
+            console.error('Erreur lors de checkPlanConsistency :', error);
+            this.#setStatus('Erreur d\'analyse', true);
+        }
+    }
+
     #renderTree(structure) {
         this.treeTarget.innerHTML = this.#buildTreeHtml(structure);
     }
 
     #buildTreeHtml(nodes) {
-        if (!nodes || nodes.length === 0) return '';
-        
-        let html = '<ul class="thesis-tree-list space-y-2 pl-4 border-l-2 border-slate-100">';
-        nodes.forEach(node => {
-            html += `
-                <li class="thesis-tree-item py-1" data-id="${node.id}">
-                    <div class="flex items-center gap-2 group p-2 hover:bg-slate-50 rounded transition-colors">
-                        <span class="cursor-move text-slate-400 opacity-0 group-hover:opacity-100">☰</span>
-                        <span class="font-medium text-slate-700 flex-grow">${node.title}</span>
-                        <div class="opacity-0 group-hover:opacity-100 flex gap-1">
-                            <button type="button" class="text-xs bg-slate-200 px-2 py-1 rounded" data-action="click->thesis-editor#editChapter" data-id="${node.id}" data-title="${node.title}" data-content="${node.content || ''}">Editer</button>
-                            <button type="button" class="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded" data-action="click->thesis-editor#addChapter" data-parent-id="${node.id}">+</button>
-                            <button type="button" class="text-xs bg-red-50 text-red-500 px-2 py-1 rounded" data-action="click->thesis-editor#deleteChapter" data-id="${node.id}">×</button>
+        let html = '<ul class="thesis-tree-list space-y-2 pl-4 border-l-2 border-slate-100 min-h-[8px] pb-2">';
+        if (nodes && nodes.length > 0) {
+            nodes.forEach(node => {
+                html += `
+                    <li class="thesis-tree-item py-1" data-id="${node.id}">
+                        <div class="flex items-center gap-2 group p-2 hover:bg-slate-50 rounded transition-colors">
+                            <span class="cursor-move text-slate-400 opacity-0 group-hover:opacity-100 mr-1 select-none">☰</span>
+                            <span class="font-medium text-slate-700 flex-grow">${node.title}</span>
+                            <div class="opacity-0 group-hover:opacity-100 flex gap-1">
+                                <button type="button" class="text-xs bg-slate-200 px-2 py-1 rounded" data-action="click->thesis-editor#editChapter" data-id="${node.id}" data-title="${node.title}">Editer</button>
+                                <button type="button" class="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded" data-action="click->thesis-editor#addChapter" data-parent-id="${node.id}">+</button>
+                                <button type="button" class="text-xs bg-red-50 text-red-500 px-2 py-1 rounded" data-action="click->thesis-editor#deleteChapter" data-id="${node.id}">×</button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="nested-sortable" data-parent-id="${node.id}">
-                        ${this.#buildTreeHtml(node.children)}
-                    </div>
-                </li>
-            `;
-        });
+                        <div class="nested-sortable" data-parent-id="${node.id}">
+                            ${this.#buildTreeHtml(node.children)}
+                        </div>
+                    </li>
+                `;
+            });
+        }
         html += '</ul>';
         return html;
     }
@@ -209,40 +519,56 @@ export default class extends Controller {
                 fallbackOnBody: true,
                 swapThreshold: 0.65,
                 handle: '.cursor-move',
-                onEnd: () => this.#persistOrder()
+                onEnd: () => {
+                    const orders = [];
+                    const processList = (listEl, parentId = null) => {
+                        const items = listEl.children;
+                        Array.from(items).forEach((item, index) => {
+                            const id = item.dataset.id;
+                            if (!id) return;
+                            orders.push({ id: parseInt(id), parent_id: parentId, order: index + 1 });
+                            
+                            const nestedList = item.querySelector('.nested-sortable > ul');
+                            if (nestedList) {
+                                processList(nestedList, parseInt(id));
+                            }
+                        });
+                    };
+
+                    const treeRoot = this.treeTarget.querySelector('.thesis-tree-list');
+                    if (treeRoot) {
+                        processList(treeRoot);
+                        this.onReorder(orders);
+                    }
+                }
             });
         });
     }
 
-    async #persistOrder() {
-        const orders = [];
-        const processList = (list, parentId = null) => {
-            const items = list.children;
-            Array.from(items).forEach((item, index) => {
-                const id = item.dataset.id;
-                if (!id) return;
-                orders.push({ id: parseInt(id), parent_id: parentId, order: index + 1 });
-                
-                const nestedList = item.querySelector('.nested-sortable > ul');
-                if (nestedList) {
-                    processList(nestedList, parseInt(id));
-                }
-            });
-        };
-
-        processList(this.treeTarget.querySelector('.thesis-tree-list'));
-
+    async onReorder(chapters) {
         try {
-            await fetch('/api/thesis/reorder', {
-                method: 'POST',
+            const response = await fetch('/api/thesis/structure', {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     project_id: this.projectIdValue,
-                    orders: orders
+                    orders: chapters
                 })
             });
+            const data = await response.json();
+            if (data.success) {
+                this.loadStructure();
+
+                // Notification Toast "Ordre mis à jour"
+                window.dispatchEvent(new CustomEvent('toast:show', {
+                    detail: { message: "Ordre mis à jour", type: "success" }
+                }));
+            }
         } catch (error) {
             console.error('Erreur lors de la réorganisation', error);
+            window.dispatchEvent(new CustomEvent('toast:show', {
+                detail: { message: "Erreur lors de la réorganisation", type: "error" }
+            }));
         }
     }
 

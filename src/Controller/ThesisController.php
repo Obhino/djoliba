@@ -53,6 +53,7 @@ class ThesisController extends AbstractController
      * Body JSON: { "project_id": int, "title": "string", "parent_id": int|null }
      */
     #[Route('/chapter', name: 'api_thesis_add_chapter', methods: ['POST'])]
+    #[Route('/structure', name: 'api_thesis_add_chapter_alias', methods: ['POST'])]
     public function addChapter(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -84,6 +85,32 @@ class ThesisController extends AbstractController
         } catch (\InvalidArgumentException $e) {
             return $this->json(['success' => false, 'error' => ['code' => 400, 'message' => $e->getMessage()]], Response::HTTP_BAD_REQUEST);
         }
+    }
+
+    /**
+     * GET /api/thesis/chapter/{id}
+     */
+    #[Route('/chapter/{id}', name: 'api_thesis_get_chapter', methods: ['GET'])]
+    public function getChapter(int $id): JsonResponse
+    {
+        $chapter = $this->chapterRepository->find($id);
+
+        if (!$chapter || $chapter->getProject()->getUser() !== $this->getUser()) {
+            return $this->json(['success' => false, 'error' => ['code' => 404, 'message' => 'Chapitre non trouvé.']], Response::HTTP_NOT_FOUND);
+        }
+
+        return $this->json([
+            'success' => true,
+            'data' => [
+                'chapter' => [
+                    'id' => $chapter->getId(),
+                    'title' => $chapter->getTitle(),
+                    'content' => $chapter->getContent(),
+                    'order' => $chapter->getOrder(),
+                    'parent_id' => $chapter->getParent() ? $chapter->getParent()->getId() : null,
+                ]
+            ]
+        ]);
     }
 
     /**
@@ -217,6 +244,7 @@ class ThesisController extends AbstractController
      * Body JSON: { "project_id": int, "orders": [{id, parent_id, order}] }
      */
     #[Route('/reorder', name: 'api_thesis_reorder', methods: ['POST'])]
+    #[Route('/structure', name: 'api_thesis_reorder_alias', methods: ['PUT'])]
     public function reorder(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);

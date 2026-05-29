@@ -1220,4 +1220,44 @@ export default class extends Controller {
         this.statusTarget.textContent = text;
         this.statusTarget.className = isError ? 'text-xs text-red-500 mt-2 font-medium' : 'text-xs text-slate-400 mt-2 italic';
     }
+
+    // ─────────────────────────────────────────────
+    // Méthodes Publiques API (Intégration Externe)
+    // ─────────────────────────────────────────────
+
+    /**
+     * Définit dynamiquement le contenu de l'éditeur dans les deux modes
+     * @param {string} wysiwygContent Le contenu Markdown à charger en WYSIWYG
+     * @param {string} latexContent Le contenu LaTeX à charger en LaTeX brut
+     * @param {string} mode Le mode d'édition à activer ('wysiwyg' ou 'latex')
+     */
+    setEditorContent(wysiwygContent, latexContent, mode = 'wysiwyg') {
+        if (this.editor) {
+            const initialHtml = wysiwygContent ? this.marked.parse(wysiwygContent) : '';
+            this.editor.commands.setContent(initialHtml);
+        }
+
+        const rawLatex = latexContent || '';
+        if (this.codeMirror) {
+            this.codeMirror.setValue(rawLatex);
+            this.codeMirror.refresh();
+        } else if (this.hasInputTarget) {
+            this.inputTarget.value = rawLatex;
+        }
+
+        // Forcer le mode pour mettre à jour l'affichage
+        this.currentMode = (mode === 'wysiwyg') ? 'latex' : 'wysiwyg';
+        this.setMode(mode);
+
+        this.#updateCounters();
+        this.#updatePreview();
+    }
+
+    /**
+     * Récupère le contenu Markdown actuel selon le mode d'éditeur actif
+     * @returns {string} Le texte Markdown ou LaTeX brut
+     */
+    getMarkdownContent() {
+        return this.#getMarkdown();
+    }
 }
