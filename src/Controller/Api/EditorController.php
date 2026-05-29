@@ -42,11 +42,31 @@ class EditorController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
-        $content = $data['content'] ?? '';
+        $contentWysiwyg = $data['content_wysiwyg'] ?? null;
+        $contentLatex = $data['content_latex'] ?? null;
+        // Rétrocompatibilité au cas où un ancien payload sans séparation est envoyé
+        $contentLegacy = $data['content'] ?? null;
         $mode = $data['mode'] ?? 'wysiwyg';
 
         $metadata = $project->getMetadata() ?? [];
-        $metadata['writing_content'] = $content;
+        
+        if ($contentWysiwyg !== null) {
+            $metadata['writing_content_wysiwyg'] = $contentWysiwyg;
+        } elseif ($contentLegacy !== null && $mode === 'wysiwyg') {
+            $metadata['writing_content_wysiwyg'] = $contentLegacy;
+        }
+
+        if ($contentLatex !== null) {
+            $metadata['writing_content_latex'] = $contentLatex;
+        } elseif ($contentLegacy !== null && $mode === 'latex') {
+            $metadata['writing_content_latex'] = $contentLegacy;
+        }
+
+        // Toujours garder 'writing_content' synchronisé avec l'éditeur actif pour compatibilité export/preview
+        $metadata['writing_content'] = ($mode === 'latex') 
+            ? ($metadata['writing_content_latex'] ?? '') 
+            : ($metadata['writing_content_wysiwyg'] ?? '');
+            
         $metadata['writing_mode'] = $mode;
 
         $project->setMetadata($metadata);
@@ -81,13 +101,15 @@ class EditorController extends AbstractController
         }
 
         $metadata = $project->getMetadata() ?? [];
-        $content = $metadata['writing_content'] ?? '';
+        $contentWysiwyg = $metadata['writing_content_wysiwyg'] ?? $metadata['writing_content'] ?? '';
+        $contentLatex = $metadata['writing_content_latex'] ?? $metadata['writing_content'] ?? '';
         $mode = $metadata['writing_mode'] ?? 'wysiwyg';
 
         return $this->json([
             'success' => true,
             'data' => [
-                'content' => $content,
+                'content_wysiwyg' => $contentWysiwyg,
+                'content_latex' => $contentLatex,
                 'mode' => $mode
             ]
         ]);

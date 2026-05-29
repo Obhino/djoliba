@@ -89,6 +89,7 @@
         <div class="flex items-center gap-2 w-full md:w-auto justify-end">
             {# Aperçu en direct (Split screen) #}
             <button type="button"
+                    data-writing-editor-target="previewBtn"
                     data-action="click->writing-editor#togglePreview"
                     class="px-3.5 py-2 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-djoliba text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-sm"
                     title="Activer la prévisualisation scientifique LaTeX (KaTeX) à côté de l'éditeur">
@@ -101,8 +102,9 @@
 
             {# Aperçu de Rendu LaTeX Interprété (Modal) #}
             <button type="button"
+                    data-writing-editor-target="renderBtn"
                     data-action="click->writing-editor#showLatexPreview"
-                    class="px-3.5 py-2 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100/70 text-emerald-600 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-sm"
+                    class="px-3.5 py-2 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100/70 text-emerald-600 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-sm hidden"
                     title="Afficher un aperçu interprété de votre LaTeX en modal">
                 <svg class="w-4 h-4 text-emerald-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -155,6 +157,11 @@
         
         {# Panneau d'Édition #}
         <div class="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm flex flex-col min-h-[520px] transition-all">
+            {# Champ caché contenant le brouillon WYSIWYG indépendant #}
+            <input type="hidden"
+                   data-writing-editor-target="wysiwygInput"
+                   value="{{ project.metadata.writing_content_wysiwyg|default(project.metadata.writing_content|default('')) }}">
+
             {# Conteneur TipTap WYSIWYG #}
             <div data-writing-editor-target="editorContainer" 
                  class="flex-grow min-h-[480px] bg-slate-50/30">
@@ -164,7 +171,7 @@
             <textarea data-writing-editor-target="input"
                       data-action="input->writing-editor#handleContentChange"
                       class="hidden w-full flex-grow min-h-[480px] p-6 bg-slate-900 text-slate-100 font-mono text-xs focus:outline-none focus:ring-0 border-0 leading-relaxed resize-none custom-scrollbar"
-                      placeholder="{{ placeholder }}">{{ project.metadata.writing_content|default('') }}</textarea>
+                      placeholder="{{ placeholder }}">{{ project.metadata.writing_content_latex|default(project.metadata.writing_content|default('')) }}</textarea>
         </div>
 
         {# Panneau de Prévisualisation Scientifique (Masqué par défaut, géré en Split) #}

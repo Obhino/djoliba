@@ -18,7 +18,8 @@ export default class extends Controller {
         'journalModal', 'journalContent',
         'fileInput', 'previewModal', 'previewContent', 'confirmImportBtn', 'importBtn',
         'editorContainer', 'previewContainer', 'wordCount', 'charCount', 'pageCount',
-        'modeWysiwygBtn', 'modeLatexBtn', 'helpModal', 'latexPreviewModal', 'latexPreviewContent'
+        'modeWysiwygBtn', 'modeLatexBtn', 'helpModal', 'latexPreviewModal', 'latexPreviewContent',
+        'previewBtn', 'renderBtn', 'wysiwygInput'
     ];
 
     static values = {
@@ -191,7 +192,7 @@ export default class extends Controller {
     #initEditor() {
         if (!this.tipTapLoaded || !this.hasEditorContainerTarget) return;
 
-        const initialMarkdown = this.hasInputTarget ? this.inputTarget.value : '';
+        const initialMarkdown = this.hasWysiwygInputTarget ? this.wysiwygInputTarget.value : '';
         const initialHtml = initialMarkdown ? this.marked.parse(initialMarkdown) : '';
         const placeholderText = this.hasPlaceholderValue ? this.placeholderValue : 'Rédigez votre manuscrit scientifique ici (Markdown & LaTeX supportés)...';
 
@@ -293,12 +294,15 @@ export default class extends Controller {
     }
 
     async autosave() {
-        const markdown = this.#getMarkdown();
-        if (!markdown) return;
+        const wysiwygMarkdown = this.editor ? this.turndownService.turndown(this.editor.getHTML()) : '';
+        const latexContent = this.codeMirror ? this.codeMirror.getValue() : (this.hasInputTarget ? this.inputTarget.value : '');
+
+        if (!wysiwygMarkdown.trim() && !latexContent.trim()) return;
 
         // 1. Sauvegarde locale (LocalStorage) - Robuste, immédiat
         const storageKey = this.hasStorageKeyValue ? this.storageKeyValue : `djoliba_draft_${this.projectIdValue || 0}`;
-        localStorage.setItem(storageKey, markdown);
+        localStorage.setItem(`${storageKey}_wysiwyg`, wysiwygMarkdown);
+        localStorage.setItem(`${storageKey}_latex`, latexContent);
 
         // 2. Sauvegarde vers le backend (si l'URL est fournie)
         const saveUrl = this.hasSaveUrlValue ? this.saveUrlValue : null;
@@ -312,7 +316,8 @@ export default class extends Controller {
                         'Accept': 'application/json'
                     },
                     body: JSON.stringify({
-                        content: markdown,
+                        content_wysiwyg: wysiwygMarkdown,
+                        content_latex: latexContent,
                         mode: this.currentMode,
                         project_id: this.projectIdValue
                     })
@@ -356,14 +361,7 @@ export default class extends Controller {
         if (!this.tipTapLoaded || mode === this.currentMode) return;
 
         if (mode === 'wysiwyg') {
-            // LaTeX/Markdown brut ➔ WYSIWYG
-            const markdown = this.codeMirror ? this.codeMirror.getValue() : (this.hasInputTarget ? this.inputTarget.value : '');
-            const html = this.marked.parse(markdown);
-
-            if (this.editor) {
-                this.editor.commands.setContent(html);
-            }
-
+            // LaTeX/Markdown brut ➔ WYSIWYG (pas de transfert automatique de texte)
             if (this.hasEditorContainerTarget) {
                 this.editorContainerTarget.classList.remove('hidden');
             }
@@ -374,23 +372,13 @@ export default class extends Controller {
                 this.inputTarget.classList.add('hidden');
             }
         } else {
-            // WYSIWYG ➔ LaTeX/Markdown brut
-            let markdown = '';
-            if (this.editor) {
-                const html = this.editor.getHTML();
-                markdown = this.turndownService.turndown(html);
-                if (this.hasInputTarget) {
-                    this.inputTarget.value = markdown;
-                }
-            }
-
+            // WYSIWYG ➔ LaTeX/Markdown brut (pas de transfert automatique de texte)
             if (this.hasEditorContainerTarget) {
                 this.editorContainerTarget.classList.add('hidden');
             }
 
             if (this.codeMirror) {
                 this.codeMirror.getWrapperElement().classList.remove('hidden');
-                this.codeMirror.setValue(markdown);
                 this.codeMirror.refresh();
             } else if (this.hasInputTarget) {
                 this.inputTarget.classList.remove('hidden');
@@ -462,11 +450,24 @@ export default class extends Controller {
                 this.modeWysiwygBtnTarget.classList.remove('text-slate-500');
                 this.modeLatexBtnTarget.classList.remove('bg-slate-200', 'text-djoliba');
                 this.modeLatexBtnTarget.classList.add('text-slate-500');
+
+                // En mode visuel (WYSIWYG) : afficher "Prévisualiser", masquer "Aperçu Rendu"
+                if (this.hasPreviewBtnTarget) this.previewBtnTarget.classList.remove('hidden');
+                if (this.hasRenderBtnTarget) this.renderBtnTarget.classList.add('hidden');
             } else {
                 this.modeLatexBtnTarget.classList.add('bg-slate-200', 'text-djoliba');
                 this.modeLatexBtnTarget.classList.remove('text-slate-500');
                 this.modeWysiwygBtnTarget.classList.remove('bg-slate-200', 'text-djoliba');
                 this.modeWysiwygBtnTarget.classList.add('text-slate-500');
+
+                // En mode LaTeX brut : masquer "Prévisualiser", afficher "Aperçu Rendu"
+                if (this.hasPreviewBtnTarget) this.previewBtnTarget.classList.add('hidden');
+                if (this.hasRenderBtnTarget) this.renderBtnTarget.classList.remove('hidden');
+
+                // Masquer la prévisualisation split-screen si elle était ouverte
+                if (this.hasPreviewContainerTarget && !this.previewContainerTarget.classList.contains('hidden')) {
+                    this.previewContainerTarget.classList.add('hidden');
+                }
             }
         }
     }
