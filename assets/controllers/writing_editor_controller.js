@@ -1,38 +1,527 @@
 import { Controller } from '@hotwired/stimulus';
 
 /**
- * Stimulus Controller — writing-editor
+ * Stimulus Controller — writing-editor (Rich Editor Scientific v2)
  *
- * Gère l'éditeur de texte pour l'écriture avec vérification d'originalité
- * et suggestions de revues.
- *
- * Usage HTML :
- * <div data-controller="writing-editor" data-writing-editor-project-id-value="42">
- *   <textarea data-writing-editor-target="input"></textarea>
- *   
- *   <button data-action="click->writing-editor#checkOriginality" data-writing-editor-target="checkBtn">
- *     Vérifier l'originalité
- *   </button>
- *   <button data-action="click->writing-editor#suggestJournal" data-writing-editor-target="suggestBtn">
- *     Suggérer des revues
- *   </button>
- *
- *   <div data-writing-editor-target="status"></div>
- *   <div data-writing-editor-target="results"></div>
- * </div>
+ * Gère l'éditeur scientifique hybride réutilisable :
+ * - Mode WYSIWYG (TipTap / ProseMirror)
+ * - Mode LaTeX Brut / Markdown (Textarea standard)
+ * - Prévisualisation stylisée temps réel (Marked.js + KaTeX)
+ * - Importation intelligente (DOCX via Mammoth.js)
+ * - Sauvegarde automatique debouncée (2s) en LocalStorage et Backend
+ * - Exportation LaTeX (.tex)
  */
 export default class extends Controller {
-    static targets = ['input', 'checkBtn', 'suggestBtn', 'status', 'results'];
+    static targets = [
+        'input', 'checkBtn', 'suggestBtn', 'status', 'results',
+        'originalityModal', 'originalityContent',
+        'journalModal', 'journalContent',
+        'fileInput', 'previewModal', 'previewContent', 'confirmImportBtn', 'importBtn',
+        'editorContainer', 'previewContainer', 'wordCount', 'charCount', 'pageCount',
+        'modeWysiwygBtn', 'modeLatexBtn', 'helpModal', 'latexPreviewModal', 'latexPreviewContent'
+    ];
+
     static values = {
-        projectId: Number
+        projectId: Number,
+        saveUrl: String,
+        exportUrl: String,
+        placeholder: String,
+        storageKey: String,
+        initialMode: String
     };
 
-    connect() {
-        this.#log('writing-editor connecté');
+    async connect() {
+        this.currentMode = this.hasInitialModeValue ? this.initialModeValue : 'wysiwyg';
+        this.tipTapLoaded = false;
+        this.autosaveTimeout = null;
+        this.fontSize = 13;
+
+        // Éviter tout dysfonctionnement si la zone brute n'est pas encore visible
+        if (this.hasInputTarget) {
+            this.inputTarget.style.fontSize = `${this.fontSize}px`;
+        }
+
+        try {
+            await this.#loadLibraries();
+            this.#initEditor();
+            this.#initCodeMirror();
+            this.#updateCounters();
+            this.#updatePreview();
+        } catch (err) {
+            console.error("Échec d'initialisation de l'éditeur :", err);
+        }
     }
 
+    disconnect() {
+        if (this.editor) {
+            this.editor.destroy();
+        }
+        if (this.autosaveTimeout) {
+            clearTimeout(this.autosaveTimeout);
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // Initialisation & Chargement Dynamique
+    // ─────────────────────────────────────────────
+
+    async #loadLibraries() {
+        this.#setStatus("Chargement des modules d'édition...");
+
+        // Injecter KaTeX et CodeMirror CSS si absent
+        this.#loadStylesheet('https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css');
+        this.#loadStylesheet('https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css');
+
+        try {
+            // Importation asynchrone parallélisée de tous les moteurs côté client
+            const [
+                { Editor },
+                StarterKitModule,
+                PlaceholderModule,
+                LinkModule,
+                ImageModule,
+                TurndownModule,
+                MarkedModule,
+                KatexModule,
+                AutoRenderModule
+            ] = await Promise.all([
+                import('https://esm.sh/@tiptap/core@2.2.4'),
+                import('https://esm.sh/@tiptap/starter-kit@2.2.4'),
+                import('https://esm.sh/@tiptap/extension-placeholder@2.2.4'),
+                import('https://esm.sh/@tiptap/extension-link@2.2.4'),
+                import('https://esm.sh/@tiptap/extension-image@2.2.4'),
+                import('https://esm.sh/turndown@7.1.2?exports=default'),
+                import('https://esm.sh/marked@11.1.1?exports=marked'),
+                import('https://esm.sh/katex@0.16.9?exports=default'),
+                import('https://esm.sh/katex@0.16.9/dist/contrib/auto-render.js?exports=default')
+            ]);
+
+            this.EditorClass = Editor;
+            this.StarterKit = StarterKitModule.default || StarterKitModule;
+            this.Placeholder = PlaceholderModule.default || PlaceholderModule;
+            this.Link = LinkModule.default || LinkModule;
+            this.Image = ImageModule.default || ImageModule;
+            this.Turndown = TurndownModule.default || TurndownModule;
+            this.marked = MarkedModule.marked || MarkedModule;
+            this.katex = KatexModule.default || KatexModule;
+            this.renderMathInElement = AutoRenderModule.default || AutoRenderModule;
+
+            // Rendre KaTeX disponible globalement pour auto-render
+            window.katex = this.katex;
+            window.renderMathInElement = this.renderMathInElement;
+
+            // Initialiser le convertisseur Turndown (HTML -> Markdown)
+            this.turndownService = new this.Turndown({
+                headingStyle: 'atx',
+                hr: '---',
+                bulletListMarker: '-',
+                codeBlockStyle: 'fenced'
+            });
+
+            // Charger CodeMirror
+            await this.#loadCodeMirrorScripts();
+
+            this.tipTapLoaded = true;
+            this.#setStatus("");
+        } catch (error) {
+            console.error("Erreur d'import des bibliothèques :", error);
+            this.#setStatus("Impossible d'initialiser les modules d'écriture (vérifiez votre connexion)", true);
+            throw error;
+        }
+    }
+
+    #loadCodeMirrorScripts() {
+        if (window.CodeMirror) return Promise.resolve(window.CodeMirror);
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js';
+            script.async = true;
+            script.onload = () => {
+                const stexScript = document.createElement('script');
+                stexScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/stex/stex.min.js';
+                stexScript.async = true;
+                stexScript.onload = () => {
+                    resolve(window.CodeMirror);
+                };
+                stexScript.onerror = () => reject(new Error("Erreur de chargement du mode LaTeX."));
+                document.head.appendChild(stexScript);
+            };
+            script.onerror = () => reject(new Error("Erreur de chargement de CodeMirror."));
+            document.head.appendChild(script);
+        });
+    }
+
+    #initCodeMirror() {
+        if (!window.CodeMirror || !this.hasInputTarget) return;
+
+        this.codeMirror = window.CodeMirror.fromTextArea(this.inputTarget, {
+            mode: 'stex',
+            lineNumbers: true,
+            lineWrapping: true,
+            tabSize: 2,
+            indentWithTabs: false
+        });
+
+        // Ajouter la classe de thème Djoliba
+        this.codeMirror.getWrapperElement().classList.add('djoliba-latex-theme');
+
+        // Mettre à jour la taille de police initiale sur CodeMirror
+        const wrapper = this.codeMirror.getWrapperElement();
+        wrapper.style.fontSize = `${this.fontSize}px`;
+
+        if (this.currentMode === 'wysiwyg') {
+            wrapper.classList.add('hidden');
+        }
+
+        // Sync avec inputTarget et counters
+        this.codeMirror.on('change', (instance) => {
+            this.inputTarget.value = instance.getValue();
+            this.#handleContentChange();
+        });
+    }
+
+    #loadStylesheet(href) {
+        if (document.querySelector(`link[href="${href}"]`)) return;
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = href;
+        document.head.appendChild(link);
+    }
+
+    #initEditor() {
+        if (!this.tipTapLoaded || !this.hasEditorContainerTarget) return;
+
+        const initialMarkdown = this.hasInputTarget ? this.inputTarget.value : '';
+        const initialHtml = initialMarkdown ? this.marked.parse(initialMarkdown) : '';
+        const placeholderText = this.hasPlaceholderValue ? this.placeholderValue : 'Rédigez votre manuscrit scientifique ici (Markdown & LaTeX supportés)...';
+
+        // Configurer la visibilité initiale selon le mode de départ
+        if (this.hasInputTarget) {
+            this.inputTarget.classList.add('hidden');
+        }
+        if (this.currentMode === 'wysiwyg') {
+            this.editorContainerTarget.classList.remove('hidden');
+        } else {
+            this.editorContainerTarget.classList.add('hidden');
+        }
+
+        this.editor = new this.EditorClass({
+            element: this.editorContainerTarget,
+            extensions: [
+                this.StarterKit,
+                this.Placeholder.configure({
+                    placeholder: placeholderText,
+                    emptyEditorClass: 'is-editor-empty'
+                }),
+                this.Link.configure({
+                    openOnClick: false,
+                    HTMLAttributes: { class: 'text-blue-500 underline' }
+                }),
+                this.Image.configure({
+                    HTMLAttributes: { class: 'max-w-full rounded-2xl border border-slate-100 my-4 shadow-sm' }
+                })
+            ],
+            content: initialHtml,
+            editorProps: {
+                attributes: {
+                    class: 'focus:outline-none min-h-[480px] h-full p-6 text-xs text-slate-800 leading-relaxed font-sans prose prose-slate max-w-none focus:ring-0 focus:border-transparent custom-scrollbar overflow-y-auto'
+                }
+            },
+            onUpdate: () => {
+                this.#handleContentChange();
+            }
+        });
+
+        this.#updateToggleButtons();
+    }
+
+    // ─────────────────────────────────────────────
+    // Rendu, Synchronisation et Bascule
+    // ─────────────────────────────────────────────
+
+    #handleContentChange() {
+        this.#updateCounters();
+        this.#updatePreview();
+        this.#triggerAutosave();
+    }
+
+    #getMarkdown() {
+        if (this.currentMode === 'wysiwyg' && this.editor) {
+            const html = this.editor.getHTML();
+            return this.turndownService.turndown(html);
+        }
+        return this.hasInputTarget ? this.inputTarget.value : '';
+    }
+
+    #updatePreview() {
+        if (!this.hasPreviewContainerTarget) return;
+
+        const markdown = this.#getMarkdown();
+        const html = this.marked.parse(markdown);
+        this.previewContainerTarget.innerHTML = html;
+
+        // Rendu mathématique automatique KaTeX côté client
+        if (window.renderMathInElement) {
+            window.renderMathInElement(this.previewContainerTarget, {
+                delimiters: [
+                    { left: '$$', right: '$$', display: true },
+                    { left: '$', right: '$', display: false },
+                    { left: '\\(', right: '\\)', display: false },
+                    { left: '\\[', right: '\\]', display: true }
+                ],
+                throwOnError: false
+            });
+        }
+    }
+
+    #updateCounters() {
+        const text = this.currentMode === 'wysiwyg' && this.editor ? this.editor.getText() : (this.hasInputTarget ? this.inputTarget.value : '');
+        const chars = text.length;
+        const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+        const pages = Math.max(1, Math.ceil(words / 250));
+
+        if (this.hasWordCountTarget) this.wordCountTarget.textContent = words;
+        if (this.hasCharCountTarget) this.charCountTarget.textContent = chars;
+        if (this.hasPageCountTarget) this.pageCountTarget.textContent = pages;
+    }
+
+    #triggerAutosave() {
+        if (this.autosaveTimeout) {
+            clearTimeout(this.autosaveTimeout);
+        }
+        this.autosaveTimeout = setTimeout(() => this.autosave(), 2000);
+    }
+
+    async autosave() {
+        const markdown = this.#getMarkdown();
+        if (!markdown) return;
+
+        // 1. Sauvegarde locale (LocalStorage) - Robuste, immédiat
+        const storageKey = this.hasStorageKeyValue ? this.storageKeyValue : `djoliba_draft_${this.projectIdValue || 0}`;
+        localStorage.setItem(storageKey, markdown);
+
+        // 2. Sauvegarde vers le backend (si l'URL est fournie)
+        const saveUrl = this.hasSaveUrlValue ? this.saveUrlValue : null;
+        if (saveUrl) {
+            this.#setStatus("Enregistrement automatique...");
+            try {
+                const response = await fetch(saveUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content: markdown,
+                        mode: this.currentMode,
+                        project_id: this.projectIdValue
+                    })
+                });
+
+                if (!response.ok) throw new Error("Erreur de réponse");
+
+                this.#setStatus("Manuscrit sauvegardé");
+                setTimeout(() => {
+                    if (this.statusTarget.textContent === "Manuscrit sauvegardé") {
+                        this.#setStatus("");
+                    }
+                }, 2000);
+            } catch (err) {
+                console.warn("Échec d'autosave serveur :", err);
+                this.#setStatus("Brouillon enregistré en local uniquement", true);
+            }
+        } else {
+            this.#setStatus("Brouillon enregistré en local");
+            setTimeout(() => {
+                if (this.statusTarget.textContent === "Brouillon enregistré en local") {
+                    this.#setStatus("");
+                }
+            }, 2000);
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // Bascule de Mode (WYSIWYG ⇄ LaTeX brut)
+    // ─────────────────────────────────────────────
+
+    setWysiwygMode() {
+        this.setMode('wysiwyg');
+    }
+
+    setLatexMode() {
+        this.setMode('latex');
+    }
+
+    setMode(mode) {
+        if (!this.tipTapLoaded || mode === this.currentMode) return;
+
+        if (mode === 'wysiwyg') {
+            // LaTeX/Markdown brut ➔ WYSIWYG
+            const markdown = this.codeMirror ? this.codeMirror.getValue() : (this.hasInputTarget ? this.inputTarget.value : '');
+            const html = this.marked.parse(markdown);
+
+            if (this.editor) {
+                this.editor.commands.setContent(html);
+            }
+
+            if (this.hasEditorContainerTarget) {
+                this.editorContainerTarget.classList.remove('hidden');
+            }
+
+            if (this.codeMirror) {
+                this.codeMirror.getWrapperElement().classList.add('hidden');
+            } else if (this.hasInputTarget) {
+                this.inputTarget.classList.add('hidden');
+            }
+        } else {
+            // WYSIWYG ➔ LaTeX/Markdown brut
+            let markdown = '';
+            if (this.editor) {
+                const html = this.editor.getHTML();
+                markdown = this.turndownService.turndown(html);
+                if (this.hasInputTarget) {
+                    this.inputTarget.value = markdown;
+                }
+            }
+
+            if (this.hasEditorContainerTarget) {
+                this.editorContainerTarget.classList.add('hidden');
+            }
+
+            if (this.codeMirror) {
+                this.codeMirror.getWrapperElement().classList.remove('hidden');
+                this.codeMirror.setValue(markdown);
+                this.codeMirror.refresh();
+            } else if (this.hasInputTarget) {
+                this.inputTarget.classList.remove('hidden');
+            }
+        }
+
+        this.currentMode = mode;
+        this.#updateToggleButtons();
+        this.#handleContentChange();
+    }
+
+    // ─────────────────────────────────────────────
+    // Actions WYSIWYG de Formater (TipTap Toolbar)
+    // ─────────────────────────────────────────────
+
+    toggleBold() {
+        if (this.editor) {
+            this.editor.chain().focus().toggleBold().run();
+        }
+    }
+
+    toggleItalic() {
+        if (this.editor) {
+            this.editor.chain().focus().toggleItalic().run();
+        }
+    }
+
+    toggleHeading(event) {
+        const level = parseInt(event.currentTarget.dataset.level || 1);
+        if (this.editor) {
+            this.editor.chain().focus().toggleHeading({ level }).run();
+        }
+    }
+
+    toggleBulletList() {
+        if (this.editor) {
+            this.editor.chain().focus().toggleBulletList().run();
+        }
+    }
+
+    toggleOrderedList() {
+        if (this.editor) {
+            this.editor.chain().focus().toggleOrderedList().run();
+        }
+    }
+
+    toggleCodeBlock() {
+        if (this.editor) {
+            this.editor.chain().focus().toggleCodeBlock().run();
+        }
+    }
+
+    togglePreview() {
+        if (!this.hasPreviewContainerTarget) return;
+        
+        const isHidden = this.previewContainerTarget.classList.contains('hidden');
+        if (isHidden) {
+            this.previewContainerTarget.classList.remove('hidden');
+            this.#updatePreview();
+        } else {
+            this.previewContainerTarget.classList.add('hidden');
+        }
+    }
+
+    #updateToggleButtons() {
+        if (this.hasModeWysiwygBtnTarget && this.hasModeLatexBtnTarget) {
+            if (this.currentMode === 'wysiwyg') {
+                this.modeWysiwygBtnTarget.classList.add('bg-slate-200', 'text-djoliba');
+                this.modeWysiwygBtnTarget.classList.remove('text-slate-500');
+                this.modeLatexBtnTarget.classList.remove('bg-slate-200', 'text-djoliba');
+                this.modeLatexBtnTarget.classList.add('text-slate-500');
+            } else {
+                this.modeLatexBtnTarget.classList.add('bg-slate-200', 'text-djoliba');
+                this.modeLatexBtnTarget.classList.remove('text-slate-500');
+                this.modeWysiwygBtnTarget.classList.remove('bg-slate-200', 'text-djoliba');
+                this.modeWysiwygBtnTarget.classList.add('text-slate-500');
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // Éditeur : Taille de Police
+    // ─────────────────────────────────────────────
+
+    increaseFontSize() {
+        if (!this.hasInputTarget) return;
+        if (this.fontSize < 32) {
+            this.fontSize += 1;
+            this.#applyFontSize();
+        }
+    }
+
+    decreaseFontSize() {
+        if (!this.hasInputTarget) return;
+        if (this.fontSize > 9) {
+            this.fontSize -= 1;
+            this.#applyFontSize();
+        }
+    }
+
+    #applyFontSize() {
+        if (this.hasInputTarget) {
+            this.inputTarget.style.fontSize = `${this.fontSize}px`;
+        }
+        if (this.codeMirror) {
+            const wrapper = this.codeMirror.getWrapperElement();
+            if (wrapper) {
+                wrapper.style.fontSize = `${this.fontSize}px`;
+                this.codeMirror.refresh();
+            }
+        }
+        if (this.editor && this.hasEditorContainerTarget) {
+            const editorEl = this.editorContainerTarget.querySelector('.tiptap');
+            if (editorEl) {
+                editorEl.style.fontSize = `${this.fontSize}px`;
+            }
+        }
+        this.#setStatus(`Taille : ${this.fontSize}px`);
+        setTimeout(() => {
+            if (this.statusTarget.textContent.startsWith("Taille :")) {
+                this.#setStatus('');
+            }
+        }, 1200);
+    }
+
+    // ─────────────────────────────────────────────
+    // Actions IA Métier (Originalité & Revues)
+    // ─────────────────────────────────────────────
+
     async checkOriginality() {
-        const text = this.inputTarget.value.trim();
+        const text = this.#getMarkdown();
         if (text.length < 100) {
             this.#setStatus('Le texte doit contenir au moins 100 caractères.', true);
             return;
@@ -69,7 +558,7 @@ export default class extends Controller {
     }
 
     async suggestJournal() {
-        const text = this.inputTarget.value.trim();
+        const text = this.#getMarkdown();
         if (text.length < 100) {
             this.#setStatus('Le texte doit contenir au moins 100 caractères.', true);
             return;
@@ -106,90 +595,617 @@ export default class extends Controller {
     }
 
     // ─────────────────────────────────────────────
-    // Méthodes privées d'affichage
+    // Exportation LaTeX (.tex)
+    // ─────────────────────────────────────────────
+
+    async exportLatex() {
+        const markdown = this.#getMarkdown();
+        if (!markdown.trim()) {
+            this.#setStatus("L'éditeur est vide. Rien à exporter.", true);
+            return;
+        }
+
+        this.#setStatus("Préparation du téléchargement LaTeX...");
+
+        try {
+            const exportUrl = this.hasExportUrlValue ? this.exportUrlValue : '/api/writing/export-latex';
+            const response = await fetch(exportUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: markdown,
+                    filename: `djoliba_export_${this.projectIdValue || 'document'}.tex`
+                })
+            });
+
+            if (!response.ok) throw new Error("Échec d'exportation serveur.");
+
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = `djoliba_export_${this.projectIdValue || 'document'}.tex`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            window.URL.revokeObjectURL(blobUrl);
+            this.#setStatus("Exportation réussie");
+            setTimeout(() => this.#setStatus(''), 2000);
+        } catch (err) {
+            console.error("Export error:", err);
+            this.#setStatus("Erreur lors du téléchargement du fichier LaTeX", true);
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // Importation de Fichiers (DOCX & LaTeX)
+    // ─────────────────────────────────────────────
+
+    triggerFileInput() {
+        if (this.hasFileInputTarget) {
+            this.fileInputTarget.click();
+        }
+    }
+
+    handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        this.importFile(file);
+        event.target.value = ''; // Réinitialisation pour sélection future
+    }
+
+    async importFile(file) {
+        const extension = file.name.split('.').pop().toLowerCase();
+        if (extension !== 'docx' && extension !== 'tex') {
+            this.#setStatus("Format non supporté. Choisissez un fichier .docx ou .tex.", true);
+            return;
+        }
+
+        this.#setLoading(true, "Lecture du fichier...");
+
+        try {
+            if (extension === 'docx') {
+                await this.#importDocx(file);
+            } else if (extension === 'tex') {
+                await this.#importTex(file);
+            }
+        } catch (error) {
+            this.#setStatus(error.message, true);
+            this.#setLoading(false);
+        }
+    }
+
+    #importTex(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                if (!text || text.trim().length === 0) {
+                    reject(new Error("Le fichier LaTeX est vide ou illisible."));
+                    return;
+                }
+                this.#showPreview(text);
+                resolve();
+            };
+            reader.onerror = () => reject(new Error("Erreur de lecture du fichier LaTeX."));
+            reader.readAsText(file);
+        });
+    }
+
+    #importDocx(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const arrayBuffer = e.target.result;
+                    const mammothInstance = await this.#loadMammoth();
+                    
+                    const result = await mammothInstance.extractRawText({ arrayBuffer: arrayBuffer });
+                    const text = result.value;
+                    
+                    if (!text || text.trim().length === 0) {
+                        throw new Error("Aucun texte lisible n'a pu être extrait du fichier Word.");
+                    }
+                    
+                    this.#showPreview(text);
+                    resolve();
+                } catch (err) {
+                    reject(new Error("Erreur d'extraction : " + err.message));
+                }
+            };
+            reader.onerror = () => reject(new Error("Erreur de lecture du fichier Word."));
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    async #loadMammoth() {
+        if (window.mammoth) return window.mammoth;
+        
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
+            script.async = true;
+            script.onload = () => {
+                if (window.mammoth) {
+                    resolve(window.mammoth);
+                } else {
+                    reject(new Error("Erreur d'initialisation de Mammoth.js"));
+                }
+            };
+            script.onerror = () => reject(new Error("Impossible de télécharger le parseur Word."));
+            document.head.appendChild(script);
+        });
+    }
+
+    #showPreview(text) {
+        this.pendingImportText = text;
+        
+        if (this.hasPreviewContentTarget) {
+            this.previewContentTarget.textContent = text;
+        }
+        
+        this.#setLoading(false);
+        this.openPreviewModal();
+    }
+
+    // ─────────────────────────────────────────────
+    // Modals & UI Locks
+    // ─────────────────────────────────────────────
+
+    openOriginalityModal() {
+        if (!this.hasOriginalityModalTarget) return;
+        const modal = this.originalityModalTarget;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            const card = modal.querySelector('.modal-card');
+            if (card) card.classList.remove('scale-95', 'opacity-0');
+            if (card) card.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    closeOriginalityModal() {
+        if (!this.hasOriginalityModalTarget) return;
+        const modal = this.originalityModalTarget;
+        const card = modal.querySelector('.modal-card');
+        if (card) card.classList.remove('scale-100', 'opacity-100');
+        if (card) card.classList.add('scale-95', 'opacity-0');
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
+    }
+
+    openJournalModal() {
+        if (!this.hasJournalModalTarget) return;
+        const modal = this.journalModalTarget;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            const card = modal.querySelector('.modal-card');
+            if (card) card.classList.remove('scale-95', 'opacity-0');
+            if (card) card.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    closeJournalModal() {
+        if (!this.hasJournalModalTarget) return;
+        const modal = this.journalModalTarget;
+        const card = modal.querySelector('.modal-card');
+        if (card) card.classList.remove('scale-100', 'opacity-100');
+        if (card) card.classList.add('scale-95', 'opacity-0');
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
+    }
+
+    openPreviewModal() {
+        if (!this.hasPreviewModalTarget) return;
+        const modal = this.previewModalTarget;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            const card = modal.querySelector('.modal-card');
+            if (card) card.classList.remove('scale-95', 'opacity-0');
+            if (card) card.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    closePreviewModal() {
+        if (!this.hasPreviewModalTarget) return;
+        const modal = this.previewModalTarget;
+        const card = modal.querySelector('.modal-card');
+        if (card) card.classList.remove('scale-100', 'opacity-100');
+        if (card) card.classList.add('scale-95', 'opacity-0');
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
+    }
+
+    openHelpModal() {
+        if (!this.hasHelpModalTarget) return;
+        const modal = this.helpModalTarget;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            const card = modal.querySelector('.modal-card');
+            if (card) card.classList.remove('scale-95', 'opacity-0');
+            if (card) card.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    closeHelpModal() {
+        if (!this.hasHelpModalTarget) return;
+        const modal = this.helpModalTarget;
+        const card = modal.querySelector('.modal-card');
+        if (card) card.classList.remove('scale-100', 'opacity-100');
+        if (card) card.classList.add('scale-95', 'opacity-0');
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
+    }
+
+    openLatexPreviewModal() {
+        if (!this.hasLatexPreviewModalTarget) return;
+        const modal = this.latexPreviewModalTarget;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            const card = modal.querySelector('.modal-card');
+            if (card) card.classList.remove('scale-95', 'opacity-0');
+            if (card) card.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    closeLatexPreviewModal() {
+        if (!this.hasLatexPreviewModalTarget) return;
+        const modal = this.latexPreviewModalTarget;
+        const card = modal.querySelector('.modal-card');
+        if (card) card.classList.remove('scale-100', 'opacity-100');
+        if (card) card.classList.add('scale-95', 'opacity-0');
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
+    }
+
+    showLatexPreview() {
+        const rawContent = this.#getMarkdown();
+        
+        // Si vide, indiquer un placeholder
+        const textToTranscribe = rawContent.trim() ? rawContent : "*[Le manuscrit est actuellement vide. Saisissez du texte ou du code LaTeX pour l'apercevoir.]*";
+        
+        // Transcrire le LaTeX brut vers un Markdown équivalent
+        const transcribedMarkdown = this.#transcribeLatex(textToTranscribe);
+        
+        // Convertir le Markdown transcrit en HTML via Marked
+        const htmlContent = this.marked.parse(transcribedMarkdown);
+        
+        if (this.hasLatexPreviewContentTarget) {
+            this.latexPreviewContentTarget.innerHTML = htmlContent;
+            
+            // Compiler les équations mathématiques à l'intérieur du modal avec KaTeX
+            if (window.renderMathInElement) {
+                window.renderMathInElement(this.latexPreviewContentTarget, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false },
+                        { left: '\\(', right: '\\)', display: false },
+                        { left: '\\[', right: '\\]', display: true }
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+        
+        this.openLatexPreviewModal();
+    }
+
+    #transcribeLatex(latex) {
+        if (!latex) return '';
+
+        let text = latex;
+
+        // 1. Supprimer le préambule LaTeX classique
+        text = text.replace(/\\documentclass\{[\s\S]*?\\begin\{document\}/gi, '');
+        text = text.replace(/\\end\{document\}/gi, '');
+        text = text.replace(/\\usepackage\{[\s\S]*?\}/gi, '');
+        text = text.replace(/\\title\{([\s\S]*?)\}/gi, '# $1\n');
+        text = text.replace(/\\author\{([\s\S]*?)\}/gi, '**Auteur :** $1\n');
+        text = text.replace(/\\date\{([\s\S]*?)\}/gi, '*Date :* $1\n');
+        text = text.replace(/\\maketitle/gi, '');
+
+        // 2. Isoler les expressions mathématiques ($ et $$) pour éviter qu'elles ne soient cassées par les regex
+        const mathBlocks = [];
+        text = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, math) => {
+            const placeholder = `__MATHBLOCK_DISP_${mathBlocks.length}__`;
+            mathBlocks.push({ placeholder, math, display: true });
+            return placeholder;
+        });
+        text = text.replace(/\$([\s\S]*?)\$/g, (match, math) => {
+            const placeholder = `__MATHBLOCK_INLINE_${mathBlocks.length}__`;
+            mathBlocks.push({ placeholder, math, display: false });
+            return placeholder;
+        });
+
+        // 3. Commandes de structuration de document
+        text = text.replace(/\\section\*?\{([\s\S]*?)\}/gi, '\n# $1\n');
+        text = text.replace(/\\subsection\*?\{([\s\S]*?)\}/gi, '\n## $1\n');
+        text = text.replace(/\\subsubsection\*?\{([\s\S]*?)\}/gi, '\n### $1\n');
+        text = text.replace(/\\paragraph\*?\{([\s\S]*?)\}/gi, '\n#### $1\n');
+
+        // Style inline
+        text = text.replace(/\\textbf\{([\s\S]*?)\}/gi, '**$1**');
+        text = text.replace(/\\textit\{([\s\S]*?)\}/gi, '*$1*');
+        text = text.replace(/\\texttt\{([\s\S]*?)\}/gi, '`$1`');
+        text = text.replace(/\\underline\{([\s\S]*?)\}/gi, '<u>$1</u>');
+
+        // Hyperliens
+        text = text.replace(/\\href\{([\s\S]*?)\}\{([\s\S]*?)\}/gi, '[$2]($1)');
+        text = text.replace(/\\url\{([\s\S]*?)\}/gi, '[$1]($1)');
+
+        // 4. Listes d'éléments
+        text = text.replace(/\\begin\{itemize\}/gi, '\n');
+        text = text.replace(/\\end\{itemize\}/gi, '\n');
+        text = text.replace(/\\begin\{enumerate\}/gi, '\n');
+        text = text.replace(/\\end\{enumerate\}/gi, '\n');
+        
+        // Remplacer \item en conservant le contenu jusqu'au prochain item ou fin
+        text = text.replace(/\\item\s+([\s\S]*?)(?=\\item|\\end|\n\n)/gi, '- $1\n');
+
+        // 5. Code verbatim
+        text = text.replace(/\\begin\{verbatim\}([\s\S]*?)\\end\{verbatim\}/gi, '\n```\n$1\n```\n');
+        text = text.replace(/\\begin\{lstlisting\}([\s\S]*?)\\end\{lstlisting\}/gi, '\n```\n$1\n```\n');
+
+        // 6. Citations & Références
+        text = text.replace(/\\cite\{([\s\S]*?)\}/gi, '<sup>[$1]</sup>');
+        text = text.replace(/\\ref\{([\s\S]*?)\}/gi, '`$1`');
+
+        // 7. Retours à la ligne
+        text = text.replace(/\\\\/g, '\n');
+        text = text.replace(/\\newline/g, '\n');
+        text = text.replace(/\\newpage/g, '\n---\n');
+
+        // 8. Réinsérer les blocs mathématiques isolés intacts
+        mathBlocks.forEach(item => {
+            const mathDelimiter = item.display ? `$$\n${item.math}\n$$` : `$${item.math}$`;
+            text = text.replace(item.placeholder, mathDelimiter);
+        });
+
+        // 9. Purger les macros orphelines non reconnues pour ne pas polluer l'affichage
+        text = text.replace(/\\[a-zA-Z]+\*?(?:\{.*?\})?/g, '');
+
+        return text;
+    }
+
+    confirmImport() {
+        if (this.pendingImportText) {
+            const markdown = this.pendingImportText;
+
+            if (this.currentMode === 'wysiwyg') {
+                const html = this.marked.parse(markdown);
+                if (this.editor) {
+                    this.editor.commands.setContent(html);
+                }
+            } else {
+                if (this.codeMirror) {
+                    this.codeMirror.setValue(markdown);
+                } else if (this.hasInputTarget) {
+                    this.inputTarget.value = markdown;
+                }
+            }
+
+            this.#handleContentChange();
+            this.#setStatus("Document importé avec succès.");
+            setTimeout(() => this.#setStatus(''), 2000);
+        }
+        this.closePreviewModal();
+        this.pendingImportText = null;
+    }
+
+    // ─────────────────────────────────────────────
+    // Utilitaires Privés
     // ─────────────────────────────────────────────
 
     #displayOriginalityResults(data) {
-        if (!this.hasResultsTarget) return;
+        if (!this.hasOriginalityContentTarget) return;
 
         let html = `
-            <div class="originality-results bg-white p-4 rounded shadow mt-4">
-                <h3 class="text-lg font-bold mb-2">Résultats de l'originalité</h3>
-                <div class="flex items-center gap-4 mb-4">
-                    <div class="text-3xl font-bold ${this.#getScoreColor(data.originality_score)}">
-                        ${data.originality_score}%
+            <div class="space-y-6">
+                <div class="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <div>
+                        <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Score d'Originalité</div>
+                        <div class="text-4xl font-display font-black ${this.#getScoreColor(data.originality_score)}">
+                            ${data.originality_score}%
+                        </div>
                     </div>
-                    <div class="text-sm text-slate-500">Niveau : ${data.level}</div>
+                    <div class="text-right">
+                        <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Niveau de Risque</div>
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${this.#getLevelBadgeClass(data.level)}">
+                            <span class="w-1.5 h-1.5 rounded-full ${this.#getLevelDotClass(data.level)}"></span>
+                            ${data.level}
+                        </span>
+                    </div>
                 </div>
         `;
 
         if (data.similar_passages && data.similar_passages.length > 0) {
-            html += `<h4 class="font-bold mt-4 mb-2">Passages similaires détectés</h4><ul class="space-y-2">`;
+            html += `
+                <div>
+                    <h4 class="font-bold text-djoliba text-sm mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        Passages similaires & Suggestions
+                    </h4>
+                    <div class="space-y-3">
+            `;
             data.similar_passages.forEach(p => {
                 html += `
-                    <li class="bg-amber-50 p-3 rounded border border-amber-200">
-                        <div class="text-sm text-slate-700 italic">"${p.passage}"</div>
-                        <div class="text-xs font-semibold text-red-600 mt-1">Risque : ${p.risk}</div>
-                        <div class="text-xs text-emerald-600 mt-1">Suggestion : ${p.suggestion}</div>
-                    </li>
+                        <div class="bg-amber-50/50 p-4 rounded-2xl border border-amber-100 text-xs">
+                            <div class="text-slate-600 italic font-medium mb-2">"${p.passage}"</div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-amber-100/50">
+                                <div>
+                                    <span class="font-bold text-[10px] text-red-500 uppercase tracking-wider block mb-0.5">Risque</span>
+                                    <span class="text-slate-700">${p.risk}</span>
+                                </div>
+                                <div>
+                                    <span class="font-bold text-[10px] text-emerald-600 uppercase tracking-wider block mb-0.5">Suggestion</span>
+                                    <span class="text-slate-800">${p.suggestion}</span>
+                                </div>
+                            </div>
+                        </div>
                 `;
             });
-            html += `</ul>`;
+            html += `</div></div>`;
         } else {
-             html += `<p class="text-emerald-600 font-medium">Aucun passage problématique détecté.</p>`;
+            html += `
+                <div class="bg-emerald-50/30 border border-emerald-100/50 p-6 rounded-2xl text-center space-y-2">
+                    <div class="w-10 h-10 bg-emerald-100/50 rounded-full flex items-center justify-center text-emerald-600 mx-auto">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <p class="text-xs font-bold text-emerald-700">Manuscrit hautement original</p>
+                    <p class="text-[10px] text-slate-500">Aucun passage similaire ou problématique n'a été détecté.</p>
+                </div>
+            `;
         }
 
         if (data.recommendations && data.recommendations.length > 0) {
-            html += `<h4 class="font-bold mt-4 mb-2">Recommandations</h4><ul class="list-disc pl-5 text-sm">`;
+            html += `
+                <div class="border-t border-slate-100 pt-4">
+                    <h4 class="font-bold text-djoliba text-sm mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-djoliba" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                        Recommandations d'Amélioration
+                    </h4>
+                    <ul class="space-y-1.5 pl-1">
+            `;
             data.recommendations.forEach(r => {
-                html += `<li>${r}</li>`;
+                html += `
+                        <li class="text-xs text-slate-600 flex items-start gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-djoliba mt-1.5 flex-shrink-0"></span>
+                            ${r}
+                        </li>
+                `;
             });
-            html += `</ul>`;
+            html += `</ul></div>`;
         }
 
         html += `</div>`;
-        this.resultsTarget.innerHTML = html;
+        this.originalityContentTarget.innerHTML = html;
+        this.openOriginalityModal();
     }
 
     #displayJournalResults(data) {
-        if (!this.hasResultsTarget) return;
+        if (!this.hasJournalContentTarget) return;
 
-        let html = `
-            <div class="journal-results bg-white p-4 rounded shadow mt-4">
-                <h3 class="text-lg font-bold mb-4">Revues suggérées</h3>
-                <div class="space-y-4">
-        `;
+        let html = `<div class="space-y-4">`;
 
         if (data.journals && data.journals.length > 0) {
             data.journals.forEach(j => {
                 html += `
-                    <div class="border p-3 rounded hover:bg-slate-50 transition-colors">
-                        <div class="font-bold text-primary-600">${j.name}</div>
-                        <div class="text-xs text-slate-500 mb-2">Éditeur : ${j.publisher} | Impact Factor : ${j.impact_factor}</div>
-                        <div class="text-sm text-slate-700 mb-2">${j.scope}</div>
-                        <div class="text-sm bg-indigo-50 p-2 rounded italic">${j.match_reason}</div>
-                        ${j.url !== 'N/A' ? `<a href="${j.url}" target="_blank" class="text-xs text-blue-500 hover:underline mt-2 inline-block">Voir le site</a>` : ''}
-                    </div>
+                    <div class="border border-slate-100 p-5 rounded-2xl hover:bg-slate-50/50 hover:border-djoliba/10 transition-all space-y-3 relative group">
+                        <div class="flex justify-between items-start gap-4">
+                            <div>
+                                <h4 class="font-bold text-djoliba text-sm group-hover:text-gold_prestige transition-colors">${j.name}</h4>
+                                <div class="text-[10px] text-slate-400 font-medium mt-1">Éditeur : <span class="text-slate-600">${j.publisher}</span></div>
+                            </div>
+                            <div class="text-right flex-shrink-0">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-gold_prestige/10 text-gold_prestige border border-gold_prestige/20">
+                                    IF: ${j.impact_factor}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="text-xs text-slate-500 leading-relaxed">
+                            <span class="font-bold text-[9px] text-slate-400 uppercase tracking-wider block mb-0.5">Thématiques & Portée</span>
+                            ${j.scope}
+                        </div>
+                        
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs italic text-slate-600 leading-relaxed">
+                            <span class="font-bold text-[9px] text-slate-400 uppercase tracking-wider block not-italic mb-1">Justification IA</span>
+                            "${j.match_reason}"
+                        </div>
                 `;
+
+                if (j.url && j.url !== 'N/A' && j.url !== '#') {
+                    html += `
+                        <div class="pt-1 flex justify-end">
+                            <a href="${j.url}" target="_blank" class="inline-flex items-center gap-1 text-[10px] font-bold text-blue-500 hover:text-blue-600 transition-colors">
+                                Visiter le site officiel
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                            </a>
+                        </div>
+                    `;
+                }
+                html += `</div>`;
             });
         } else {
-            html += `<p class="text-slate-500">Aucune revue trouvée.</p>`;
+            html += `
+                <div class="bg-slate-50 border border-slate-100 p-8 rounded-2xl text-center space-y-2">
+                    <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mx-auto">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <p class="text-xs font-bold text-slate-600">Aucune revue trouvée</p>
+                    <p class="text-[10px] text-slate-400">Le modèle n'a pas pu formuler de recommandations de revues cibles adaptées à ce contenu.</p>
+                </div>
+            `;
         }
 
-        html += `</div></div>`;
-        this.resultsTarget.innerHTML = html;
+        html += `</div>`;
+        this.journalContentTarget.innerHTML = html;
+        this.openJournalModal();
     }
 
     #getScoreColor(score) {
-        if (score >= 80) return 'text-emerald-600';
+        if (score >= 80) return 'text-emerald-500';
         if (score >= 50) return 'text-amber-500';
-        return 'text-red-600';
+        return 'text-red-500';
+    }
+
+    #getLevelBadgeClass(level) {
+        const lower = level.toLowerCase();
+        if (lower === 'faible' || lower === 'low') return 'bg-emerald-50 text-emerald-600 border border-emerald-100';
+        if (lower === 'moyen' || lower === 'medium') return 'bg-amber-50 text-amber-600 border border-amber-100';
+        return 'bg-red-50 text-red-600 border border-red-100';
+    }
+
+    #getLevelDotClass(level) {
+        const lower = level.toLowerCase();
+        if (lower === 'faible' || lower === 'low') return 'bg-emerald-500';
+        if (lower === 'moyen' || lower === 'medium') return 'bg-amber-500';
+        return 'bg-red-500';
     }
 
     #setLoading(isLoading, message = '') {
         if (this.hasCheckBtnTarget) this.checkBtnTarget.disabled = isLoading;
         if (this.hasSuggestBtnTarget) this.suggestBtnTarget.disabled = isLoading;
         if (this.hasInputTarget) this.inputTarget.disabled = isLoading;
+        if (this.hasImportBtnTarget) this.importBtnTarget.disabled = isLoading;
         
         if (isLoading) {
             this.#setStatus(message);
@@ -201,12 +1217,6 @@ export default class extends Controller {
     #setStatus(text, isError = false) {
         if (!this.hasStatusTarget) return;
         this.statusTarget.textContent = text;
-        this.statusTarget.className = isError ? 'text-sm text-red-600 mt-2 font-medium' : 'text-sm text-slate-500 mt-2 italic';
-    }
-
-    #log(msg) {
-        if (import.meta.env?.DEV) {
-            console.debug(`[writing-editor] ${msg}`);
-        }
+        this.statusTarget.className = isError ? 'text-xs text-red-500 mt-2 font-medium' : 'text-xs text-slate-400 mt-2 italic';
     }
 }

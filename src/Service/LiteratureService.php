@@ -40,7 +40,7 @@ class LiteratureService
                 // Prompt défini en section 6 du PROJECT_CONTEXT.md
                 return $this->deepSeekService->call(
                     sprintf(
-                        "Effectue une revue de littérature sur: %s. Inclus: fondement théorique, tendances récentes, lacunes, articles incontournables.",
+                        "Effectue une revue de littérature surcé sur: %s. Inclus: fondement théorique, tendances récentes, lacunes, articles incontournables et bibliographie.",
                         $query
                     )
                 );

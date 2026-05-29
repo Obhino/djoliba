@@ -23,17 +23,11 @@ class WritingService
      * Analyse l'originalité d'un texte scientifique.
      * Retourne un score, les passages potentiellement similaires et des recommandations.
      *
-     * Prompt inspiré de la section 6 PROJECT_CONTEXT.md : WritingService::checkOriginality
-     *
-     * @return array{
-     *   originality_score: int,
-     *   level: string,
-     *   similar_passages: array<int, array{passage: string, risk: string, suggestion: string}>,
-     *   recommendations: string[],
-     *   interaction: Interaction
-     * }
+     * @param string        $text
+     * @param Project|null  $project
+     * @return array
      */
-    public function checkOriginality(string $text, Project $project): array
+    public function checkOriginality(string $text, ?Project $project = null): array
     {
         $cacheKey = 'originality_' . hash('sha256', $text);
 
@@ -42,20 +36,7 @@ class WritingService
             function () use ($text) {
                 return $this->deepSeekService->call(
                     sprintf(
-                        "Analyse l'originalité de ce texte scientifique. Identifie les passages qui ressemblent à des écrits existants, les formulations trop génériques ou non-originales.
-
-Texte à analyser:
-%s
-
-Réponds UNIQUEMENT avec ce JSON (sans markdown autour):
-{
-  \"originality_score\": <entier 0-100>,
-  \"level\": \"<faible|moyen|élevé>\",
-  \"similar_passages\": [
-    {\"passage\": \"<extrait du texte>\", \"risk\": \"<description du risque>\", \"suggestion\": \"<reformulation proposée>\"}
-  ],
-  \"recommendations\": [\"<conseil 1>\", \"<conseil 2>\"]
-}",
+                        "Analyse l'originalité du texte suivant. Retourne un score 0-100, les passages potentiellement non originaux, des suggestions de reformulation. Réponse JSON.\n\nTexte :\n%s",
                         mb_substr($text, 0, 8000)
                     ),
                     ['temperature' => 0.2]
@@ -64,31 +45,54 @@ Réponds UNIQUEMENT avec ce JSON (sans markdown autour):
             self::CACHE_TTL
         );
 
-        $parsed = $this->parseJson($rawResponse, [
-            'originality_score' => 75,
-            'level'             => 'moyen',
+        $parsed = $this->parseJson($rawResponse, []);
+
+        // Normalisation et fallback pour supporter tout format JSON retourné
+        $normalized = [
+            'originality_score' => (int) ($parsed['originality_score'] ?? $parsed['score'] ?? 75),
+            'level'             => (string) ($parsed['level'] ?? $parsed['niveau'] ?? 'moyen'),
             'similar_passages'  => [],
             'recommendations'   => [],
-        ]);
+        ];
 
-        // Traçabilité
-        $interaction = $this->persistInteraction($project, 'writing_check', $text, $rawResponse);
+        $passages = $parsed['similar_passages'] ?? $parsed['passages'] ?? $parsed['passages_non_originaux'] ?? [];
+        if (is_array($passages)) {
+            foreach ($passages as $p) {
+                if (!is_array($p)) continue;
+                $normalized['similar_passages'][] = [
+                    'passage'    => (string) ($p['passage'] ?? $p['extrait'] ?? ''),
+                    'risk'       => (string) ($p['risk'] ?? $p['risque'] ?? 'N/A'),
+                    'suggestion' => (string) ($p['suggestion'] ?? $p['reformulation'] ?? ''),
+                ];
+            }
+        }
 
-        return array_merge($parsed, ['interaction' => $interaction]);
+        $recommendations = $parsed['recommendations'] ?? $parsed['conseils'] ?? [];
+        if (is_array($recommendations)) {
+            foreach ($recommendations as $r) {
+                $normalized['recommendations'][] = (string) $r;
+            }
+        }
+
+        // Traçabilité si le projet est fourni
+        $interaction = null;
+        if ($project !== null) {
+            $interaction = $this->persistInteraction($project, 'writing_check', $text, $rawResponse);
+        }
+
+        return array_merge($normalized, ['interaction' => $interaction]);
     }
 
     /**
      * Suggère des revues scientifiques cibles pour soumettre un article.
      * Retourne une liste de revues avec impact factor et justification.
      *
-     * Prompt inspiré de la section 6 PROJECT_CONTEXT.md : WritingService::suggestJournal
-     *
-     * @return array{
-     *   journals: array<int, array{name: string, publisher: string, impact_factor: string, scope: string, url: string, match_reason: string}>,
-     *   interaction: Interaction
-     * }
+     * @param string        $text
+     * @param Project|null  $project
+     * @param int           $limit
+     * @return array
      */
-    public function suggestJournal(string $text, Project $project, int $limit = 5): array
+    public function suggestJournal(string $text, ?Project $project = null, int $limit = 3): array
     {
         $cacheKey = 'journal_suggest_' . hash('sha256', $text) . '_' . $limit;
 
@@ -97,24 +101,7 @@ Réponds UNIQUEMENT avec ce JSON (sans markdown autour):
             function () use ($text, $limit) {
                 return $this->deepSeekService->call(
                     sprintf(
-                        "En tant qu'expert en publication scientifique, suggère %d revues scientifiques adaptées à cet article.
-
-Texte ou résumé de l'article:
-%s
-
-Réponds UNIQUEMENT avec ce JSON (sans markdown autour):
-{
-  \"journals\": [
-    {
-      \"name\": \"<nom de la revue>\",
-      \"publisher\": \"<éditeur>\",
-      \"impact_factor\": \"<IF ou N/A>\",
-      \"scope\": \"<domaine couvert>\",
-      \"url\": \"<url officielle ou N/A>\",
-      \"match_reason\": \"<pourquoi cette revue est adaptée à cet article>\"
-    }
-  ]
-}",
+                        "Suggère %d revues scientifiques pour cet article avec justification. Réponse JSON.\n\nTexte :\n%s",
                         $limit,
                         mb_substr($text, 0, 6000)
                     ),
@@ -124,20 +111,32 @@ Réponds UNIQUEMENT avec ce JSON (sans markdown autour):
             self::CACHE_TTL
         );
 
-        $parsed = $this->parseJson($rawResponse, ['journals' => []]);
+        $parsed = $this->parseJson($rawResponse, []);
 
-        // Normalisation des journaux
-        $journals = array_map(fn(array $j) => [
-            'name'         => (string) ($j['name']         ?? ''),
-            'publisher'    => (string) ($j['publisher']    ?? ''),
-            'impact_factor'=> (string) ($j['impact_factor']?? 'N/A'),
-            'scope'        => (string) ($j['scope']        ?? ''),
-            'url'          => (string) ($j['url']          ?? ''),
-            'match_reason' => (string) ($j['match_reason'] ?? ''),
-        ], $parsed['journals'] ?? []);
+        // Gérer si le JSON est directement un tableau ou enveloppé sous une clé
+        $journalsData = $parsed['journals'] ?? $parsed['revues'] ?? $parsed;
+        if (!is_array($journalsData)) {
+            $journalsData = [];
+        }
 
-        // Traçabilité
-        $interaction = $this->persistInteraction($project, 'writing_suggest_journal', $text, $rawResponse);
+        $journals = [];
+        foreach ($journalsData as $j) {
+            if (!is_array($j)) continue;
+            $journals[] = [
+                'name'         => (string) ($j['name']         ?? $j['title'] ?? $j['nom'] ?? 'Nom de la revue inconnu'),
+                'publisher'    => (string) ($j['publisher']    ?? $j['editeur'] ?? 'N/A'),
+                'impact_factor'=> (string) ($j['impact_factor']?? $j['facteur_impact'] ?? 'N/A'),
+                'scope'        => (string) ($j['scope']        ?? $j['domaine'] ?? 'N/A'),
+                'url'          => (string) ($j['url']          ?? 'N/A'),
+                'match_reason' => (string) ($j['match_reason'] ?? $j['justification'] ?? $j['raison'] ?? ''),
+            ];
+        }
+
+        // Traçabilité si le projet est fourni
+        $interaction = null;
+        if ($project !== null) {
+            $interaction = $this->persistInteraction($project, 'writing_suggest_journal', $text, $rawResponse);
+        }
 
         return [
             'journals'    => $journals,

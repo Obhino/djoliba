@@ -1,0 +1,34 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Rédaction & Publication - Djoliba{% endblock %}
+
+{% block main %}
+<div class="p-8 max-w-5xl mx-auto fade-in">
+     
+    {# Fil d'ariane & En-tête #}
+    <div class="mb-8 flex justify-between items-start">
+        <div>
+            <nav class="flex text-sm text-slate-400 mb-2" aria-label="Breadcrumb">
+                <ol class="flex items-center space-x-2">
+                    <li><a href="{{ path('app_hub') }}" class="hover:text-djoliba transition-colors">Hub</a></li>
+                    <li><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></li>
+                    <li><a href="{{ path('app_project_show', {id: project.id}) }}" class="hover:text-djoliba transition-colors">{{ project.name }}</a></li>
+                    <li><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></li>
+                    <li class="text-djoliba font-medium">Rédaction & Publication</li>
+                </ol>
+            </nav>
+            <h1 class="text-3xl font-display font-bold text-djoliba">Aide à la Rédaction & Publication</h1>
+        </div>
+        <div>
+            <span class="px-3 py-1 bg-gold_prestige/10 text-gold_prestige rounded-full text-xs font-bold border border-gold_prestige/20">Module Rédaction</span>
+        </div>
+    </div>
+
+    {# Zone de l'éditeur scientifique réutilisable #}
+    {% include 'project/_writing_editor.html.twig' with {
+        'project': project,
+        'placeholder': 'Rédigez ou collez votre texte scientifique ci-dessous (minimum 100 caractères)...'
+    } %}
+
+</div>
+{% endblock %}
