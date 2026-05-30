@@ -207,18 +207,4 @@ class ProjectController extends AbstractController
         }
 
         return $this->json(['success' => true]);
-    }
-
-    #[Route('/{id}/export', name: 'api_projects_export', methods: ['GET'])]
-    public function export(int $id): JsonResponse
-    {
-        // Pour l'instant, on retourne un placeholder car le ProjectExporter n'est pas encore implémenté
-        return $this->json([
-            'success' => true,
-            'data' => [
-                'message' => 'Exportation en cours de préparation',
-                'project_id' => $id
-            ]
-        ]);
-    }
-}
+    }}

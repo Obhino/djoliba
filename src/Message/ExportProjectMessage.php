@@ -4,15 +4,25 @@ namespace App\Message;
 
 class ExportProjectMessage
 {
-    private int $projectId;
-
-    public function __construct(int $projectId)
-    {
-        $this->projectId = $projectId;
+    public function __construct(
+        private int $projectId,
+        private string $format = 'zip',
+        private string $jobId = ''
+    ) {
     }
 
     public function getProjectId(): int
     {
         return $this->projectId;
+    }
+
+    public function getFormat(): string
+    {
+        return $this->format;
+    }
+
+    public function getJobId(): string
+    {
+        return $this->jobId;
     }
 }

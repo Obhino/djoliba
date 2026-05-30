@@ -16,9 +16,18 @@
         </div>
 
         {% if projects|length > 0 %}
+            {# Résolution de la route d'édition propre à chaque type de projet #}
+            {% set editor_routes = {
+                'literature_review': 'app_project_literature',
+                'reading':           'app_project_reading',
+                'thesis':            'app_project_thesis',
+                'writing':           'app_project_writing'
+            } %}
+            {% set editor_route = editor_routes[type]|default('app_project_show') %}
+
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {% for project in projects %}
-                    <a href="{{ path('app_project_show', {id: project.id}) }}" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-djoliba hover:shadow-md transition-all group">
+                    <a href="{{ path(editor_route, {id: project.id}) }}" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-djoliba hover:shadow-md transition-all group">
                         <div class="flex justify-between items-start mb-4">
                             <div class="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center text-djoliba transition-colors">
                                 {{ icon|raw }}

@@ -1,0 +1,286 @@
+{#
+ | ============================================================================
+ | PARTIAL : _export_modal.html.twig
+ | ============================================================================
+ |
+ | Paramètres attendus :
+ |   - project  : entité App\Entity\Project  (obligatoire)
+ |
+ | Ce partiel est conçu pour être INCLUS à l'intérieur d'un élément HTML
+ | portant le contrôleur Stimulus "export" :
+ |
+ |   <div data-controller="export" data-export-project-id-value="{{ project.id }}">
+ |       ...bouton d'ouverture...
+ |       {% include 'partials/_export_modal.html.twig' with { project: project } %}
+ |   </div>
+ |
+ | Matrice des formats autorisés par type de projet :
+ |   ┌──────────────────┬─────┬───────┬────────┬──────┬─────┐
+ |   │ Type             │ PDF │ LaTeX │ BibTeX │ DOCX │ ZIP │
+ |   ├──────────────────┼─────┼───────┼────────┼──────┼─────┤
+ |   │ thesis           │  ✅  │   ✅   │   ✅    │  ✅   │  ✅  │
+ |   │ writing          │  ✅  │   ✅   │   ❌    │  ✅   │  ✅  │
+ |   │ reading          │  ✅  │   ❌   │   ✅    │  ❌   │  ✅  │
+ |   │ literature_review│  ✅  │   ❌   │   ✅    │  ❌   │  ✅  │
+ |   └──────────────────┴─────┴───────┴────────┴──────┴─────┘
+ #}
+
+{% set project_type = project.type %}
+
+{# ── Calcul des formats autorisés ─────────────────────────────────────── #}
+{% set allow_pdf    = true %}
+{% set allow_zip    = true %}
+{% set allow_latex  = project_type in ['thesis', 'writing'] %}
+{% set allow_bibtex = project_type in ['thesis', 'reading', 'literature_review'] %}
+{% set allow_docx   = project_type in ['thesis', 'writing'] %}
+
+{# ── Labels lisibles par type de projet ───────────────────────────────── #}
+{% set type_labels = {
+    'thesis':           'Thèse / Mémoire',
+    'writing':          'Rédaction / Publication',
+    'reading':          'Lecture / Analyse PDF',
+    'literature_review':'Revue de Littérature'
+} %}
+
+{# ── Catalogue complet des formats ────────────────────────────────────── #}
+{% set formats = [
+    {
+        key:         'pdf',
+        enabled:     allow_pdf,
+        label:       'PDF Scientifique',
+        extension:   '.pdf',
+        description: 'Rapport paginé A4 avec sommaire automatique, mise en page académique et rendu des équations.',
+        icon_color:  '#10B981',
+        icon_bg:     'bg-emerald-50',
+        icon_hover:  'group-hover:bg-[#10B981] group-hover:text-white',
+        border_hover:'hover:border-[#10B981]',
+        text_hover:  'group-hover:text-[#10B981]',
+        icon_svg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>',
+        badge: null
+    },
+    {
+        key:         'latex',
+        enabled:     allow_latex,
+        label:       'Archive LaTeX',
+        extension:   '.zip (.tex + .bib)',
+        description: 'Fichier <code class="text-[10px] bg-slate-100 px-1 py-0.5 rounded font-mono">main.tex</code> et bibliographie <code class="text-[10px] bg-slate-100 px-1 py-0.5 rounded font-mono">references.bib</code> prêts pour Overleaf ou TeXmaker.',
+        icon_color:  '#F59E0B',
+        icon_bg:     'bg-amber-50',
+        icon_hover:  'group-hover:bg-[#F59E0B] group-hover:text-white',
+        border_hover:'hover:border-[#F59E0B]',
+        text_hover:  'group-hover:text-[#F59E0B]',
+        icon_svg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>',
+        badge: null
+    },
+    {
+        key:         'bibtex',
+        enabled:     allow_bibtex,
+        label:       'BibTeX',
+        extension:   '.bib',
+        description: 'Exportation des références bibliographiques au format BibTeX, compatible avec tous les gestionnaires de citations (Zotero, Mendeley, JabRef).',
+        icon_color:  '#8B5CF6',
+        icon_bg:     'bg-violet-50',
+        icon_hover:  'group-hover:bg-[#8B5CF6] group-hover:text-white',
+        border_hover:'hover:border-[#8B5CF6]',
+        text_hover:  'group-hover:text-[#8B5CF6]',
+        icon_svg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>',
+        badge: null
+    },
+    {
+        key:         'docx',
+        enabled:     allow_docx,
+        label:       'Document Word',
+        extension:   '.docx',
+        description: 'Document Microsoft Word avec styles de titres, numérotation des sections et tableau des matières. Compatible Office 365 et LibreOffice.',
+        icon_color:  '#3B82F6',
+        icon_bg:     'bg-blue-50',
+        icon_hover:  'group-hover:bg-[#3B82F6] group-hover:text-white',
+        border_hover:'hover:border-[#3B82F6]',
+        text_hover:  'group-hover:text-[#3B82F6]',
+        icon_svg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>',
+        badge: 'Conditionnel'
+    },
+    {
+        key:         'zip',
+        enabled:     allow_zip,
+        label:       'Projet Complet',
+        extension:   '.zip',
+        description: 'Archive complète du projet : chapitres Markdown, documents sources uploadés et métadonnées JSON. Idéal pour archiver ou migrer.',
+        icon_color:  '#0B2545',
+        icon_bg:     'bg-slate-100',
+        icon_hover:  'group-hover:bg-[#0B2545] group-hover:text-white',
+        border_hover:'hover:border-[#0B2545]',
+        text_hover:  'group-hover:text-[#0B2545]',
+        icon_svg: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>',
+        badge: null
+    }
+] %}
+
+{# ══════════════════════════════════════════════════════════════════════════
+   MODALE
+   ══════════════════════════════════════════════════════════════════════════ #}
+<div data-export-target="modal"
+     class="fixed inset-0 z-[100] flex items-center justify-center hidden opacity-0
+            transition-opacity duration-300 backdrop-blur-md bg-[#0B2545]/60 px-4">
+
+    <div data-export-target="modalCard"
+         class="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden
+                transform scale-95 opacity-0 transition-all duration-300
+                relative border border-slate-100 text-left">
+
+        {# ── En-tête ──────────────────────────────────────────────────────── #}
+        <div class="px-8 py-5 border-b border-slate-100 flex items-start justify-between bg-gradient-to-r from-slate-50 to-white">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-djoliba flex items-center justify-center text-white font-black text-sm shadow shadow-djoliba/30">
+                    D
+                </div>
+                <div>
+                    <h3 class="text-lg font-display font-black text-djoliba leading-tight">
+                        Exporter le projet
+                    </h3>
+                    <p class="text-[11px] text-slate-400 font-medium mt-0.5">
+                        {{ type_labels[project_type]|default('Projet') }}
+                        &nbsp;·&nbsp;
+                        <span class="text-djoliba font-semibold">{{ project.name|length > 30 ? project.name|slice(0, 27) ~ '…' : project.name }}</span>
+                    </p>
+                </div>
+            </div>
+            <button data-action="click->export#closeModal"
+                    class="p-2 text-slate-300 hover:text-djoliba hover:bg-slate-100 rounded-full transition-all mt-0.5">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        {# ── Corps : liste des formats ─────────────────────────────────────── #}
+        <div class="px-8 py-6 space-y-3 max-h-[60vh] overflow-y-auto">
+
+            {% set has_any_format = false %}
+
+            {% for fmt in formats %}
+                {% if fmt.enabled %}
+                    {% set has_any_format = true %}
+
+                    <div data-action="click->export#exportProject"
+                         data-format="{{ fmt.key }}"
+                         class="flex items-center gap-4 p-4 rounded-2xl border-2 border-slate-100
+                                {{ fmt.border_hover }} hover:shadow-sm
+                                cursor-pointer transition-all duration-200 group relative">
+
+                        {# Icône format #}
+                        <div class="w-12 h-12 rounded-xl {{ fmt.icon_bg }} flex items-center justify-center
+                                    flex-shrink-0 transition-colors duration-200 {{ fmt.icon_hover }}"
+                             style="color:{{ fmt.icon_color }};">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                {{ fmt.icon_svg|raw }}
+                            </svg>
+                        </div>
+
+                        {# Texte #}
+                        <div class="flex-grow min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h4 class="font-bold text-djoliba text-sm leading-tight">
+                                    {{ fmt.label }}
+                                </h4>
+                                <span class="text-[10px] text-slate-400 font-mono bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
+                                    {{ fmt.extension }}
+                                </span>
+                                {% if fmt.badge %}
+                                    <span class="text-[10px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">
+                                        {{ fmt.badge }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                                {{ fmt.description|raw }}
+                            </p>
+                        </div>
+
+                        {# Flèche #}
+                        <span class="text-slate-200 {{ fmt.text_hover }} transition-colors duration-200 flex-shrink-0">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </span>
+                    </div>
+
+                {% endif %}
+            {% endfor %}
+
+            {# Fallback si aucun format n'est disponible (ne devrait pas arriver) #}
+            {% if not has_any_format %}
+                <div class="py-10 text-center text-slate-400">
+                    <svg class="w-10 h-10 mx-auto mb-3 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="text-sm font-semibold text-slate-400">Aucun format disponible pour ce type de projet.</p>
+                </div>
+            {% endif %}
+
+        </div>
+
+        {# ── Pied : légende & fermeture ───────────────────────────────────── #}
+        <div class="px-8 py-4 border-t border-slate-50 bg-slate-50/40 flex items-center justify-between gap-4">
+            <p class="text-[11px] text-slate-400 leading-snug max-w-xs">
+                <svg class="w-3.5 h-3.5 inline-block mr-0.5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Les formats disponibles dépendent du type de votre projet.
+            </p>
+            <button data-action="click->export#closeModal"
+                    class="px-4 py-2 rounded-xl border border-slate-200 text-slate-500
+                           hover:bg-slate-100 hover:text-slate-700 text-xs font-semibold transition-all flex-shrink-0">
+                Annuler
+            </button>
+        </div>
+
+        {# ══════════════════════════════════════════════════════════════════
+           LOADER OVERLAY — affiché pendant la génération
+           ══════════════════════════════════════════════════════════════════ #}
+        <div data-export-target="loader"
+             class="absolute inset-0 z-50 hidden flex-col items-center justify-center
+                    bg-white/92 backdrop-blur-[2px] transition-all duration-300">
+
+            {# Spinner animé #}
+            <div class="relative w-20 h-20 flex items-center justify-center">
+                {# Anneau externe rotatif #}
+                <div class="absolute inset-0 rounded-full border-4 border-slate-100 border-t-[#10B981] animate-spin"></div>
+                {# Anneau secondaire en sens inverse (effet premium) #}
+                <div class="absolute inset-2 rounded-full border-2 border-transparent border-b-djoliba/30 animate-[spin_1.5s_linear_infinite_reverse]"></div>
+                {# Pastille centrale Djoliba #}
+                <div class="relative w-9 h-9 rounded-xl bg-djoliba flex items-center justify-center
+                            text-white font-black text-sm shadow-lg shadow-djoliba/30">
+                    D
+                </div>
+            </div>
+
+            {# Texte dynamique #}
+            <div data-export-target="loaderText"
+                 class="mt-6 text-sm font-bold text-djoliba text-center max-w-xs leading-relaxed animate-pulse">
+                Génération en cours...
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">
+                Veuillez patienter, ne pas fermer cette fenêtre
+            </p>
+
+            {# Barre de progression indéterminée #}
+            <div class="mt-5 w-48 h-1 bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full w-1/3 bg-gradient-to-r from-[#10B981] to-djoliba rounded-full
+                            animate-[progress_1.6s_ease-in-out_infinite]"></div>
+            </div>
+
+        </div>
+        {# /LOADER #}
+
+    </div>{# /modalCard #}
+</div>{# /modal #}
+
+{# ── Styles custom pour l'animation de la barre de progression ──────────── #}
+<style>
+    @keyframes progress {
+        0%   { transform: translateX(-100%); }
+        50%  { transform: translateX(300%); }
+        100% { transform: translateX(-100%); }
+    }
+</style>

@@ -102,6 +102,19 @@ services:
       - "1025:1025"   # SMTP
       - "8025:8025"   # Interface web : http://localhost:8025
 
+  # ─────────────────────────────────────────────
+  # Adminer — Interface web légère d'administration de BDD
+  # ─────────────────────────────────────────────
+  adminer:
+    image: adminer:latest
+    container_name: djoliba_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"   # Interface web : http://localhost:8080
+    depends_on:
+      database:
+        condition: service_healthy
+
 volumes:
   database_data:
   redis_data:

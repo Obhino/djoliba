@@ -9,7 +9,7 @@ import Sortable from 'sortablejs';
  * Supporte également la génération assistée par IA (write) et le contrôle de cohérence.
  */
 export default class extends Controller {
-    static targets = ['tree', 'editor', 'titleInput', 'saveBtn', 'writeBtn', 'status', 'results'];
+    static targets = ['tree', 'editor', 'titleInput', 'saveBtn', 'writeBtn', 'status', 'results', 'blankState'];
     static values = {
         projectId: Number
     };
@@ -33,7 +33,8 @@ export default class extends Controller {
             const response = await fetch(`/api/thesis/structure?project_id=${this.projectIdValue}`);
             const data = await response.json();
             if (data.success) {
-                this.#renderTree(data.data.structure);
+                this.structureData = data.data.structure;
+                this.#renderTree(this.structureData);
                 this.#initDragAndDrop();
                 this.#setStatus('');
             }
@@ -97,6 +98,11 @@ export default class extends Controller {
         const id = event.currentTarget.dataset.id;
         this.currentChapterId = id;
         
+        // Mettre à jour immédiatement la surbrillance dans l'arborescence
+        if (this.structureData) {
+            this.#renderTree(this.structureData);
+        }
+
         this.#setStatus('Chargement du chapitre...');
         
         try {
@@ -117,8 +123,11 @@ export default class extends Controller {
                     }
                 }
                 
-                // Afficher l'éditeur
+                // Afficher l'éditeur et masquer l'état vide
                 this.editorTarget.classList.remove('hidden');
+                if (this.hasBlankStateTarget) {
+                    this.blankStateTarget.classList.add('hidden');
+                }
                 this.#setStatus('');
                 
                 // Configurer la sauvegarde automatique toutes les 30 secondes
@@ -134,6 +143,44 @@ export default class extends Controller {
         } catch (error) {
             console.error('Erreur de chargement du chapitre :', error);
             this.#setStatus('Erreur de connexion', true);
+        }
+    }
+
+    async renameChapter(event) {
+        event.stopPropagation();
+        const id = event.currentTarget.dataset.id;
+        const currentTitle = event.currentTarget.dataset.title;
+        const newTitle = prompt('Nouveau titre pour cette section :', currentTitle);
+        if (!newTitle || newTitle === currentTitle) return;
+
+        this.#setLoading(true, 'Modification du titre...');
+        try {
+            const response = await fetch(`/api/thesis/chapter/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: newTitle,
+                    content: null
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                this.loadStructure();
+                
+                // Si c'est le chapitre actif, mettre à jour le input caché
+                if (this.currentChapterId == id) {
+                    this.titleInputTarget.value = newTitle;
+                }
+                
+                window.dispatchEvent(new CustomEvent('toast:show', {
+                    detail: { message: "Titre mis à jour", type: "success" }
+                }));
+            }
+        } catch (error) {
+            console.error('Erreur lors de renameChapter :', error);
+            alert('Erreur lors de la modification du titre');
+        } finally {
+            this.#setLoading(false);
         }
     }
 
@@ -230,6 +277,9 @@ export default class extends Controller {
             this.loadStructure();
             if (this.currentChapterId == id) {
                 this.editorTarget.classList.add('hidden');
+                if (this.hasBlankStateTarget) {
+                    this.blankStateTarget.classList.remove('hidden');
+                }
                 if (this.autosaveInterval) {
                     clearInterval(this.autosaveInterval);
                     this.autosaveInterval = null;
@@ -488,15 +538,16 @@ Renvoie UNIQUEMENT le texte complet du chapitre mis à jour (aucun commentaire d
         let html = '<ul class="thesis-tree-list space-y-2 pl-4 border-l-2 border-slate-100 min-h-[8px] pb-2">';
         if (nodes && nodes.length > 0) {
             nodes.forEach(node => {
+                const isActive = node.id == this.currentChapterId;
                 html += `
-                    <li class="thesis-tree-item py-1" data-id="${node.id}">
-                        <div class="flex items-center gap-2 group p-2 hover:bg-slate-50 rounded transition-colors">
-                            <span class="cursor-move text-slate-400 opacity-0 group-hover:opacity-100 mr-1 select-none">☰</span>
-                            <span class="font-medium text-slate-700 flex-grow">${node.title}</span>
-                            <div class="opacity-0 group-hover:opacity-100 flex gap-1">
-                                <button type="button" class="text-xs bg-slate-200 px-2 py-1 rounded" data-action="click->thesis-editor#editChapter" data-id="${node.id}" data-title="${node.title}">Editer</button>
-                                <button type="button" class="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded" data-action="click->thesis-editor#addChapter" data-parent-id="${node.id}">+</button>
-                                <button type="button" class="text-xs bg-red-50 text-red-500 px-2 py-1 rounded" data-action="click->thesis-editor#deleteChapter" data-id="${node.id}">×</button>
+                    <li class="thesis-tree-item py-0.5" data-id="${node.id}">
+                        <div class="flex items-center gap-2 group p-2 hover:bg-slate-50 rounded-xl transition-all ${isActive ? 'thesis-tree-item-active' : ''}">
+                            <span class="cursor-move text-slate-400 opacity-0 group-hover:opacity-100 mr-1 select-none flex-shrink-0">☰</span>
+                            <span class="flex-grow cursor-pointer py-0.5 transition-colors truncate ${isActive ? 'text-djoliba font-bold' : 'text-slate-700 hover:text-djoliba'}" data-action="click->thesis-editor#editChapter" data-id="${node.id}">${node.title}</span>
+                            <div class="opacity-0 group-hover:opacity-100 flex gap-1 items-center z-10 flex-shrink-0">
+                                <button type="button" class="text-[10px] bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-lg hover:bg-djoliba hover:text-white transition-all" data-action="click->thesis-editor#renameChapter" data-id="${node.id}" data-title="${node.title}" title="Renommer">✎</button>
+                                <button type="button" class="text-[10px] bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.5 rounded-lg hover:bg-djoliba hover:text-white transition-all font-bold" data-action="click->thesis-editor#addChapter" data-parent-id="${node.id}" title="Ajouter une sous-partie">+</button>
+                                <button type="button" class="text-[10px] bg-red-50 border border-red-100 text-red-500 px-1.5 py-0.5 rounded-lg hover:bg-red-500 hover:text-white transition-all font-bold" data-action="click->thesis-editor#deleteChapter" data-id="${node.id}" title="Supprimer">×</button>
                             </div>
                         </div>
                         <div class="nested-sortable" data-parent-id="${node.id}">
@@ -569,6 +620,16 @@ Renvoie UNIQUEMENT le texte complet du chapitre mis à jour (aucun commentaire d
             window.dispatchEvent(new CustomEvent('toast:show', {
                 detail: { message: "Erreur lors de la réorganisation", type: "error" }
             }));
+        }
+    }
+
+    checkOriginality() {
+        const editorEl = this.element.querySelector('[data-controller="writing-editor"]');
+        if (editorEl) {
+            const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
+            if (writingEditor) {
+                writingEditor.checkOriginality();
+            }
         }
     }
 
