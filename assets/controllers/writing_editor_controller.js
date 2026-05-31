@@ -19,7 +19,11 @@ export default class extends Controller {
         'fileInput', 'previewModal', 'previewContent', 'confirmImportBtn', 'importBtn',
         'editorContainer', 'previewContainer', 'wordCount', 'charCount', 'pageCount',
         'modeWysiwygBtn', 'modeLatexBtn', 'helpModal', 'latexPreviewModal', 'latexPreviewContent',
-        'previewBtn', 'renderBtn', 'wysiwygInput'
+        'previewBtn', 'renderBtn', 'wysiwygInput',
+        'tableModal', 'tableCaptionInput', 'tableLabelInput', 'tableGridContainer',
+        'figureModal', 'figureUrlInput', 'figureCaptionInput', 'figureLabelInput',
+        'footnoteModal', 'footnoteTextInput',
+        'referenceModal', 'referenceLabelSelect'
     ];
 
     static values = {
@@ -69,14 +73,15 @@ export default class extends Controller {
     async #loadLibraries() {
         this.#setStatus("Chargement des modules d'édition...");
 
-        // Injecter KaTeX et CodeMirror CSS si absent
+        // Injecter KaTeX, CodeMirror et Highlight.js CSS si absents
         this.#loadStylesheet('https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css');
         this.#loadStylesheet('https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css');
+        this.#loadStylesheet('https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css');
 
         try {
             // Importation asynchrone parallélisée de tous les moteurs côté client
             const [
-                { Editor },
+                { Editor, Node, Extension },
                 StarterKitModule,
                 PlaceholderModule,
                 LinkModule,
@@ -84,7 +89,11 @@ export default class extends Controller {
                 TurndownModule,
                 MarkedModule,
                 KatexModule,
-                AutoRenderModule
+                AutoRenderModule,
+                TableModule,
+                TableRowModule,
+                TableCellModule,
+                TableHeaderModule
             ] = await Promise.all([
                 import('https://esm.sh/@tiptap/core@2.2.4'),
                 import('https://esm.sh/@tiptap/starter-kit@2.2.4'),
@@ -94,10 +103,16 @@ export default class extends Controller {
                 import('https://esm.sh/turndown@7.1.2?exports=default'),
                 import('https://esm.sh/marked@11.1.1?exports=marked'),
                 import('https://esm.sh/katex@0.16.9?exports=default'),
-                import('https://esm.sh/katex@0.16.9/dist/contrib/auto-render.js?exports=default')
+                import('https://esm.sh/katex@0.16.9/dist/contrib/auto-render.js?exports=default'),
+                import('https://esm.sh/@tiptap/extension-table@2.2.4'),
+                import('https://esm.sh/@tiptap/extension-table-row@2.2.4'),
+                import('https://esm.sh/@tiptap/extension-table-cell@2.2.4'),
+                import('https://esm.sh/@tiptap/extension-table-header@2.2.4')
             ]);
 
             this.EditorClass = Editor;
+            this.NodeClass = Node;
+            this.ExtensionClass = Extension;
             this.StarterKit = StarterKitModule.default || StarterKitModule;
             this.Placeholder = PlaceholderModule.default || PlaceholderModule;
             this.Link = LinkModule.default || LinkModule;
@@ -106,6 +121,12 @@ export default class extends Controller {
             this.marked = MarkedModule.marked || MarkedModule;
             this.katex = KatexModule.default || KatexModule;
             this.renderMathInElement = AutoRenderModule.default || AutoRenderModule;
+
+            // Dépendances de Tableaux
+            this.Table = TableModule.default || TableModule;
+            this.TableRow = TableRowModule.default || TableRowModule;
+            this.TableCell = TableCellModule.default || TableCellModule;
+            this.TableHeader = TableHeaderModule.default || TableHeaderModule;
 
             // Rendre KaTeX disponible globalement pour auto-render
             window.katex = this.katex;
@@ -119,8 +140,14 @@ export default class extends Controller {
                 codeBlockStyle: 'fenced'
             });
 
-            // Charger CodeMirror
-            await this.#loadCodeMirrorScripts();
+            // Préserver les balises HTML scientifiques pour éviter de perdre les tableaux, figures et notes de bas de page lors du round-trip HTML <-> Markdown
+            this.turndownService.keep(['table', 'thead', 'tbody', 'tr', 'th', 'td', 'figure', 'figcaption', 'img', 'sup']);
+
+            // Charger CodeMirror & Highlight.js
+            await Promise.all([
+                this.#loadCodeMirrorScripts(),
+                this.#loadScript('https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js')
+            ]);
 
             this.tipTapLoaded = true;
             this.#setStatus("");
@@ -189,6 +216,18 @@ export default class extends Controller {
         document.head.appendChild(link);
     }
 
+    #loadScript(src) {
+        if (document.querySelector(`script[src="${src}"]`)) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.async = true;
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+            document.head.appendChild(script);
+        });
+    }
+
     #initEditor() {
         if (!this.tipTapLoaded || !this.hasEditorContainerTarget) return;
 
@@ -206,6 +245,37 @@ export default class extends Controller {
             this.editorContainerTarget.classList.add('hidden');
         }
 
+        // Définir les extensions personnalisées pour les Figures scientifiques
+        const Figure = this.NodeClass.create({
+            name: 'figure',
+            group: 'block',
+            content: 'image figcaption',
+            addAttributes() {
+                return {
+                    label: { default: '' }
+                };
+            },
+            parseHTML() {
+                return [{ tag: 'figure', getAttrs: dom => ({ label: dom.getAttribute('data-label') || '' }) }];
+            },
+            renderHTML({ HTMLAttributes }) {
+                return ['figure', { 'data-label': HTMLAttributes.label, class: 'my-6 p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col items-center' }, 0];
+            }
+        });
+
+        const Figcaption = this.NodeClass.create({
+            name: 'figcaption',
+            group: 'block',
+            content: 'inline*',
+            selectable: false,
+            parseHTML() {
+                return [{ tag: 'figcaption' }];
+            },
+            renderHTML() {
+                return ['figcaption', { class: 'text-center text-xs text-slate-500 italic mt-2 focus:outline-none w-full' }, 0];
+            }
+        });
+
         this.editor = new this.EditorClass({
             element: this.editorContainerTarget,
             extensions: [
@@ -220,12 +290,143 @@ export default class extends Controller {
                 }),
                 this.Image.configure({
                     HTMLAttributes: { class: 'max-w-full rounded-2xl border border-slate-100 my-4 shadow-sm' }
-                })
+                }),
+                this.Table.configure({
+                    resizable: true,
+                    HTMLAttributes: { class: 'w-full border-collapse border border-slate-200 my-4 text-xs' }
+                }),
+                this.TableRow,
+                this.TableCell.configure({
+                    HTMLAttributes: { class: 'border border-slate-200 p-2 text-slate-700' }
+                }),
+                this.TableHeader.configure({
+                    HTMLAttributes: { class: 'border border-slate-200 p-2 bg-slate-50 text-djoliba font-bold' }
+                }),
+                Figure,
+                Figcaption
             ],
             content: initialHtml,
             editorProps: {
                 attributes: {
                     class: 'focus:outline-none min-h-[480px] h-full p-6 text-xs text-slate-800 leading-relaxed font-sans prose prose-slate max-w-none focus:ring-0 focus:border-transparent custom-scrollbar overflow-y-auto'
+                },
+                handleDoubleClick: (view, pos, event) => {
+                    const tableEl = event.target.closest('table');
+                    if (tableEl) {
+                        this.openEditTableModal(tableEl);
+                        return true;
+                    }
+                    return false;
+                },
+                handleKeyDown: (view, event) => {
+                    const { state } = view;
+                    const { selection } = state;
+                    const $from = selection.$from;
+                    
+                    // 1. Détecter si on est à l'intérieur d'un tableau
+                    let tableDepth = -1;
+                    for (let i = $from.depth; i >= 0; i--) {
+                        if ($from.node(i).type.name === 'table') {
+                            tableDepth = i;
+                            break;
+                        }
+                    }
+                    
+                    if (tableDepth === -1) {
+                        return false;
+                    }
+                    
+                    const tableNode = $from.node(tableDepth);
+                    const tablePos = $from.before(tableDepth);
+                    
+                    // 2. Détecter la cellule courante
+                    let cellDepth = -1;
+                    for (let i = $from.depth; i > 0; i--) {
+                        const name = $from.node(i).type.name;
+                        if (name === 'tableCell' || name === 'tableHeader') {
+                            cellDepth = i;
+                            break;
+                        }
+                    }
+                    
+                    if (cellDepth === -1) return false;
+                    const cellPos = $from.before(cellDepth);
+                    
+                    // Cas A : Flèche Bas dans la dernière ligne du tableau
+                    if (event.key === 'ArrowDown') {
+                        let isLastRow = false;
+                        let rowDepth = cellDepth - 1;
+                        if (rowDepth > 0 && $from.node(rowDepth).type.name === 'tableRow') {
+                            const rowNode = $from.node(rowDepth);
+                            const rowPos = $from.before(rowDepth);
+                            
+                            const tableEnd = tablePos + tableNode.nodeSize;
+                            const rowEnd = rowPos + rowNode.nodeSize;
+                            
+                            // Si la ligne se termine juste avant la fermeture du tableau
+                            if (rowEnd >= tableEnd - 2) {
+                                isLastRow = true;
+                            }
+                        }
+                        
+                        if (isLastRow) {
+                            const insertPos = tablePos + tableNode.nodeSize;
+                            const tr = state.tr;
+                            
+                            const nextNode = state.doc.nodeAt(insertPos);
+                            if (!nextNode || nextNode.type.name !== 'paragraph') {
+                                const paragraph = state.schema.nodes.paragraph.create();
+                                tr.insert(insertPos, paragraph);
+                            }
+                            
+                            const $pos = tr.doc.resolve(insertPos + 1);
+                            tr.setSelection(new state.selection.constructor($pos));
+                            view.dispatch(tr);
+                            view.focus();
+                            
+                            this.#handleContentChange();
+                            return true;
+                        }
+                    }
+                    
+                    // Cas B : Entrée dans la dernière cellule du tableau à la fin du texte
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                        let isLastCell = false;
+                        tableNode.descendants((node, pos) => {
+                            if (node.type.name === 'tableCell' || node.type.name === 'tableHeader') {
+                                const absolutePos = tablePos + 1 + pos;
+                                if (absolutePos === cellPos) {
+                                    isLastCell = true;
+                                } else if (absolutePos > cellPos) {
+                                    isLastCell = false;
+                                }
+                            }
+                        });
+                        
+                        if (isLastCell) {
+                            const isAtCellEnd = selection.$from.parentOffset === selection.$from.parent.content.size;
+                            if (isAtCellEnd) {
+                                const insertPos = tablePos + tableNode.nodeSize;
+                                const tr = state.tr;
+                                
+                                const nextNode = state.doc.nodeAt(insertPos);
+                                if (!nextNode || nextNode.type.name !== 'paragraph') {
+                                    const paragraph = state.schema.nodes.paragraph.create();
+                                    tr.insert(insertPos, paragraph);
+                                }
+                                
+                                const $pos = tr.doc.resolve(insertPos + 1);
+                                tr.setSelection(new state.selection.constructor($pos));
+                                view.dispatch(tr);
+                                view.focus();
+                                
+                                this.#handleContentChange();
+                                return true;
+                            }
+                        }
+                    }
+                    
+                    return false;
                 }
             },
             onUpdate: () => {
@@ -257,9 +458,25 @@ export default class extends Controller {
     #updatePreview() {
         if (!this.hasPreviewContainerTarget) return;
 
-        const markdown = this.#getMarkdown();
-        const html = this.marked.parse(markdown);
+        let html = '';
+        if (this.currentMode === 'wysiwyg' && this.editor) {
+            html = this.editor.getHTML();
+        } else {
+            const markdown = this.#getMarkdown();
+            html = this.marked.parse(markdown);
+        }
+        
         this.previewContainerTarget.innerHTML = html;
+
+        // Rendu des titres de tableaux avec titre (data-caption)
+        this.previewContainerTarget.querySelectorAll('table[data-caption]').forEach(table => {
+            const caption = table.getAttribute('data-caption');
+            const label = table.getAttribute('data-label') || '';
+            const captionEl = document.createElement('div');
+            captionEl.className = 'text-center text-xs text-slate-500 italic mb-2 mt-4 font-semibold';
+            captionEl.textContent = `Tableau : ${caption} ${label ? `(${label})` : ''}`;
+            table.parentNode.insertBefore(captionEl, table);
+        });
 
         // Rendu mathématique automatique KaTeX côté client
         if (window.renderMathInElement) {
@@ -271,6 +488,13 @@ export default class extends Controller {
                     { left: '\\[', right: '\\]', display: true }
                 ],
                 throwOnError: false
+            });
+        }
+
+        // Coloration syntaxique des blocs de code
+        if (window.hljs) {
+            this.previewContainerTarget.querySelectorAll('pre code').forEach((block) => {
+                window.hljs.highlightElement(block);
             });
         }
     }
@@ -600,25 +824,47 @@ export default class extends Controller {
     // ─────────────────────────────────────────────
 
     async exportLatex() {
-        const markdown = this.#getMarkdown();
-        if (!markdown.trim()) {
-            this.#setStatus("L'éditeur est vide. Rien à exporter.", true);
-            return;
+        let exportUrl = '';
+        let payload = {};
+        const filename = `djoliba_export_${this.projectIdValue || 'document'}.tex`;
+
+        if (this.currentMode === 'wysiwyg') {
+            if (!this.editor) {
+                this.#setStatus("Éditeur non initialisé.", true);
+                return;
+            }
+            const html = this.editor.getHTML();
+            if (!html || this.editor.isEmpty) {
+                this.#setStatus("L'éditeur est vide. Rien à exporter.", true);
+                return;
+            }
+            this.#setStatus("Préparation du téléchargement LaTeX...");
+            exportUrl = `/api/projects/${this.projectIdValue}/export/latex`;
+            payload = {
+                html: html,
+                filename: filename
+            };
+        } else {
+            const rawLatex = this.codeMirror ? this.codeMirror.getValue() : (this.hasInputTarget ? this.inputTarget.value : '');
+            if (!rawLatex.trim()) {
+                this.#setStatus("L'éditeur est vide. Rien à exporter.", true);
+                return;
+            }
+            this.#setStatus("Préparation du téléchargement LaTeX...");
+            exportUrl = this.hasExportUrlValue ? this.exportUrlValue : '/api/writing/export-latex';
+            payload = {
+                content: rawLatex,
+                filename: filename
+            };
         }
 
-        this.#setStatus("Préparation du téléchargement LaTeX...");
-
         try {
-            const exportUrl = this.hasExportUrlValue ? this.exportUrlValue : '/api/writing/export-latex';
             const response = await fetch(exportUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    content: markdown,
-                    filename: `djoliba_export_${this.projectIdValue || 'document'}.tex`
-                })
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) throw new Error("Échec d'exportation serveur.");
@@ -628,7 +874,7 @@ export default class extends Controller {
             
             const link = document.createElement('a');
             link.href = blobUrl;
-            link.download = `djoliba_export_${this.projectIdValue || 'document'}.tex`;
+            link.download = filename;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -1259,5 +1505,435 @@ export default class extends Controller {
      */
     getMarkdownContent() {
         return this.#getMarkdown();
+    }
+
+    // =============================================
+    // TABLEAUX (TIPTAP TABLE EXTENSION)
+    // =============================================
+
+    insertTableModal() {
+        if (!this.editor) return;
+        this.editingTableEl = null;
+        if (this.hasTableCaptionInputTarget) this.tableCaptionInputTarget.value = '';
+        if (this.hasTableLabelInputTarget) this.tableLabelInputTarget.value = '';
+        this.openTableModal();
+        this.renderGridEditor(3, 3);
+    }
+
+    openTableModal() {
+        if (!this.hasTableModalTarget) return;
+        const modal = this.tableModalTarget;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            const card = modal.querySelector('.modal-card');
+            if (card) card.classList.remove('scale-95', 'opacity-0');
+            if (card) card.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    closeTableModal() {
+        if (!this.hasTableModalTarget) return;
+        const modal = this.tableModalTarget;
+        const card = modal.querySelector('.modal-card');
+        if (card) card.classList.remove('scale-100', 'opacity-100');
+        if (card) card.classList.add('scale-95', 'opacity-0');
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
+    }
+
+    openEditTableModal(tableEl) {
+        this.editingTableEl = tableEl;
+        
+        const caption = tableEl.getAttribute('data-caption') || '';
+        const label = tableEl.getAttribute('data-label') || '';
+        
+        if (this.hasTableCaptionInputTarget) this.tableCaptionInputTarget.value = caption;
+        if (this.hasTableLabelInputTarget) this.tableLabelInputTarget.value = label;
+        
+        const trs = tableEl.querySelectorAll('tr');
+        const rows = trs.length;
+        if (rows === 0) return;
+        
+        let cols = 0;
+        const cellData = [];
+        
+        trs.forEach((tr) => {
+            const cells = tr.querySelectorAll('th, td');
+            cols = Math.max(cols, cells.length);
+            const rowData = [];
+            cells.forEach(cell => {
+                rowData.push(cell.textContent.trim());
+            });
+            cellData.push(rowData);
+        });
+        
+        this.openTableModal();
+        this.renderGridEditor(rows, cols, cellData);
+    }
+
+    renderGridEditor(rows, cols, cellData = null) {
+        if (!this.hasTableGridContainerTarget) return;
+        const container = this.tableGridContainerTarget;
+        container.innerHTML = '';
+        
+        const table = document.createElement('table');
+        table.className = 'w-full border-collapse border border-slate-200 text-xs my-2';
+        
+        for (let r = 0; r < rows; r++) {
+            const tr = document.createElement('tr');
+            for (let c = 0; c < cols; c++) {
+                const cellType = (r === 0) ? 'th' : 'td';
+                const cell = document.createElement(cellType);
+                cell.className = 'border border-slate-200 p-1 bg-slate-50';
+                
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'w-full px-2 py-1 text-xs border border-transparent focus:border-djoliba focus:bg-white bg-slate-50 rounded transition-all focus:outline-none text-slate-800';
+                input.placeholder = (r === 0) ? `Entête ${c+1}` : `Valeur`;
+                
+                if (cellData && cellData[r] && cellData[r][c] !== undefined) {
+                    input.value = cellData[r][c];
+                } else {
+                    input.value = '';
+                }
+                
+                input.dataset.row = r;
+                input.dataset.col = c;
+                
+                cell.appendChild(input);
+                tr.appendChild(cell);
+            }
+            table.appendChild(tr);
+        }
+        
+        container.appendChild(table);
+        this.activeTableRows = rows;
+        this.activeTableCols = cols;
+    }
+
+    collectGridData() {
+        const rows = this.activeTableRows || 3;
+        const cols = this.activeTableCols || 3;
+        const container = this.tableGridContainerTarget;
+        const data = [];
+        
+        for (let r = 0; r < rows; r++) {
+            const rowData = [];
+            for (let c = 0; c < cols; c++) {
+                const input = container.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+                rowData.push(input ? input.value : '');
+            }
+            data.push(rowData);
+        }
+        return data;
+    }
+
+    addTableRow() {
+        const rows = this.activeTableRows || 3;
+        const cols = this.activeTableCols || 3;
+        const currentData = this.collectGridData();
+        this.renderGridEditor(rows + 1, cols, currentData);
+    }
+    
+    addTableCol() {
+        const rows = this.activeTableRows || 3;
+        const cols = this.activeTableCols || 3;
+        const currentData = this.collectGridData();
+        this.renderGridEditor(rows, cols + 1, currentData);
+    }
+    
+    removeTableRow() {
+        const rows = this.activeTableRows || 3;
+        const cols = this.activeTableCols || 3;
+        if (rows <= 2) return;
+        const currentData = this.collectGridData();
+        this.renderGridEditor(rows - 1, cols, currentData);
+    }
+    
+    removeTableCol() {
+        const rows = this.activeTableRows || 3;
+        const cols = this.activeTableCols || 3;
+        if (cols <= 1) return;
+        const currentData = this.collectGridData();
+        this.renderGridEditor(rows, cols - 1, currentData);
+    }
+
+    confirmInsertTable() {
+        const caption = this.hasTableCaptionInputTarget ? this.tableCaptionInputTarget.value.trim() : '';
+        const label = this.hasTableLabelInputTarget ? this.tableLabelInputTarget.value.trim() : '';
+        
+        const rows = this.activeTableRows || 3;
+        const cols = this.activeTableCols || 3;
+        
+        let tableHtml = `<table data-caption="${this.#escapeHtml(caption)}" data-label="${this.#escapeHtml(label)}" class="w-full border-collapse border border-slate-200 my-4 text-xs">`;
+        
+        const container = this.tableGridContainerTarget;
+        
+        tableHtml += '<thead><tr>';
+        for (let c = 0; c < cols; c++) {
+            const input = container.querySelector(`input[data-row="0"][data-col="${c}"]`);
+            const val = input ? input.value.trim() : '';
+            tableHtml += `<th class="border border-slate-200 p-2 bg-slate-50 text-djoliba font-bold">${this.#escapeHtml(val)}</th>`;
+        }
+        tableHtml += '</tr></thead><tbody>';
+        
+        for (let r = 1; r < rows; r++) {
+            tableHtml += '<tr>';
+            for (let c = 0; c < cols; c++) {
+                const input = container.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+                const val = input ? input.value.trim() : '';
+                tableHtml += `<td class="border border-slate-200 p-2 text-slate-700">${this.#escapeHtml(val)}</td>`;
+            }
+            tableHtml += '</tr>';
+        }
+        tableHtml += '</tbody></table>';
+        
+        if (this.editingTableEl) {
+            // Remplacer le tableau existant sélectionné
+            this.editor.chain().focus().insertContent(tableHtml).run();
+        } else {
+            // Insérer le nouveau tableau et forcer un retour à la ligne juste après
+            this.editor.chain()
+                .focus()
+                .insertContent(tableHtml)
+                .insertContent('<p></p>')
+                .run();
+        }
+        
+        this.closeTableModal();
+        this.#handleContentChange();
+    }
+
+    #escapeHtml(str) {
+        if (!str) return '';
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    // =============================================
+    // FIGURES AVEC LÉGENDE
+    // =============================================
+
+    insertFigureModal() {
+        if (!this.editor) return;
+        this.figureUrlInputTarget.value = '';
+        this.figureCaptionInputTarget.value = '';
+        this.figureLabelInputTarget.value = '';
+        this.openFigureModal();
+    }
+
+    openFigureModal() {
+        if (!this.hasFigureModalTarget) return;
+        const modal = this.figureModalTarget;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            const card = modal.querySelector('.modal-card');
+            if (card) card.classList.remove('scale-95', 'opacity-0');
+            if (card) card.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    closeFigureModal() {
+        if (!this.hasFigureModalTarget) return;
+        const modal = this.figureModalTarget;
+        const card = modal.querySelector('.modal-card');
+        if (card) card.classList.remove('scale-100', 'opacity-100');
+        if (card) card.classList.add('scale-95', 'opacity-0');
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
+    }
+
+    confirmInsertFigure() {
+        const imageUrl = this.figureUrlInputTarget.value.trim() || 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=600&auto=format&fit=crop';
+        const caption = this.figureCaptionInputTarget.value.trim() || 'Figure sans titre';
+        const label = this.figureLabelInputTarget.value.trim();
+
+        this.editor.chain()
+            .focus()
+            .insertContent([
+                {
+                    type: 'figure',
+                    attrs: { label: label || '' },
+                    content: [
+                        { type: 'image', attrs: { src: imageUrl } },
+                        { type: 'figcaption', content: [{ type: 'text', text: caption }] }
+                    ]
+                }
+            ])
+            .insertContent('<p></p>') // force a clean newline right after!
+            .run();
+        
+        this.closeFigureModal();
+        this.#handleContentChange();
+    }
+
+    // =============================================
+    // NOTES DE BAS DE PAGE
+    // =============================================
+
+    insertFootnoteModal() {
+        if (!this.editor) return;
+        this.footnoteTextInputTarget.value = '';
+        this.openFootnoteModal();
+    }
+
+    openFootnoteModal() {
+        if (!this.hasFootnoteModalTarget) return;
+        const modal = this.footnoteModalTarget;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            const card = modal.querySelector('.modal-card');
+            if (card) card.classList.remove('scale-95', 'opacity-0');
+            if (card) card.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    closeFootnoteModal() {
+        if (!this.hasFootnoteModalTarget) return;
+        const modal = this.footnoteModalTarget;
+        const card = modal.querySelector('.modal-card');
+        if (card) card.classList.remove('scale-100', 'opacity-100');
+        if (card) card.classList.add('scale-95', 'opacity-0');
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
+    }
+
+    confirmInsertFootnote() {
+        const noteText = this.footnoteTextInputTarget.value.trim();
+        if (!noteText) return;
+
+        const html = this.editor.getHTML();
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        const noteId = tempDiv.querySelectorAll('sup[data-fn]').length + 1;
+
+        this.editor.chain().focus().insertContent(`<sup data-fn="${noteId}"><a href="#fn${noteId}">[${noteId}]</a></sup>`).run();
+
+        let footnotesContainer = tempDiv.querySelector('.footnotes');
+        if (!footnotesContainer) {
+            const newFootnotesHtml = `<div class="footnotes"><hr class="my-4"><p id="fn${noteId}" class="text-xs text-slate-500 font-serif my-1">[${noteId}] ${noteText}</p></div>`;
+            this.editor.chain().focus().insertContentAt(this.editor.state.doc.content.size, newFootnotesHtml).run();
+        } else {
+            const newNoteParagraph = `<p id="fn${noteId}" class="text-xs text-slate-500 font-serif my-1">[${noteId}] ${noteText}</p>`;
+            footnotesContainer.innerHTML += newNoteParagraph;
+            this.editor.commands.setContent(tempDiv.innerHTML);
+        }
+
+        this.closeFootnoteModal();
+        this.#handleContentChange();
+    }
+
+    // =============================================
+    // RÉFÉRENCES CROISÉES
+    // =============================================
+
+    insertReferenceModal() {
+        if (!this.editor) return;
+        
+        const select = this.referenceLabelSelectTarget;
+        select.innerHTML = '<option value="">-- Aucun label trouvé --</option>';
+
+        const labels = this.getAllLabels();
+        if (labels.length > 0) {
+            select.innerHTML = '';
+            labels.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.label;
+                opt.textContent = item.text;
+                select.appendChild(opt);
+            });
+        }
+
+        this.openReferenceModal();
+    }
+
+    openReferenceModal() {
+        if (!this.hasReferenceModalTarget) return;
+        const modal = this.referenceModalTarget;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            const card = modal.querySelector('.modal-card');
+            if (card) card.classList.remove('scale-95', 'opacity-0');
+            if (card) card.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    closeReferenceModal() {
+        if (!this.hasReferenceModalTarget) return;
+        const modal = this.referenceModalTarget;
+        const card = modal.querySelector('.modal-card');
+        if (card) card.classList.remove('scale-100', 'opacity-100');
+        if (card) card.classList.add('scale-95', 'opacity-0');
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
+    }
+
+    confirmInsertReference() {
+        const label = this.referenceLabelSelectTarget.value;
+        if (!label) return;
+
+        this.editor.chain().focus().insertContent(`<a href="#${label}" class="reference text-djoliba font-bold hover:underline">${label}</a>`).run();
+        
+        this.closeReferenceModal();
+        this.#handleContentChange();
+    }
+
+    getAllLabels() {
+        if (!this.editor) return [];
+
+        const html = this.editor.getHTML();
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        const labels = [];
+
+        tempDiv.querySelectorAll('figure[data-label]').forEach(fig => {
+            const label = fig.getAttribute('data-label');
+            if (label) {
+                const caption = fig.querySelector('figcaption')?.textContent || 'Figure';
+                labels.push({ type: 'figure', label, text: `Figure: ${caption} (${label})` });
+            }
+        });
+
+        tempDiv.querySelectorAll('[data-label]').forEach(el => {
+            const label = el.getAttribute('data-label');
+            const tagName = el.tagName.toLowerCase();
+            if (label && tagName !== 'figure' && !labels.some(item => item.label === label)) {
+                labels.push({ type: tagName, label, text: `${tagName.toUpperCase()}: ${label}` });
+            }
+        });
+
+        return labels;
     }
 }

@@ -67,6 +67,19 @@
 			<button type="button" data-action="click->writing-editor#toggleCodeBlock" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Bloc de code">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
 			</button>
+			<span class="w-[1px] h-4 bg-slate-200 mx-1"></span>
+			<button type="button" data-action="click->writing-editor#insertTableModal" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Insérer un tableau">
+				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+			</button>
+			<button type="button" data-action="click->writing-editor#insertFigureModal" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Insérer une figure légendée">
+				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+			</button>
+			<button type="button" data-action="click->writing-editor#insertFootnoteModal" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all flex-shrink-0" title="Insérer une note de bas de page">
+				<span class="text-xs font-bold leading-none">N<sup>1</sup></span>
+			</button>
+			<button type="button" data-action="click->writing-editor#insertReferenceModal" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Insérer une référence croisée">
+				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+			</button>
 		</div>
 
 		{# Groupe Droite : Outils de Publication & Document #}
@@ -464,4 +477,152 @@
 		</div>
 	</div>
 
+	{# ───────────────────────────────────────────── #}
+	{# MODAL 6 : INSERTION DE TABLEAU                #}
+	{# ───────────────────────────────────────────── #}
+	<div data-writing-editor-target="tableModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba">
+						<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+					</div>
+					<h3 class="text-sm font-bold text-djoliba">Éditeur de Tableau Scientifique</h3>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeTableModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<div class="p-8 space-y-4">
+				<div class="grid grid-cols-2 gap-4">
+					<div>
+						<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Titre du Tableau</label>
+						<input type="text" data-writing-editor-target="tableCaptionInput" placeholder="Ex: Résultats d'analyse" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold bg-slate-50/50">
+					</div>
+					<div>
+						<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Label LaTeX (Optionnel)</label>
+						<input type="text" data-writing-editor-target="tableLabelInput" placeholder="Ex: tab:resultats" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold bg-slate-50/50">
+					</div>
+				</div>
+				
+				<div class="border border-slate-100 rounded-2xl p-4 bg-slate-50/30">
+					<div class="flex items-center justify-between mb-3">
+						<span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Édition des données de la grille</span>
+						<div class="flex gap-2">
+							<button type="button" data-action="click->writing-editor#addTableRow" class="px-2 py-1 bg-white border border-slate-200 text-slate-600 rounded hover:bg-slate-50 text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm" title="Ajouter une ligne">+ Ligne</button>
+							<button type="button" data-action="click->writing-editor#addTableCol" class="px-2 py-1 bg-white border border-slate-200 text-slate-600 rounded hover:bg-slate-50 text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm" title="Ajouter une colonne">+ Col</button>
+							<button type="button" data-action="click->writing-editor#removeTableRow" class="px-2 py-1 bg-white border border-slate-200 text-red-500 rounded hover:bg-red-50 text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm" title="Supprimer la dernière ligne">- Ligne</button>
+							<button type="button" data-action="click->writing-editor#removeTableCol" class="px-2 py-1 bg-white border border-slate-200 text-red-500 rounded hover:bg-red-50 text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm" title="Supprimer la dernière colonne">- Col</button>
+						</div>
+					</div>
+					<div class="max-h-[260px] overflow-y-auto custom-scrollbar border border-slate-100 rounded-xl bg-white p-2">
+						<div data-writing-editor-target="tableGridContainer" class="w-full"></div>
+					</div>
+				</div>
+			</div>
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end gap-3 bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeTableModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">Annuler</button>
+				<button type="button" data-action="click->writing-editor#confirmInsertTable" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Enregistrer</button>
+			</div>
+		</div>
+	</div>
+
+	{# ───────────────────────────────────────────── #}
+	{# MODAL 7 : INSERTION DE FIGURE                 #}
+	{# ───────────────────────────────────────────── #}
+	<div data-writing-editor-target="figureModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba">
+						<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+					</div>
+					<h3 class="text-sm font-bold text-djoliba">Insérer une Figure</h3>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeFigureModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<div class="p-8 space-y-4">
+				<div>
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">URL de l'image ou Source</label>
+					<input type="text" data-writing-editor-target="figureUrlInput" placeholder="https://example.com/image.png" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold">
+				</div>
+				<div>
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Légende (Caption)</label>
+					<input type="text" data-writing-editor-target="figureCaptionInput" placeholder="Ex: Structure sémantique du réseau Djoliba" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold">
+				</div>
+				<div>
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Label LaTeX (optionnel)</label>
+					<input type="text" data-writing-editor-target="figureLabelInput" placeholder="Ex: fig:structure" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold">
+				</div>
+			</div>
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end gap-3 bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeFigureModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">Annuler</button>
+				<button type="button" data-action="click->writing-editor#confirmInsertFigure" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Insérer</button>
+			</div>
+		</div>
+	</div>
+
+	{# ───────────────────────────────────────────── #}
+	{# MODAL 8 : INSERTION DE NOTE                   #}
+	{# ───────────────────────────────────────────── #}
+	<div data-writing-editor-target="footnoteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba font-bold text-xs">
+						N<sup>1</sup>
+					</div>
+					<h3 class="text-sm font-bold text-djoliba">Note de bas de page</h3>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeFootnoteModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<div class="p-8 space-y-4">
+				<div>
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Contenu de la note</label>
+					<textarea data-writing-editor-target="footnoteTextInput" placeholder="Rédigez la note de bas de page ici..." rows="3" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold resize-none"></textarea>
+				</div>
+			</div>
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end gap-3 bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeFootnoteModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">Annuler</button>
+				<button type="button" data-action="click->writing-editor#confirmInsertFootnote" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Insérer</button>
+			</div>
+		</div>
+	</div>
+
+	{# ───────────────────────────────────────────── #}
+	{# MODAL 9 : INSERTION DE RÉFÉRENCE CROISÉE      #}
+	{# ───────────────────────────────────────────── #}
+	<div data-writing-editor-target="referenceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba">
+						<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+					</div>
+					<h3 class="text-sm font-bold text-djoliba">Référence Croisée</h3>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeReferenceModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<div class="p-8 space-y-4">
+				<div>
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Sélectionnez le label cible</label>
+					<select data-writing-editor-target="referenceLabelSelect" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold bg-white cursor-pointer">
+						<option value="">-- Aucun label trouvé --</option>
+					</select>
+				</div>
+			</div>
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end gap-3 bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeReferenceModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">Annuler</button>
+				<button type="button" data-action="click->writing-editor#confirmInsertReference" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Insérer</button>
+			</div>
+		</div>
+	</div>
+
 </div>
+
