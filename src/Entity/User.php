@@ -65,6 +65,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(options: ['default' => false])]
     private ?bool $isVerified = false;
 
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $academicStatus = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $biography = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $googleScholar = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
@@ -303,6 +312,42 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setIsVerified(bool $isVerified): static
     {
         $this->isVerified = $isVerified;
+
+        return $this;
+    }
+
+    public function getAcademicStatus(): ?string
+    {
+        return $this->academicStatus;
+    }
+
+    public function setAcademicStatus(?string $academicStatus): static
+    {
+        $this->academicStatus = $academicStatus;
+
+        return $this;
+    }
+
+    public function getBiography(): ?string
+    {
+        return $this->biography;
+    }
+
+    public function setBiography(?string $biography): static
+    {
+        $this->biography = $biography;
+
+        return $this;
+    }
+
+    public function getGoogleScholar(): ?string
+    {
+        return $this->googleScholar;
+    }
+
+    public function setGoogleScholar(?string $googleScholar): static
+    {
+        $this->googleScholar = $googleScholar;
 
         return $this;
     }

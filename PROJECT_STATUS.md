@@ -31,7 +31,7 @@ Depuis son lancement, Djoliba est construit sur des technologies robustes, moder
 *   **Interface de Gestion de Profil par l'Utilisateur (`ProfileController.php`)** :
     *   **Dashboard Personnel Dédié** : Accessible instantanément en cliquant sur l'avatar ou le nom d'utilisateur dans la barre latérale gauche (sidebar).
     *   **Informations Personnelles & Connexion** : Édition en temps réel du prénom, nom de famille et adresse email (avec vérification automatique d'unicité et de validité).
-    *   **Identité Académique** : Saisie et contrôle strict de format de l'identifiant chercheur unique **ORCID** (`XXXX-XXXX-XXXX-XXXX`), de l'affiliation institutionnelle (institution / université) et du domaine de recherche scientifique (ex: Énergies renouvelables, Modélisation statistique).
+    *   **Identité Académique** : Saisie et contrôle strict de format de l'identifiant chercheur unique **ORCID** (`XXXX-XXXX-XXXX-XXXX`), de l'affiliation institutionnelle (institution / université), du domaine de recherche scientifique, du **statut académique** (Licence, Master, Doctorant, Enseignant-chercheur, etc.), de la **biographie scientifique** et du lien **Google Scholar** pour lier ses publications.
     *   **Préférences Système** : Personnalisation bilingue de la langue de l'interface (FR/EN) et activation de l'assistant d'aide contextuelle à la rédaction.
 
 ### 🔍 MODULE 2 : Recherche & Revue de Littérature (pgvector)

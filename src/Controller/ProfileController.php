@@ -35,6 +35,9 @@ class ProfileController extends AbstractController
             $orcid = trim($request->request->get('orcid', ''));
             $affiliation = trim($request->request->get('affiliation', ''));
             $researchField = trim($request->request->get('researchField', ''));
+            $academicStatus = trim($request->request->get('academicStatus', ''));
+            $biography = trim($request->request->get('biography', ''));
+            $googleScholar = trim($request->request->get('googleScholar', ''));
             $languagePreference = $request->request->get('languagePreference', 'fr');
             $helpEnabled = $request->request->get('helpEnabled') === 'on' || $request->request->get('helpEnabled') === '1';
 
@@ -64,6 +67,9 @@ class ProfileController extends AbstractController
                 $user->setOrcid(!empty($orcid) ? $orcid : null);
                 $user->setAffiliation(!empty($affiliation) ? $affiliation : null);
                 $user->setResearchField(!empty($researchField) ? $researchField : null);
+                $user->setAcademicStatus(!empty($academicStatus) ? $academicStatus : null);
+                $user->setBiography(!empty($biography) ? $biography : null);
+                $user->setGoogleScholar(!empty($googleScholar) ? $googleScholar : null);
                 $user->setLanguagePreference($languagePreference);
                 $user->setHelpEnabled($helpEnabled);
                 $user->setUpdatedAt(new \DateTime());

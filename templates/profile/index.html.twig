@@ -54,7 +54,7 @@
                         <h2 class="font-bold text-djoliba text-base truncate max-w-full">
                             {{ app.user.firstName ?: 'Chercheur' }} {{ app.user.lastName ?: '' }}
                         </h2>
-                        <span class="text-xs text-slate-400 mt-1 block">Rôle : Chercheur Académique</span>
+                        <span class="text-xs text-slate-400 mt-1 block">Statut : {{ app.user.academicStatus ?: 'Chercheur Académique' }}</span>
                         <div class="w-full h-[1px] bg-slate-100 my-4"></div>
                         <div class="text-left w-full space-y-2">
                             <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Compte créé le</span>
@@ -118,11 +118,48 @@
                             </div>
                         </div>
 
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div>
+                                <label for="orcid" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Identifiant Chercheur ORCID</label>
+                                <input type="text" id="orcid" name="orcid" value="{{ app.user.orcid }}" placeholder="Ex: 0000-0002-1825-0097"
+                                       class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold placeholder:text-slate-300">
+                                <p class="text-[10px] text-slate-400 mt-2">Format requis : XXXX-XXXX-XXXX-XXXX</p>
+                            </div>
+                            <div>
+                                <label for="googleScholar" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Profil Google Scholar (Lien)</label>
+                                <input type="url" id="googleScholar" name="googleScholar" value="{{ app.user.googleScholar }}" placeholder="Ex: https://scholar.google.com/citations?user=..."
+                                       class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold placeholder:text-slate-300">
+                                <p class="text-[10px] text-slate-400 mt-2">Lien optionnel vers vos publications indexées.</p>
+                            </div>
+                        </div>
+
                         <div>
-                            <label for="orcid" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Identifiant Chercheur ORCID</label>
-                            <input type="text" id="orcid" name="orcid" value="{{ app.user.orcid }}" placeholder="Ex: 0000-0002-1825-0097"
-                                   class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold placeholder:text-slate-300">
-                            <p class="text-[10px] text-slate-400 mt-2">Format requis : 16 chiffres séparés par des tirets (XXXX-XXXX-XXXX-XXXX).</p>
+                            <label for="academicStatus" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Statut Académique / Niveau d'étude</label>
+                            <select id="academicStatus" name="academicStatus"
+                                    class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold bg-white cursor-pointer">
+                                <option value="" {{ app.user.academicStatus is empty ? 'selected' : '' }}>-- Choisir un statut --</option>
+                                <option value="Licence" {{ app.user.academicStatus == 'Licence' ? 'selected' : '' }}>Licence (Undergraduate)</option>
+                                <option value="Master" {{ app.user.academicStatus == 'Master' ? 'selected' : '' }}>Master / Ingénieur</option>
+                                <option value="Étudiant en doctorat (Doctorant)" {{ app.user.academicStatus == 'Étudiant en doctorat (Doctorant)' ? 'selected' : '' }}>Étudiant en doctorat (Doctorant)</option>
+                                <option value="Chercheur Post-doctoral" {{ app.user.academicStatus == 'Chercheur Post-doctoral' ? 'selected' : '' }}>Chercheur Post-doctoral</option>
+                                <option value="Enseignant-chercheur" {{ app.user.academicStatus == 'Enseignant-chercheur' ? 'selected' : '' }}>Enseignant-chercheur</option>
+                                <option value="Chercheur indépendant" {{ app.user.academicStatus == 'Chercheur indépendant' ? 'selected' : '' }}>Chercheur indépendant</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {# Section 2b : Biographie & Recherches #}
+                    <div class="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-6">
+                        <h3 class="text-sm font-black text-djoliba uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center gap-2">
+                            <span class="w-1.5 h-3 bg-djoliba rounded-full"></span>
+                            Biographie & Intérêts de Recherche
+                        </h3>
+                        
+                        <div>
+                            <label for="biography" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Présentation Scientifique</label>
+                            <textarea id="biography" name="biography" rows="4" placeholder="Décrivez vos principaux travaux de recherche, vos méthodologies et vos aspirations scientifiques..."
+                                      class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold placeholder:text-slate-300">{{ app.user.biography }}</textarea>
+                            <p class="text-[10px] text-slate-400 mt-2">Ce texte aide le compagnon d'IA à comprendre votre profil pour vos revues de littérature.</p>
                         </div>
                     </div>
 
