@@ -13,7 +13,7 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 
 class SessionTimeoutSubscriber implements EventSubscriberInterface
 {
-    private const TIMEOUT_SECONDS = 900; // 15 minutes d'inactivité
+    private const TIMEOUT_SECONDS = 3600; // 1 heure d'inactivité
 
     public function __construct(
         private TokenStorageInterface $tokenStorage,

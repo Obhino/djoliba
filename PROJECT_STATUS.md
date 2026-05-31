@@ -27,7 +27,7 @@ Depuis son lancement, Djoliba est construit sur des technologies robustes, moder
 
 ### 🔐 MODULE 1 : Authentification & Profil Académique
 *   **Enregistrement & Connexion** : Processus d'authentification robuste (`AuthController.php` et `UserAuthenticator.php`) avec hachage sécurisé des mots de passe (Bcrypt) et validation d'e-mail par lien de confirmation signé (`symfonycasts/verify-email-bundle`).
-*   **Gestion d'inactivité & Sauvegarde Automatique** : Détection de l'inactivité de session (15 min) avec sauvegarde automatique sécurisée en base de données du projet actif ouvert en session, déconnexion propre et message flash premium (`SessionTimeoutSubscriber.php`).
+*   **Gestion d'inactivité & Sauvegarde Automatique** : Détection de l'inactivité de session (1 heure) avec sauvegarde automatique sécurisée en base de données du projet actif ouvert en session, déconnexion propre et message flash premium (`SessionTimeoutSubscriber.php`).
 *   **Interface de Gestion de Profil par l'Utilisateur (`ProfileController.php`)** :
     *   **Dashboard Personnel Dédié** : Accessible instantanément en cliquant sur l'avatar ou le nom d'utilisateur dans la barre latérale gauche (sidebar).
     *   **Informations Personnelles & Connexion** : Édition en temps réel du prénom, nom de famille et adresse email (avec vérification automatique d'unicité et de validité).
@@ -87,7 +87,7 @@ Depuis son lancement, Djoliba est construit sur des technologies robustes, moder
 | :--- | :--- | :--- | :--- |
 | **Auth / Profil** | Enregistrement, ORCID, affiliations | Inception | **100% Fonctionnel** |
 | **Auth / Profil** | Vérification d'e-mail par lien signé (verify-email-bundle) | Sécurité | **100% Fonctionnel** |
-| **Auth / Profil** | Détection d'inactivité & Sauvegarde Projet (15 min) | Session | **100% Fonctionnel** |
+| **Auth / Profil** | Détection d'inactivité & Sauvegarde Projet (1 heure) | Session | **100% Fonctionnel** |
 | **Auth / Profil** | Interface d'administration & Préférences chercheur | Profil v1 | **100% Fonctionnel** |
 | **Recherche** | Similarité vectorielle sémantique (pgvector) | Inception | **100% Fonctionnel** |
 | **Recherche** | Génération de revues de littérature structurées | Inception | **100% Fonctionnel** |

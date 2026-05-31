@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="p-8 bg-slate-50/30 min-h-screen">
-    <div class="max-w-4xl mx-auto">
+    <div class="max-w-6xl mx-auto">
         
         {# En-tête de page #}
         <div class="mb-8 flex items-center justify-between">
@@ -43,11 +43,12 @@
         {# Formulaire principal de profil #}
         <form method="POST" class="space-y-8">
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {# Grille unifiée et responsive à 6 colonnes #}
+            <div class="grid grid-cols-1 md:grid-cols-6 gap-8">
                 
-                {# Colonne Gauche : Identité de connexion & Avatar #}
-                <div class="md:col-span-1 space-y-6">
-                    <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col items-center text-center">
+                {# Card 1 : Identité rapide (Avatar) #}
+                <div class="md:col-span-3 lg:col-span-2 bg-white rounded-3xl p-8 border border-slate-100 shadow-sm flex flex-col justify-between text-center min-h-[340px]">
+                    <div class="flex flex-col items-center w-full">
                         <div class="w-24 h-24 rounded-full bg-djoliba flex items-center justify-center text-white font-bold text-3xl shadow-xl shadow-djoliba/10 mb-4 ring-4 ring-djoliba/5">
                             {{ (app.user.firstName ?: app.user.userIdentifier)|slice(0, 2)|upper }}
                         </div>
@@ -55,152 +56,154 @@
                             {{ app.user.firstName ?: 'Chercheur' }} {{ app.user.lastName ?: '' }}
                         </h2>
                         <span class="text-xs text-slate-400 mt-1 block">Statut : {{ app.user.academicStatus ?: 'Chercheur Académique' }}</span>
-                        <div class="w-full h-[1px] bg-slate-100 my-4"></div>
-                        <div class="text-left w-full space-y-2">
-                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Compte créé le</span>
-                            <span class="text-xs text-slate-600 font-semibold block">{{ app.user.createdAt|date('d F Y') }}</span>
-                            {% if app.user.updatedAt %}
-                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block pt-2">Dernière mise à jour</span>
-                                <span class="text-xs text-slate-600 font-semibold block">{{ app.user.updatedAt|date('d F Y à H:i') }}</span>
-                            {% endif %}
+                    </div>
+                    <div class="w-full h-[1px] bg-slate-100 my-4"></div>
+                    <div class="text-left w-full space-y-1 text-xs">
+                        <div class="flex justify-between">
+                            <span class="font-bold text-slate-400 uppercase tracking-widest text-[9px]">Créé le :</span>
+                            <span class="text-slate-600 font-semibold">{{ app.user.createdAt|date('d/m/Y') }}</span>
                         </div>
+                        {% if app.user.updatedAt %}
+                            <div class="flex justify-between pt-1">
+                                <span class="font-bold text-slate-400 uppercase tracking-widest text-[9px]">Mis à jour :</span>
+                                <span class="text-slate-600 font-semibold">{{ app.user.updatedAt|date('d/m/Y H:i') }}</span>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
 
-                {# Colonnes Droite : Informations éditables #}
-                <div class="md:col-span-2 space-y-6">
-                    
-                    {# Section 1 : Informations Personnelles #}
-                    <div class="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-6">
+                {# Card 2 : Informations Personnelles #}
+                <div class="md:col-span-3 lg:col-span-2 bg-white rounded-3xl p-8 border border-slate-100 shadow-sm flex flex-col justify-between min-h-[340px]">
+                    <div class="space-y-6 w-full">
                         <h3 class="text-sm font-black text-djoliba uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center gap-2">
                             <span class="w-1.5 h-3 bg-djoliba rounded-full"></span>
                             Informations Personnelles
                         </h3>
                         
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label for="firstName" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Prénom</label>
+                                <label for="firstName" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Prénom</label>
                                 <input type="text" id="firstName" name="firstName" value="{{ app.user.firstName }}" placeholder="Votre prénom"
-                                       class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold placeholder:text-slate-300">
+                                       class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold placeholder:text-slate-300">
                             </div>
                             <div>
-                                <label for="lastName" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Nom de famille</label>
+                                <label for="lastName" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Nom</label>
                                 <input type="text" id="lastName" name="lastName" value="{{ app.user.lastName }}" placeholder="Votre nom"
-                                       class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold placeholder:text-slate-300">
+                                       class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold placeholder:text-slate-300">
                             </div>
                         </div>
 
                         <div>
-                            <label for="email" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Adresse Email (Identifiant)</label>
+                            <label for="email" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Adresse Email</label>
                             <input type="email" id="email" name="email" value="{{ app.user.email }}" required placeholder="nom@institution.com"
-                                   class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold placeholder:text-slate-300">
-                            <p class="text-[10px] text-slate-400 mt-2">💡 Remarque : Modifier votre adresse email mettra à jour vos identifiants de connexion.</p>
+                                   class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold placeholder:text-slate-300">
                         </div>
                     </div>
+                </div>
 
-                    {# Section 2 : Identité Académique & Recherche #}
-                    <div class="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-6">
+                {# Card 3 : Préférences Système #}
+                <div class="md:col-span-6 lg:col-span-2 bg-white rounded-3xl p-8 border border-slate-100 shadow-sm flex flex-col justify-between min-h-[340px]">
+                    <div class="space-y-6 w-full">
                         <h3 class="text-sm font-black text-djoliba uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center gap-2">
                             <span class="w-1.5 h-3 bg-djoliba rounded-full"></span>
-                            Identité Académique & Recherche
-                        </h3>
-                        
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <div>
-                                <label for="affiliation" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Affiliation Institutionnelle</label>
-                                <input type="text" id="affiliation" name="affiliation" value="{{ app.user.affiliation }}" placeholder="Ex: Université UFHB Abidjan"
-                                       class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold placeholder:text-slate-300">
-                            </div>
-                            <div>
-                                <label for="researchField" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Domaine de Recherche</label>
-                                <input type="text" id="researchField" name="researchField" value="{{ app.user.researchField }}" placeholder="Ex: Épidémiologie, Énergie Solaire"
-                                       class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold placeholder:text-slate-300">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <div>
-                                <label for="orcid" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Identifiant Chercheur ORCID</label>
-                                <input type="text" id="orcid" name="orcid" value="{{ app.user.orcid }}" placeholder="Ex: 0000-0002-1825-0097"
-                                       class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold placeholder:text-slate-300">
-                                <p class="text-[10px] text-slate-400 mt-2">Format requis : XXXX-XXXX-XXXX-XXXX</p>
-                            </div>
-                            <div>
-                                <label for="googleScholar" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Profil Google Scholar (Lien)</label>
-                                <input type="url" id="googleScholar" name="googleScholar" value="{{ app.user.googleScholar }}" placeholder="Ex: https://scholar.google.com/citations?user=..."
-                                       class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold placeholder:text-slate-300">
-                                <p class="text-[10px] text-slate-400 mt-2">Lien optionnel vers vos publications indexées.</p>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label for="academicStatus" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Statut Académique / Niveau d'étude</label>
-                            <select id="academicStatus" name="academicStatus"
-                                    class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold bg-white cursor-pointer">
-                                <option value="" {{ app.user.academicStatus is empty ? 'selected' : '' }}>-- Choisir un statut --</option>
-                                <option value="Licence" {{ app.user.academicStatus == 'Licence' ? 'selected' : '' }}>Licence (Undergraduate)</option>
-                                <option value="Master" {{ app.user.academicStatus == 'Master' ? 'selected' : '' }}>Master / Ingénieur</option>
-                                <option value="Étudiant en doctorat (Doctorant)" {{ app.user.academicStatus == 'Étudiant en doctorat (Doctorant)' ? 'selected' : '' }}>Étudiant en doctorat (Doctorant)</option>
-                                <option value="Chercheur Post-doctoral" {{ app.user.academicStatus == 'Chercheur Post-doctoral' ? 'selected' : '' }}>Chercheur Post-doctoral</option>
-                                <option value="Enseignant-chercheur" {{ app.user.academicStatus == 'Enseignant-chercheur' ? 'selected' : '' }}>Enseignant-chercheur</option>
-                                <option value="Chercheur indépendant" {{ app.user.academicStatus == 'Chercheur indépendant' ? 'selected' : '' }}>Chercheur indépendant</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    {# Section 2b : Biographie & Recherches #}
-                    <div class="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-6">
-                        <h3 class="text-sm font-black text-djoliba uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center gap-2">
-                            <span class="w-1.5 h-3 bg-djoliba rounded-full"></span>
-                            Biographie & Intérêts de Recherche
+                            Préférences Système
                         </h3>
                         
                         <div>
-                            <label for="biography" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Présentation Scientifique</label>
-                            <textarea id="biography" name="biography" rows="4" placeholder="Décrivez vos principaux travaux de recherche, vos méthodologies et vos aspirations scientifiques..."
-                                      class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold placeholder:text-slate-300">{{ app.user.biography }}</textarea>
-                            <p class="text-[10px] text-slate-400 mt-2">Ce texte aide le compagnon d'IA à comprendre votre profil pour vos revues de littérature.</p>
-                        </div>
-                    </div>
-
-                    {# Section 3 : Préférences Système #}
-                    <div class="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-6">
-                        <h3 class="text-sm font-black text-djoliba uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center gap-2">
-                            <span class="w-1.5 h-3 bg-djoliba rounded-full"></span>
-                            Préférences de l'Interface
-                        </h3>
-                        
-                        <div>
-                            <label for="languagePreference" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Langue de l'Interface</label>
+                            <label for="languagePreference" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Langue de l'Interface</label>
                             <select id="languagePreference" name="languagePreference"
-                                    class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold bg-white cursor-pointer">
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold bg-white cursor-pointer">
                                 <option value="fr" {{ app.user.languagePreference == 'fr' ? 'selected' : '' }}>Français</option>
                                 <option value="en" {{ app.user.languagePreference == 'en' ? 'selected' : '' }}>English</option>
                             </select>
                         </div>
 
-                        <div class="flex items-start gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <div class="flex items-start gap-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
                             <input type="checkbox" id="helpEnabled" name="helpEnabled" value="1" {{ app.user.helpEnabled ? 'checked' : '' }}
-                                   class="mt-1 w-4 h-4 text-djoliba border-slate-300 rounded focus:ring-djoliba transition-all cursor-pointer">
-                            <div class="text-xs">
-                                <label for="helpEnabled" class="font-bold text-djoliba cursor-pointer">Activer l'assistant d'aide contextuelle</label>
-                                <p class="text-slate-400 mt-1">Affiche des infobulles, aides et suggestions intelligentes pour vous guider lors de vos synthèses ou rédactions scientifiques.</p>
+                                   class="mt-1 w-3.5 h-3.5 text-djoliba border-slate-300 rounded focus:ring-djoliba transition-all cursor-pointer">
+                            <div class="text-[10px] leading-tight">
+                                <label for="helpEnabled" class="font-bold text-djoliba cursor-pointer">Activer l'assistant contextuel</label>
+                                <p class="text-slate-400 mt-0.5">Suggestions d'aide et infobulles de rédaction.</p>
                             </div>
                         </div>
                     </div>
-
-                    {# Bouton de soumission #}
-                    <div class="flex justify-end pt-4">
-                        <button type="submit" class="px-8 py-4 bg-djoliba hover:bg-djoliba/90 text-white rounded-2xl font-bold text-sm shadow-xl shadow-djoliba/20 transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5 cursor-pointer">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                            </svg>
-                            Enregistrer mon profil
-                        </button>
-                    </div>
-
                 </div>
 
+                {# Card 4 : Identité Académique & Recherche #}
+                <div class="md:col-span-6 lg:col-span-3 bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-6">
+                    <h3 class="text-sm font-black text-djoliba uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center gap-2">
+                        <span class="w-1.5 h-3 bg-djoliba rounded-full"></span>
+                        Identité Académique & Recherche
+                    </h3>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="affiliation" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Affiliation Institutionnelle</label>
+                            <input type="text" id="affiliation" name="affiliation" value="{{ app.user.affiliation }}" placeholder="Ex: Université UFHB"
+                                   class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold placeholder:text-slate-300">
+                        </div>
+                        <div>
+                            <label for="researchField" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Domaine de Recherche</label>
+                            <input type="text" id="researchField" name="researchField" value="{{ app.user.researchField }}" placeholder="Ex: Épidémiologie, Énergies"
+                                   class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold placeholder:text-slate-300">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="orcid" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Identifiant ORCID</label>
+                            <input type="text" id="orcid" name="orcid" value="{{ app.user.orcid }}" placeholder="XXXX-XXXX-XXXX-XXXX"
+                                   class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold placeholder:text-slate-300">
+                        </div>
+                        <div>
+                            <label for="googleScholar" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Profil Google Scholar (Lien)</label>
+                            <input type="url" id="googleScholar" name="googleScholar" value="{{ app.user.googleScholar }}" placeholder="https://scholar.google.com/..."
+                                   class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold placeholder:text-slate-300">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="academicStatus" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Statut Académique / Niveau d'étude</label>
+                        <select id="academicStatus" name="academicStatus"
+                                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold bg-white cursor-pointer">
+                            <option value="" {{ app.user.academicStatus is empty ? 'selected' : '' }}>-- Choisir un statut --</option>
+                            <option value="Licence" {{ app.user.academicStatus == 'Licence' ? 'selected' : '' }}>Licence (Undergraduate)</option>
+                            <option value="Master" {{ app.user.academicStatus == 'Master' ? 'selected' : '' }}>Master / Ingénieur</option>
+                            <option value="Étudiant en doctorat (Doctorant)" {{ app.user.academicStatus == 'Étudiant en doctorat (Doctorant)' ? 'selected' : '' }}>Étudiant en doctorat (Doctorant)</option>
+                            <option value="Chercheur Post-doctoral" {{ app.user.academicStatus == 'Chercheur Post-doctoral' ? 'selected' : '' }}>Chercheur Post-doctoral</option>
+                            <option value="Enseignant-chercheur" {{ app.user.academicStatus == 'Enseignant-chercheur' ? 'selected' : '' }}>Enseignant-chercheur</option>
+                            <option value="Chercheur indépendant" {{ app.user.academicStatus == 'Chercheur indépendant' ? 'selected' : '' }}>Chercheur indépendant</option>
+                        </select>
+                    </div>
+                </div>
+
+                {# Card 5 : Biographie & Intérêts de Recherche #}
+                <div class="md:col-span-6 lg:col-span-3 bg-white rounded-3xl p-8 border border-slate-100 shadow-sm flex flex-col justify-between">
+                    <div class="space-y-6 h-full flex flex-col w-full">
+                        <h3 class="text-sm font-black text-djoliba uppercase tracking-wider pb-3 border-b border-slate-100 flex items-center gap-2">
+                            <span class="w-1.5 h-3 bg-djoliba rounded-full"></span>
+                            Biographie & Intérêts de Recherche
+                        </h3>
+                        
+                        <div class="flex-grow flex flex-col">
+                            <label for="biography" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Présentation Scientifique</label>
+                            <textarea id="biography" name="biography" rows="6" placeholder="Décrivez vos principaux travaux de recherche, vos méthodologies et vos aspirations scientifiques..."
+                                      class="w-full flex-grow px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold placeholder:text-slate-300 resize-none">{{ app.user.biography }}</textarea>
+                            <p class="text-[9px] text-slate-400 mt-2">Ce texte aide le compagnon d'IA à comprendre votre profil.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            {# Bouton de soumission #}
+            <div class="flex justify-end pt-4">
+                <button type="submit" class="px-8 py-4 bg-djoliba hover:bg-djoliba/90 text-white rounded-2xl font-bold text-sm shadow-xl shadow-djoliba/20 transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5 cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    Enregistrer mon profil
+                </button>
             </div>
 
         </form>
