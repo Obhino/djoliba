@@ -66,15 +66,17 @@
     <!-- Bottom Account -->
     <div class="p-6 border-t border-slate-50">
         {% if app.user %}
-            <div class="bg-slate-50 rounded-2xl p-4 flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-djoliba flex items-center justify-center text-white font-bold text-xs">
-                    {{ (app.user.firstName ?: app.user.userIdentifier)|slice(0, 2)|upper }}
-                </div>
-                <div class="flex-grow min-w-0">
-                    <div class="text-sm font-bold text-djoliba truncate">{{ app.user.firstName ?: app.user.userIdentifier }}</div>
-                    <div class="text-[10px] text-slate-400">Chercheur</div>
-                </div>
-                <a href="{{ path('app_logout') }}" class="text-slate-300 hover:text-red-500 transition-colors">
+            <div class="bg-slate-50 rounded-2xl p-4 flex items-center gap-3 w-full">
+                <a href="{{ path('app_user_profile') }}" class="flex items-center gap-3 flex-grow min-w-0 group" title="Gérer mon profil chercheur">
+                    <div class="w-10 h-10 rounded-full bg-djoliba flex items-center justify-center text-white font-bold text-xs group-hover:scale-105 transition-transform flex-shrink-0">
+                        {{ (app.user.firstName ?: app.user.userIdentifier)|slice(0, 2)|upper }}
+                    </div>
+                    <div class="flex-grow min-w-0">
+                        <div class="text-sm font-bold text-djoliba truncate group-hover:underline">{{ app.user.firstName ?: app.user.userIdentifier }}</div>
+                        <div class="text-[10px] text-slate-400">Chercheur</div>
+                    </div>
+                </a>
+                <a href="{{ path('app_logout') }}" class="text-slate-300 hover:text-red-500 transition-colors flex-shrink-0" title="Se déconnecter">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                 </a>
             </div>

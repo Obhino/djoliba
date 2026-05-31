@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenue sur Djoliba ! 🎓</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+        .wrapper {
+            width: 100%;
+            background-color: #f8fafc;
+            padding: 48px 0;
+        }
+        .container {
+            max-width: 580px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 24px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+        }
+        .header {
+            padding: 40px 40px 24px 40px;
+            text-align: center;
+            background: linear-gradient(135deg, #0B2545 0%, #134074 100%);
+            color: #ffffff;
+        }
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 54px;
+            height: 54px;
+            background-color: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: 800;
+            border-radius: 16px;
+            text-decoration: none;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .header h1 {
+            font-size: 22px;
+            font-weight: 800;
+            margin-top: 16px;
+            margin-bottom: 0;
+            letter-spacing: -0.5px;
+        }
+        .content {
+            padding: 40px;
+            color: #334155;
+            line-height: 1.6;
+        }
+        .greeting {
+            font-size: 16px;
+            font-weight: 600;
+            color: #0b2545;
+            margin-bottom: 12px;
+        }
+        p {
+            font-size: 15px;
+            margin-top: 0;
+            margin-bottom: 24px;
+            color: #475569;
+        }
+        .feature-card {
+            background-color: #f8fafc;
+            border-radius: 16px;
+            border: 1px solid #f1f5f9;
+            padding: 18px 20px;
+            margin-bottom: 16px;
+            display: flex;
+        }
+        .feature-icon {
+            font-size: 24px;
+            margin-right: 16px;
+            display: inline-block;
+            vertical-align: top;
+        }
+        .feature-text {
+            display: inline-block;
+            max-width: 440px;
+        }
+        .feature-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0B2545;
+            margin-bottom: 4px;
+            margin-top: 0;
+        }
+        .feature-desc {
+            font-size: 13px;
+            color: #64748b;
+            margin: 0;
+            line-height: 1.4;
+        }
+        .btn-container {
+            text-align: center;
+            margin: 36px 0 16px 0;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #0B2545;
+            color: #ffffff !important;
+            font-size: 14px;
+            font-weight: 700;
+            text-decoration: none;
+            padding: 14px 36px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(11, 37, 69, 0.15), 0 2px 4px -1px rgba(11, 37, 69, 0.06);
+            transition: all 0.2s ease;
+        }
+        .footer {
+            background-color: #fafafa;
+            border-top: 1px solid #f1f5f9;
+            padding: 24px 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .footer a {
+            color: #0B2545;
+            text-decoration: none;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <div class="header">
+                <div class="logo">D</div>
+                <h1>Votre compte est activé !</h1>
+            </div>
+            <div class="content">
+                <div class="greeting">Bonjour {{ user.firstName }} {{ user.lastName }},</div>
+                <p>Votre adresse e-mail a été vérifiée avec succès. Bienvenue au sein de la communauté scientifique de <strong>Djoliba</strong> ! Votre canevas de recherche est désormais pleinement opérationnel.</p>
+                
+                <p style="font-weight: 700; color: #0b2545; margin-bottom: 16px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">💡 Ce que vous pouvez faire dès aujourd'hui :</p>
+                
+                <!-- Feature 1 -->
+                <div class="feature-card">
+                    <span class="feature-icon">🔍</span>
+                    <div class="feature-text">
+                        <h4 class="feature-title">Recherche Vectorielle Sémantique</h4>
+                        <p class="feature-desc">Recherchez parmi des milliers de publications grâce à notre algorithme propulsé par l'extension <strong>pgvector</strong> de PostgreSQL pour des correspondances conceptuelles profondes.</p>
+                    </div>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="feature-card">
+                    <span class="feature-icon">📖</span>
+                    <div class="feature-text">
+                        <h4 class="feature-title">Compagnon de Lecture & Chat SSE</h4>
+                        <p class="feature-desc">Importez vos articles en format PDF (jusqu'à 25 Mo) et dialoguez avec eux en temps réel grâce à notre chat interactif en streaming fluide.</p>
+                    </div>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="feature-card">
+                    <span class="feature-icon">✍️</span>
+                    <div class="feature-text">
+                        <h4 class="feature-title">Assistant Rédaction WYSIWYG & LaTeX</h4>
+                        <p class="feature-desc">Rédigez dans notre traitement de texte TipTap haute fidélité ou écrivez en code source LaTeX brut avec CodeMirror et prévisualisation mathématique KaTeX intégrée.</p>
+                    </div>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="feature-card">
+                    <span class="feature-icon">🎓</span>
+                    <div class="feature-text">
+                        <h4 class="feature-title">Plan de Thèse Drag & Drop</h4>
+                        <p class="feature-desc">Organisez et restructurez vos chapitres, sections et sous-sections en toute fluidité grâce à notre canevas de thèse interactif.</p>
+                    </div>
+                </div>
+
+                <div class="btn-container">
+                    <a href="http://localhost:8000/login" class="btn">Accéder à mon espace chercheur</a>
+                </div>
+            </div>
+            <div class="footer">
+                &copy; {{ 'now'|date('Y') }} <a href="https://djoliba.local">Djoliba</a>. Tous droits réservés.<br>
+                Conçu et hébergé pour valoriser la recherche académique sur le continent africain.
+            </div>
+        </div>
+    </div>
+</body>
+</html>

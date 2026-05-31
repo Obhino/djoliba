@@ -62,9 +62,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(options: ['default' => true])]
     private ?bool $isActive = true;
 
+    #[ORM\Column(options: ['default' => false])]
+    private ?bool $isVerified = false;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
+        $this->isVerified = false;
     }
 
     public function getId(): ?int
@@ -289,5 +293,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function isActive(): ?bool
     {
         return $this->isActive;
+    }
+
+    public function isVerified(): bool
+    {
+        return $this->isVerified ?? false;
+    }
+
+    public function setIsVerified(bool $isVerified): static
+    {
+        $this->isVerified = $isVerified;
+
+        return $this;
     }
 }
