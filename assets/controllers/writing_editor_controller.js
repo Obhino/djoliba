@@ -20,10 +20,11 @@ export default class extends Controller {
         'editorContainer', 'previewContainer', 'wordCount', 'charCount', 'pageCount',
         'modeWysiwygBtn', 'modeLatexBtn', 'helpModal', 'latexPreviewModal', 'latexPreviewContent',
         'previewBtn', 'renderBtn', 'wysiwygInput',
-        'tableModal', 'tableCaptionInput', 'tableLabelInput', 'tableGridContainer',
-        'figureModal', 'figureUrlInput', 'figureCaptionInput', 'figureLabelInput',
+        'tableModal', 'tableCaptionInput', 'tableLabelInput', 'tableGridContainer', 'tableDeleteBtn',
+        'figureModal', 'figureUrlInput', 'figureCaptionInput', 'figureLabelInput', 'figureDeleteBtn',
         'footnoteModal', 'footnoteTextInput',
-        'referenceModal', 'referenceLabelSelect'
+        'referenceModal', 'referenceLabelSelect',
+        'toolbarDeleteTableBtn', 'toolbarDeleteFigureBtn'
     ];
 
     static values = {
@@ -316,6 +317,11 @@ export default class extends Controller {
                         this.openEditTableModal(tableEl);
                         return true;
                     }
+                    const figureEl = event.target.closest('figure');
+                    if (figureEl) {
+                        this.openEditFigureModal(figureEl);
+                        return true;
+                    }
                     return false;
                 },
                 handleKeyDown: (view, event) => {
@@ -431,10 +437,14 @@ export default class extends Controller {
             },
             onUpdate: () => {
                 this.#handleContentChange();
+            },
+            onSelectionUpdate: () => {
+                this.#updateActiveNodes();
             }
         });
 
         this.#updateToggleButtons();
+        this.#updateActiveNodes();
     }
 
     // ─────────────────────────────────────────────
@@ -611,6 +621,7 @@ export default class extends Controller {
 
         this.currentMode = mode;
         this.#updateToggleButtons();
+        this.#updateActiveNodes();
         this.#handleContentChange();
     }
 
@@ -692,6 +703,29 @@ export default class extends Controller {
                 if (this.hasPreviewContainerTarget && !this.previewContainerTarget.classList.contains('hidden')) {
                     this.previewContainerTarget.classList.add('hidden');
                 }
+            }
+        }
+    }
+
+    #updateActiveNodes() {
+        if (!this.editor) return;
+
+        const hasTable = this.editor.isActive('table');
+        const hasFigure = this.editor.isActive('figure');
+
+        if (this.hasToolbarDeleteTableBtnTarget) {
+            if (hasTable && this.currentMode === 'wysiwyg') {
+                this.toolbarDeleteTableBtnTarget.classList.remove('hidden');
+            } else {
+                this.toolbarDeleteTableBtnTarget.classList.add('hidden');
+            }
+        }
+
+        if (this.hasToolbarDeleteFigureBtnTarget) {
+            if (hasFigure && this.currentMode === 'wysiwyg') {
+                this.toolbarDeleteFigureBtnTarget.classList.remove('hidden');
+            } else {
+                this.toolbarDeleteFigureBtnTarget.classList.add('hidden');
             }
         }
     }
@@ -1514,6 +1548,7 @@ export default class extends Controller {
     insertTableModal() {
         if (!this.editor) return;
         this.editingTableEl = null;
+        if (this.hasTableDeleteBtnTarget) this.tableDeleteBtnTarget.classList.add('hidden');
         if (this.hasTableCaptionInputTarget) this.tableCaptionInputTarget.value = '';
         if (this.hasTableLabelInputTarget) this.tableLabelInputTarget.value = '';
         this.openTableModal();
@@ -1550,6 +1585,7 @@ export default class extends Controller {
 
     openEditTableModal(tableEl) {
         this.editingTableEl = tableEl;
+        if (this.hasTableDeleteBtnTarget) this.tableDeleteBtnTarget.classList.remove('hidden');
         
         const caption = tableEl.getAttribute('data-caption') || '';
         const label = tableEl.getAttribute('data-label') || '';
@@ -1709,6 +1745,61 @@ export default class extends Controller {
         
         this.closeTableModal();
         this.#handleContentChange();
+        this.#updateActiveNodes();
+    }
+
+    deleteTable() {
+        let deleted = false;
+        
+        // 1. Essayer de supprimer via l'élément en cours d'édition (DOM)
+        if (this.editingTableEl) {
+            try {
+                const pos = this.editor.view.posAtDOM(this.editingTableEl);
+                if (pos !== undefined && pos !== null) {
+                    const $pos = this.editor.state.doc.resolve(pos);
+                    const tableNode = $pos.nodeAfter;
+                    if (tableNode && tableNode.type.name === 'table') {
+                        const tr = this.editor.state.tr.delete(pos, pos + tableNode.nodeSize);
+                        this.editor.view.dispatch(tr);
+                        deleted = true;
+                    }
+                }
+            } catch (e) {
+                console.warn("Échec de suppression du tableau par DOM:", e);
+            }
+        }
+        
+        // 2. Si non supprimé, chercher sous le curseur
+        if (!deleted && this.editor) {
+            const { state } = this.editor;
+            const { selection } = state;
+            const $from = selection.$from;
+            
+            let tableDepth = -1;
+            for (let i = $from.depth; i >= 0; i--) {
+                if ($from.node(i).type.name === 'table') {
+                    tableDepth = i;
+                    break;
+                }
+            }
+            
+            if (tableDepth !== -1) {
+                const tablePos = $from.before(tableDepth);
+                const tableNode = $from.node(tableDepth);
+                const tr = state.tr.delete(tablePos, tablePos + tableNode.nodeSize);
+                this.editor.view.dispatch(tr);
+                deleted = true;
+            }
+        }
+        
+        this.closeTableModal();
+        this.#handleContentChange();
+        this.#updateActiveNodes();
+    }
+
+    deleteTableUnderCursor() {
+        this.editingTableEl = null;
+        this.deleteTable();
     }
 
     #escapeHtml(str) {
@@ -1727,6 +1818,8 @@ export default class extends Controller {
 
     insertFigureModal() {
         if (!this.editor) return;
+        this.editingFigureEl = null;
+        if (this.hasFigureDeleteBtnTarget) this.figureDeleteBtnTarget.classList.add('hidden');
         this.figureUrlInputTarget.value = '';
         this.figureCaptionInputTarget.value = '';
         this.figureLabelInputTarget.value = '';
@@ -1761,28 +1854,117 @@ export default class extends Controller {
         }, 300);
     }
 
+    openEditFigureModal(figureEl) {
+        this.editingFigureEl = figureEl;
+        if (this.hasFigureDeleteBtnTarget) this.figureDeleteBtnTarget.classList.remove('hidden');
+        
+        const img = figureEl.querySelector('img');
+        const figcaption = figureEl.querySelector('figcaption');
+        const label = figureEl.getAttribute('data-label') || '';
+        
+        this.figureUrlInputTarget.value = img ? img.getAttribute('src') : '';
+        this.figureCaptionInputTarget.value = figcaption ? figcaption.textContent.trim() : '';
+        this.figureLabelInputTarget.value = label;
+        
+        this.openFigureModal();
+    }
+
     confirmInsertFigure() {
         const imageUrl = this.figureUrlInputTarget.value.trim() || 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=600&auto=format&fit=crop';
         const caption = this.figureCaptionInputTarget.value.trim() || 'Figure sans titre';
         const label = this.figureLabelInputTarget.value.trim();
 
-        this.editor.chain()
-            .focus()
-            .insertContent([
-                {
-                    type: 'figure',
-                    attrs: { label: label || '' },
-                    content: [
-                        { type: 'image', attrs: { src: imageUrl } },
-                        { type: 'figcaption', content: [{ type: 'text', text: caption }] }
-                    ]
+        const figureContent = [
+            {
+                type: 'figure',
+                attrs: { label: label || '' },
+                content: [
+                    { type: 'image', attrs: { src: imageUrl } },
+                    { type: 'figcaption', content: [{ type: 'text', text: caption }] }
+                ]
+            }
+        ];
+
+        if (this.editingFigureEl) {
+            // Remplacer la figure existante sélectionnée
+            const pos = this.editor.view.posAtDOM(this.editingFigureEl);
+            if (pos !== undefined) {
+                const $pos = this.editor.state.doc.resolve(pos);
+                const figNode = $pos.nodeAfter;
+                if (figNode && figNode.type.name === 'figure') {
+                    this.editor.chain()
+                        .focus()
+                        .deleteRange({ from: pos, to: pos + figNode.nodeSize })
+                        .insertContentAt(pos, figureContent)
+                        .run();
                 }
-            ])
-            .insertContent('<p></p>') // force a clean newline right after!
-            .run();
+            }
+        } else {
+            // Nouvelle figure avec saut de ligne
+            this.editor.chain()
+                .focus()
+                .insertContent(figureContent)
+                .insertContent('<p></p>')
+                .run();
+        }
         
         this.closeFigureModal();
         this.#handleContentChange();
+        this.#updateActiveNodes();
+    }
+
+    deleteFigure() {
+        let deleted = false;
+        
+        // 1. Essayer de supprimer via l'élément en cours d'édition (DOM)
+        if (this.editingFigureEl) {
+            try {
+                const pos = this.editor.view.posAtDOM(this.editingFigureEl);
+                if (pos !== undefined && pos !== null) {
+                    const $pos = this.editor.state.doc.resolve(pos);
+                    const figNode = $pos.nodeAfter;
+                    if (figNode && figNode.type.name === 'figure') {
+                        const tr = this.editor.state.tr.delete(pos, pos + figNode.nodeSize);
+                        this.editor.view.dispatch(tr);
+                        deleted = true;
+                    }
+                }
+            } catch (e) {
+                console.warn("Échec de suppression de la figure par DOM:", e);
+            }
+        }
+        
+        // 2. Si non supprimée, chercher sous le curseur
+        if (!deleted && this.editor) {
+            const { state } = this.editor;
+            const { selection } = state;
+            const $from = selection.$from;
+            
+            let figDepth = -1;
+            for (let i = $from.depth; i >= 0; i--) {
+                if ($from.node(i).type.name === 'figure') {
+                    figDepth = i;
+                    break;
+                }
+            }
+            
+            if (figDepth !== -1) {
+                const figPos = $from.before(figDepth);
+                const figNode = $from.node(figDepth);
+                const tr = state.tr.delete(figPos, figPos + figNode.nodeSize);
+                this.editor.view.dispatch(tr);
+                deleted = true;
+            }
+        }
+        
+        this.closeFigureModal();
+        this.#handleContentChange();
+        this.#updateActiveNodes();
+    }
+
+    deleteFigureUnderCursor() {
+        this.editingFigureEl = null;
+        this.deleteFigure();
     }
 
     // =============================================
