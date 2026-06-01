@@ -207,4 +207,115 @@ class ProjectController extends AbstractController
         }
 
         return $this->json(['success' => true]);
-    }}
+    }
+
+    #[Route('/{id}/upload-image', name: 'api_projects_upload_image', methods: ['POST'])]
+    public function uploadImage(int $id, Request $request): JsonResponse
+    {
+        $user = $this->getUser();
+        $isTestMode = $request->getSession()->get('is_test_mode');
+
+        if (!$user && !$isTestMode) {
+            return $this->json([
+                'success' => false,
+                'error' => ['message' => 'Non autorisé']
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $projectType = 'writing';
+        $projectId = $id;
+
+        if ($user) {
+            $project = $this->projectManager->getProject($id);
+            if (!$project || $project->getUser() !== $user) {
+                return $this->json([
+                    'success' => false,
+                    'error' => ['message' => 'Projet non trouvé']
+                ], Response::HTTP_NOT_FOUND);
+            }
+            $projectType = $project->getType();
+        } else {
+            // Mode Test : Session
+            $session = $request->getSession();
+            $projects = $session->get('test_projects', []);
+            $foundProject = null;
+            foreach ($projects as $p) {
+                if ($p['id'] == $id) {
+                    $foundProject = $p;
+                    break;
+                }
+            }
+            if (!$foundProject) {
+                return $this->json([
+                    'success' => false,
+                    'error' => ['message' => 'Projet non trouvé']
+                ], Response::HTTP_NOT_FOUND);
+            }
+            $projectType = $foundProject['type'] ?? 'writing';
+        }
+
+        /** @var \Symfony\Component\HttpFoundation\File\UploadedFile|null $file */
+        $file = $request->files->get('image') ?? $request->files->get('file');
+
+        if (!$file) {
+            return $this->json([
+                'success' => false,
+                'error' => ['message' => 'Aucune image fournie']
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // 1. Validation de la taille (5 Mo max pour les images)
+        $maxImageSize = 5 * 1024 * 1024;
+        if ($file->getSize() > $maxImageSize) {
+            return $this->json([
+                'success' => false,
+                'error' => ['message' => 'L\'image dépasse la taille maximale autorisée de 5 Mo.']
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // 2. Validation du type MIME
+        $allowedMimeTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'image/svg+xml'];
+        $mimeType = $file->getMimeType();
+        if (!in_array($mimeType, $allowedMimeTypes, true)) {
+            return $this->json([
+                'success' => false,
+                'error' => ['message' => 'Format d\'image non supporté. Seuls PNG, JPG, JPEG, GIF, WebP et SVG sont acceptés.']
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        // 3. Dossier de stockage cohérent : public/uploads/projects/{project_type}/{project_id}/images/
+        $projectDir = $this->getParameter('kernel.project_dir');
+        $relativeUploadDir = sprintf('uploads/projects/%s/%s/images', $projectType, $projectId);
+        $absoluteUploadDir = $projectDir . '/public/' . $relativeUploadDir;
+
+        // Assurer la création récursive du dossier avec les droits appropriés
+        if (!is_dir($absoluteUploadDir)) {
+            mkdir($absoluteUploadDir, 0755, true);
+        }
+
+        // 4. Génération d'un nom de fichier unique et propre
+        $originalFilename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $safeFilename = preg_replace('/[^a-zA-Z0-9_-]/', '', $originalFilename);
+        if (empty($safeFilename)) {
+            $safeFilename = 'image';
+        }
+        $guessedExtension = $file->guessExtension() ?? 'png';
+        $newFilename = sprintf('%s-%s.%s', $safeFilename, uniqid(), $guessedExtension);
+
+        try {
+            $file->move($absoluteUploadDir, $newFilename);
+        } catch (\Exception $e) {
+            return $this->json([
+                'success' => false,
+                'error' => ['message' => 'Erreur lors de la sauvegarde de l\'image : ' . $e->getMessage()]
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        $publicUrl = '/' . $relativeUploadDir . '/' . $newFilename;
+
+        return $this->json([
+            'success' => true,
+            'url' => $publicUrl
+        ], Response::HTTP_OK);
+    }
+}

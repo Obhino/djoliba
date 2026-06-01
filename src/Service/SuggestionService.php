@@ -2,12 +2,14 @@
 
 namespace App\Service;
 
+use App\Service\IA\CacheService;
 use App\Service\IA\DeepSeekService;
 
 class SuggestionService
 {
     public function __construct(
         private DeepSeekService $deepSeekService,
+        private CacheService $cacheService,
     ) {
     }
 
@@ -23,18 +25,26 @@ class SuggestionService
      */
     public function suggest(string $query, int $limit = 5): array
     {
-        // Prompt défini en section 6 du PROJECT_CONTEXT.md
-        $prompt = sprintf(
-            "Suggère %d articles scientifiques complémentaires à: %s. Réponse JSON: [{title, authors, year, abstract, doi}]. Réponds UNIQUEMENT avec le tableau JSON, sans texte ni balise markdown autour.",
-            $limit,
-            $query
+        $cacheKey = 'suggestions_' . md5($query . '_' . $limit);
+
+        return $this->cacheService->remember(
+            $cacheKey,
+            function () use ($query, $limit) {
+                // Prompt défini en section 6 du PROJECT_CONTEXT.md
+                $prompt = sprintf(
+                    "Suggère %d articles scientifiques complémentaires à: %s. Réponse JSON: [{title, authors, year, abstract, doi}]. Réponds UNIQUEMENT avec le tableau JSON, sans texte ni balise markdown autour.",
+                    $limit,
+                    $query
+                );
+
+                $rawResponse = $this->deepSeekService->call($prompt, [
+                    'temperature' => 0.3, // Température basse pour une réponse JSON structurée et reproductible
+                ]);
+
+                return $this->parseArticles($rawResponse, $limit);
+            },
+            3600 // 1 heure
         );
-
-        $rawResponse = $this->deepSeekService->call($prompt, [
-            'temperature' => 0.3, // Température basse pour une réponse JSON structurée et reproductible
-        ]);
-
-        return $this->parseArticles($rawResponse, $limit);
     }
 
     /**

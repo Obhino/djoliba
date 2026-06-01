@@ -27,8 +27,83 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {# Zone gauche (Col 7) : Upload & Synthèse #}
-        <div class="lg:col-span-7 space-y-8">
+        {# Zone gauche (Col 7) : Chat Interactif #}
+        <div class="lg:col-span-7 flex flex-col h-[650px]">
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col h-full overflow-hidden">
+                 
+                {# En-tête du Chat #}
+                <div class="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-emerald_ia/10 flex items-center justify-center text-emerald_ia">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-djoliba">Interroger le document</h3>
+                            <p class="text-[10px] text-slate-400">Posez vos questions sur le texte analysé</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-2">
+                        <button data-action="click->reading-chat#decreaseFontSize" 
+                                class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 text-[10px] font-bold text-slate-600 flex items-center justify-center transition-all select-none active:scale-95"
+                                title="Diminuer la taille du texte" type="button">
+                            A-
+                        </button>
+                        <button data-action="click->reading-chat#increaseFontSize" 
+                                class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 text-[10px] font-bold text-slate-600 flex items-center justify-center transition-all select-none active:scale-95"
+                                title="Augmenter la taille du texte" type="button">
+                            A+
+                        </button>
+                        
+                        {# Statut ou bouton d'annulation #}
+                        <button data-action="click->reading-chat#cancelStream" 
+                                class="text-xs text-red-500 font-bold hover:underline hidden" 
+                                type="button">
+                            Annuler
+                        </button>
+                    </div>
+                </div>
+
+                {# Historique des Messages #}
+                <div data-reading-chat-target="messages" 
+                     id="chat-messages-container"
+                     class="flex-grow p-6 overflow-y-auto space-y-4 bg-slate-50/10 min-h-0">
+                     
+                    {# Message de bienvenue de l'IA #}
+                    <div class="flex gap-3 max-w-[85%]">
+                        <div class="flex-shrink-0 w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-djoliba font-bold text-xs">AI</div>
+                        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                            <p class="text-xs text-slate-700 leading-relaxed">
+                                Bonjour ! Une fois votre document chargé et synthétisé, posez-moi des questions spécifiques.
+                            </p>
+                        </div>
+                    </div>
+
+                    {# Zone temporaire de streaming pour la réponse IA active #}
+                    <div data-reading-chat-target="response" class="hidden"></div>
+                </div>
+
+                {# Barre de saisie #}
+                <div class="p-4 border-t border-slate-50 bg-white">
+                    <form data-action="submit->reading-chat#sendMessage" class="flex gap-2">
+                        <input type="text" 
+                               data-reading-chat-target="input" 
+                               class="flex-grow px-4 py-3 bg-slate-50 border-none rounded-xl text-xs text-djoliba placeholder-slate-400 focus:ring-2 focus:ring-djoliba/20 focus:bg-white transition-all shadow-inner"
+                               placeholder="Posez une question...">
+                        
+                        <button type="submit" 
+                                data-reading-chat-target="submit"
+                                class="p-3 bg-djoliba text-white rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all flex items-center justify-center">
+                            <svg class="w-4 h-4 transform rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                        </button>
+                    </form>
+                    <div data-reading-chat-target="status" class="mt-2 text-[10px] text-slate-400 text-center"></div>
+                </div>
+            </div>
+        </div>
+
+        {# Zone droite (Col 5) : Upload & Synthèse #}
+        <div class="lg:col-span-5 space-y-8">
             {# Zone Drag & Drop #}
             <div data-action="dragenter->reading-chat#onDragOver dragover->reading-chat#onDragOver dragleave->reading-chat#onDragLeave drop->reading-chat#onDrop click->reading-chat#triggerSelect"
                  class="bg-white rounded-3xl p-8 border-2 border-dashed border-slate-200 hover:border-djoliba/50 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[220px] group relative overflow-hidden shadow-sm">
@@ -104,85 +179,55 @@
                 </div>
             </div>
         </div>
-
-        {# Zone droite (Col 5) : Chat Interactif #}
-        <div class="lg:col-span-5 flex flex-col h-[650px]">
-            <div class="bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col h-full overflow-hidden">
-                 
-                {# En-tête du Chat #}
-                <div class="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-emerald_ia/10 flex items-center justify-center text-emerald_ia">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-                        </div>
-                        <div>
-                            <h3 class="text-sm font-bold text-djoliba">Interroger le document</h3>
-                            <p class="text-[10px] text-slate-400">Posez vos questions sur le texte analysé</p>
-                        </div>
-                    </div>
-                    
-                    {# Statut ou bouton d'annulation #}
-                    <button data-action="click->reading-chat#cancelStream" 
-                            class="text-xs text-red-500 font-bold hover:underline hidden" 
-                            type="button">
-                        Annuler
-                    </button>
-                </div>
-
-                {# Historique des Messages #}
-                <div data-reading-chat-target="messages" 
-                     class="flex-grow p-6 overflow-y-auto space-y-4 bg-slate-50/10 min-h-0">
-                     
-                    {# Message de bienvenue de l'IA #}
-                    <div class="flex gap-3 max-w-[85%]">
-                        <div class="flex-shrink-0 w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-djoliba font-bold text-xs">AI</div>
-                        <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                            <p class="text-xs text-slate-700 leading-relaxed">
-                                Bonjour ! Une fois votre document chargé et synthétisé, posez-moi des questions spécifiques.
-                            </p>
-                        </div>
-                    </div>
-
-                    {# Zone temporaire de streaming pour la réponse IA active #}
-                    <div data-reading-chat-target="response" class="hidden"></div>
-                </div>
-
-                {# Barre de saisie #}
-                <div class="p-4 border-t border-slate-50 bg-white">
-                    <form data-action="submit->reading-chat#sendMessage" class="flex gap-2">
-                        <input type="text" 
-                               data-reading-chat-target="input" 
-                               class="flex-grow px-4 py-3 bg-slate-50 border-none rounded-xl text-xs text-djoliba placeholder-slate-400 focus:ring-2 focus:ring-djoliba/20 focus:bg-white transition-all shadow-inner"
-                               placeholder="Posez une question...">
-                        
-                        <button type="submit" 
-                                data-reading-chat-target="submit"
-                                class="p-3 bg-djoliba text-white rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all flex items-center justify-center">
-                            <svg class="w-4 h-4 transform rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                        </button>
-                    </form>
-                    <div data-reading-chat-target="status" class="mt-2 text-[10px] text-slate-400 text-center"></div>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 
 {# Styles pour les bulles de chat similaires au design premium de Djoliba #}
 <style>
+    #chat-messages-container {
+        --chat-font-size: 12px;
+    }
     .message {
         max-width: 85%;
         margin-bottom: 1rem;
-        font-size: 0.75rem;
+        font-size: var(--chat-font-size) !important;
         line-height: 1.5;
         padding: 0.75rem 1rem;
         position: relative;
     }
+    .message p,
+    .message li,
+    .message span:not(.message__time),
+    .message strong,
+    .message em {
+        font-size: var(--chat-font-size) !important;
+    }
+    .message h3 {
+        font-size: calc(var(--chat-font-size) * 1.33) !important;
+    }
+    .message h4 {
+        font-size: calc(var(--chat-font-size) * 1.15) !important;
+    }
     .message--user {
         margin-left: auto;
         background-color: var(--color-djoliba);
-        color: white;
+        color: white !important;
         border-radius: 1.25rem 1.25rem 0.25rem 1.25rem;
+    }
+    /* Rendre tous les textes enfants des messages utilisateur entièrement blancs */
+    .message--user,
+    .message--user p,
+    .message--user span:not(.message__time),
+    .message--user strong,
+    .message--user em,
+    .message--user li,
+    .message--user ul,
+    .message--user ol,
+    .message--user h1,
+    .message--user h2,
+    .message--user h3,
+    .message--user h4 {
+        color: #ffffff !important;
     }
     .message--ai {
         background-color: white;
@@ -199,7 +244,7 @@
         text-align: right;
     }
     .message--user .message__time {
-        color: rgba(255, 255, 255, 0.6);
+        color: rgba(255, 255, 255, 0.6) !important;
     }
 </style>
 {% endblock %}

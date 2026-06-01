@@ -24,7 +24,8 @@ export default class extends Controller {
         'figureModal', 'figureUrlInput', 'figureCaptionInput', 'figureLabelInput', 'figureDeleteBtn',
         'footnoteModal', 'footnoteTextInput',
         'referenceModal', 'referenceLabelSelect',
-        'toolbarDeleteTableBtn', 'toolbarDeleteFigureBtn'
+        'toolbarDeleteTableBtn', 'toolbarDeleteFigureBtn',
+        'figureImageFileInput', 'figureUploadStatus'
     ];
 
     static values = {
@@ -1823,6 +1824,10 @@ export default class extends Controller {
         this.figureUrlInputTarget.value = '';
         this.figureCaptionInputTarget.value = '';
         this.figureLabelInputTarget.value = '';
+        if (this.hasFigureUploadStatusTarget) {
+            this.figureUploadStatusTarget.classList.add('hidden');
+            this.figureUploadStatusTarget.textContent = '';
+        }
         this.openFigureModal();
     }
 
@@ -1865,6 +1870,11 @@ export default class extends Controller {
         this.figureUrlInputTarget.value = img ? img.getAttribute('src') : '';
         this.figureCaptionInputTarget.value = figcaption ? figcaption.textContent.trim() : '';
         this.figureLabelInputTarget.value = label;
+        
+        if (this.hasFigureUploadStatusTarget) {
+            this.figureUploadStatusTarget.classList.add('hidden');
+            this.figureUploadStatusTarget.textContent = '';
+        }
         
         this.openFigureModal();
     }
@@ -1965,6 +1975,81 @@ export default class extends Controller {
     deleteFigureUnderCursor() {
         this.editingFigureEl = null;
         this.deleteFigure();
+    }
+
+    triggerFigureImageUpload() {
+        if (this.hasFigureImageFileInputTarget) {
+            this.figureImageFileInputTarget.click();
+        }
+    }
+
+    async handleFigureImageUpload(event) {
+        const fileInput = event.currentTarget;
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        // Valider le type localement
+        if (!file.type.startsWith('image/')) {
+            this.#setFigureUploadStatus("Erreur : Le fichier doit être une image", true);
+            return;
+        }
+
+        // Valider la taille localement (5 Mo max)
+        if (file.size > 5 * 1024 * 1024) {
+            this.#setFigureUploadStatus("Erreur : L'image dépasse 5 Mo", true);
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const projectId = this.projectIdValue;
+        const uploadUrl = `/api/projects/${projectId}/upload-image`;
+
+        this.#setFigureUploadStatus("Téléchargement de l'image...", false, true);
+
+        try {
+            const response = await fetch(uploadUrl, {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            if (response.ok && result.success) {
+                if (this.hasFigureUrlInputTarget) {
+                    this.figureUrlInputTarget.value = result.url;
+                }
+                this.#setFigureUploadStatus("Image importée avec succès !", false);
+            } else {
+                const errorMsg = result.error?.message || "Erreur de chargement";
+                this.#setFigureUploadStatus(`Erreur : ${errorMsg}`, true);
+            }
+        } catch (err) {
+            console.error("Erreur d'upload d'image :", err);
+            this.#setFigureUploadStatus("Erreur : Impossible d'envoyer l'image", true);
+        } finally {
+            fileInput.value = '';
+        }
+    }
+
+    #setFigureUploadStatus(message, isError = false, isLoading = false) {
+        if (!this.hasFigureUploadStatusTarget) return;
+        const statusEl = this.figureUploadStatusTarget;
+        statusEl.classList.remove('hidden', 'text-slate-400', 'text-red-500', 'text-emerald-500', 'animate-pulse');
+        statusEl.textContent = message;
+
+        if (isError) {
+            statusEl.classList.add('text-red-500');
+        } else if (isLoading) {
+            statusEl.classList.add('text-slate-400', 'animate-pulse');
+        } else {
+            statusEl.classList.add('text-emerald-500');
+            setTimeout(() => {
+                if (statusEl.textContent === message) {
+                    statusEl.classList.add('hidden');
+                }
+            }, 3000);
+        }
     }
 
     // =============================================

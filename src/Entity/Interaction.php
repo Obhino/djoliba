@@ -32,6 +32,7 @@ class Interaction
         'writing_check',
         'writing_suggest_journal',
         'thesis_assist',
+        'reading_synthesis',
     ];
 
     #[ORM\Column(type: Types::TEXT)]

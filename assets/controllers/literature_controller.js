@@ -8,10 +8,9 @@ export default class extends Controller {
     connect() {
         this.isSearching = false;
 
-        // Si redirigé depuis le hub (?autostart=1), afficher la synthèse standard sans appel API
+        // Si redirigé depuis le hub (?autostart=1), lancer la recherche via l'API
         if (this.autostartValue === 'true' && this.hasInputTarget && this.inputTarget.value.trim()) {
-            const query = this.inputTarget.value.trim();
-            setTimeout(() => this.renderStructuredSynthesis(query), 150);
+            setTimeout(() => this.onSearch(), 150);
         } else {
             // Afficher le texte de bienvenue formaté en Markdown
             this.renderDefaultText();
@@ -123,21 +122,6 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
     async onSearch() {
         const query = this.inputTarget.value.trim();
         if (!query || this.isSearching) return;
-
-        // Si redirigé depuis le hub en mode démo (autostart=true), on simule le rendu localement
-        if (this.autostartValue === 'true') {
-            this.isSearching = true;
-            this.toggleLoading(true);
-            this.suggestionsTarget.innerHTML = this.renderSkeleton();
-
-            setTimeout(() => {
-                this.toggleLoading(false);
-                this.isSearching = false;
-                this.renderStructuredSynthesis(query);
-                this.loadSuggestions(query);
-            }, 300);
-            return;
-        }
 
         this.isSearching = true;
         this.toggleLoading(true);

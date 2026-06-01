@@ -40,12 +40,43 @@ export default class extends Controller {
         this.abortController = null;
         this.#log('reading-chat connecté');
         
+        // Initialiser la taille de police depuis le localStorage ou 12px par défaut
+        this.currentFontSize = parseInt(localStorage.getItem('djoliba_chat_font_size')) || 12;
+        this.#updateFontSize();
+
         // Charger l'historique des messages existants au chargement de la page
         this.loadHistory();
 
         // Lancer la synthèse automatiquement si le document est pré-rempli (uploadé depuis le hub)
         if (this.documentIdValue > 0) {
             this.fetchSynthesis(this.documentIdValue);
+        }
+    }
+
+    decreaseFontSize() {
+        if (!this.currentFontSize) {
+            this.currentFontSize = 12;
+        }
+        if (this.currentFontSize > 9) {
+            this.currentFontSize -= 1;
+            this.#updateFontSize();
+        }
+    }
+
+    increaseFontSize() {
+        if (!this.currentFontSize) {
+            this.currentFontSize = 12;
+        }
+        if (this.currentFontSize < 24) {
+            this.currentFontSize += 1;
+            this.#updateFontSize();
+        }
+    }
+
+    #updateFontSize() {
+        if (this.hasMessagesTarget) {
+            this.messagesTarget.style.setProperty('--chat-font-size', `${this.currentFontSize}px`);
+            localStorage.setItem('djoliba_chat_font_size', this.currentFontSize);
         }
     }
 
@@ -68,9 +99,21 @@ export default class extends Controller {
                 if (result.data.history.length > 0 && this.hasMessagesTarget) {
                     this.messagesTarget.innerHTML = '';
                     
+                    let skipNextAi = false;
                     result.data.history.forEach(msg => {
-                        // Filtre les commandes internes type [synthesize]
-                        if (msg.role === 'user' && msg.content.startsWith('[synthesize]')) return;
+                        // Filtre les commandes internes de type [synthesize] et leurs réponses IA associées (JSON)
+                        if (msg.role === 'user') {
+                            if (msg.content.startsWith('[synthesize]')) {
+                                skipNextAi = true;
+                                return;
+                            }
+                            skipNextAi = false;
+                        } else if (msg.role === 'ai' || msg.role === 'assistant') {
+                            if (skipNextAi) {
+                                skipNextAi = false;
+                                return;
+                            }
+                        }
                         
                         this.#appendMessage(msg.role, msg.content, msg.time);
                     });
@@ -240,6 +283,7 @@ export default class extends Controller {
         `).join('');
 
         this.pointsListTarget.classList.remove('hidden');
+        this.renderMath(this.pointsListTarget);
     }
 
     #resetUploadProgress() {
@@ -377,6 +421,7 @@ export default class extends Controller {
             this.#processSSELine(buffer.trim());
         }
 
+        this.renderMath(this.responseTarget);
         this.#setStatus('');
         this.#finalizeResponse();
     }
@@ -428,6 +473,7 @@ export default class extends Controller {
 
         this.messagesTarget.appendChild(bubble);
         this.messagesTarget.scrollTop = this.messagesTarget.scrollHeight;
+        this.renderMath(bubble);
     }
 
     #prepareResponseArea() {
@@ -445,6 +491,7 @@ export default class extends Controller {
         // Utiliser le parseur Markdown premium avec KaTeX
         this.responseTarget.innerHTML = this.parseMarkdown(this.#currentResponseText);
         this.messagesTarget?.scrollTo({ top: this.messagesTarget.scrollHeight, behavior: 'smooth' });
+        this.renderMath(this.responseTarget);
     }
 
     #finalizeResponse() {
@@ -459,6 +506,7 @@ export default class extends Controller {
         this.responseTarget.classList.remove('message--streaming');
         this.responseTarget.classList.add('hidden');
         this.#currentResponseText = '';
+        this.renderMath(finalBubble);
     }
 
     parseMarkdown(text) {
@@ -467,16 +515,26 @@ export default class extends Controller {
         const mathBlocks = [];
         let html = text;
 
-        // 1. Extraire les blocs d'équations ($$ ... $$)
+        // 1. Extraire les blocs d'équations ($$ ... $$ et \[ ... \])
         html = html.replace(/\$\$([\s\S]*?)\$\$/g, (match, equation) => {
             const placeholder = `__MATH_BLOCK_${mathBlocks.length}__`;
             mathBlocks.push({ placeholder, equation, display: true });
             return placeholder;
         });
+        html = html.replace(/\\\[([\s\S]*?)\\\]/g, (match, equation) => {
+            const placeholder = `__MATH_BLOCK_${mathBlocks.length}__`;
+            mathBlocks.push({ placeholder, equation, display: true });
+            return placeholder;
+        });
 
-        // 2. Extraire les équations en ligne ($ ... $)
+        // 2. Extraire les équations en ligne ($ ... $ et \( ... \))
         // Évite d'extraire les chaînes vides, de simples espaces ou des dollars orphelins
         html = html.replace(/\$([^\s$](?:[^\n$]*?[^\s$])?)\$/g, (match, equation) => {
+            const placeholder = `__MATH_INLINE_${mathBlocks.length}__`;
+            mathBlocks.push({ placeholder, equation, display: false });
+            return placeholder;
+        });
+        html = html.replace(/\\\(([\s\S]*?)\\\)/g, (match, equation) => {
             const placeholder = `__MATH_INLINE_${mathBlocks.length}__`;
             mathBlocks.push({ placeholder, equation, display: false });
             return placeholder;
@@ -545,6 +603,41 @@ export default class extends Controller {
         });
 
         return html;
+    }
+
+    renderMath(target = null) {
+        const targetElement = target || this.element;
+        const doRender = () => {
+            try {
+                if (window.renderMathInElement) {
+                    window.renderMathInElement(targetElement, {
+                        delimiters: [
+                            { left: "$$", right: "$$", display: true },
+                            { left: "$", right: "$", display: false },
+                            { left: "\\(", right: "\\)", display: false },
+                            { left: "\\[", right: "\\]", display: true }
+                        ],
+                        throwOnError: false
+                    });
+                }
+            } catch (e) {
+                console.warn("KaTeX render error:", e);
+            }
+        };
+
+        if (window.renderMathInElement) {
+            doRender();
+        } else {
+            // KaTeX pas encore chargé (scripts defer) — on attend
+            const poll = setInterval(() => {
+                if (window.renderMathInElement) {
+                    clearInterval(poll);
+                    doRender();
+                }
+            }, 50);
+            // Sécurité : abandon après 5s
+            setTimeout(() => clearInterval(poll), 5000);
+        }
     }
 
     #cancelStream() {
