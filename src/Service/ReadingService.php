@@ -35,36 +35,81 @@ class ReadingService
         $documentId = $document->getId();
         $cacheKey = 'synthesis_doc_' . $documentId;
 
-        // On utilise le cache 1h pour éviter de refaire la synthèse du même document
-        $points = $this->cacheService->remember(
-            $cacheKey,
-            function () use ($document) {
-                // 1. Extraire le contenu texte
-                $textContext = $this->extractTextContent($document);
+        // 1. Tenter de récupérer la synthèse depuis le cache Redis local
+        $points = $this->cacheService->get($cacheKey);
 
-                // 2. Préparer le prompt pour DeepSeek
-                // Limiter la taille du texte à ~8000 caractères pour ne pas exploser le token limit
-                $textContext = mb_substr($textContext, 0, 8000);
+        if ($points !== null && is_array($points)) {
+            // S'assurer que l'interaction existe en BDD pour la traçabilité
+            $existingInteraction = $this->entityManager->getRepository(Interaction::class)->findOneBy([
+                'project' => $project,
+                'type' => 'reading_synthesis',
+                'userPrompt' => '[synthesize] ' . $document->getFilename(),
+            ], ['createdAt' => 'DESC']);
 
-                $prompt = sprintf(
-                    "Tu es un assistant de recherche académique. Synthétise ce document en 5 points clés majeurs. " .
-                    "Retourne UNIQUEMENT un tableau JSON valide (pas de markdown, pas de texte autour) " .
-                    "avec exactement ce format : [{\"point\": \"Titre du point\", \"explication\": \"Détail...\"}].\n\nTexte du document :\n%s",
-                    $textContext
-                );
+            if (!$existingInteraction) {
+                $existingInteraction = new Interaction();
+                $existingInteraction->setProject($project);
+                $existingInteraction->setType('reading_synthesis');
+                $existingInteraction->setUserPrompt('[synthesize] ' . $document->getFilename());
+                $existingInteraction->setAiResponse(json_encode($points, JSON_UNESCAPED_UNICODE));
+                $this->entityManager->persist($existingInteraction);
+                $this->entityManager->flush();
+            }
 
-                // 3. Appel à l'API via DeepSeekService
-                $response = $this->deepSeekService->call($prompt, [
-                    'temperature' => 0.3, // Température basse pour garantir le JSON
-                ]);
+            return [
+                'points'      => $points,
+                'interaction' => $existingInteraction,
+            ];
+        }
 
-                // 4. Parser la réponse
-                return $this->parsePoints($response);
-            },
-            self::CACHE_TTL_SYNTHESIS
+        // 2. Tenter de restaurer depuis la base de données (Interaction de type 'reading_synthesis')
+        $existingInteraction = $this->entityManager->getRepository(Interaction::class)->findOneBy([
+            'project' => $project,
+            'type' => 'reading_synthesis',
+            'userPrompt' => '[synthesize] ' . $document->getFilename(),
+        ], ['createdAt' => 'DESC']);
+
+        if ($existingInteraction) {
+            $rawResponse = $existingInteraction->getAiResponse();
+            $points = json_decode($rawResponse, true);
+
+            if (is_array($points)) {
+                // Remettre en cache Redis pour accélérer les futurs appels
+                $this->cacheService->set($cacheKey, $points, self::CACHE_TTL_SYNTHESIS);
+
+                return [
+                    'points'      => $points,
+                    'interaction' => $existingInteraction,
+                ];
+            }
+        }
+
+        // 3. Si non présent en cache ni en BDD, générer la synthèse via DeepSeek
+        // 3.1. Extraire le contenu texte
+        $textContext = $this->extractTextContent($document);
+
+        // 3.2. Préparer le prompt pour DeepSeek (limite à ~8000 caractères)
+        $textContext = mb_substr($textContext, 0, 8000);
+
+        $prompt = sprintf(
+            "Tu es un assistant de recherche académique. Synthétise ce document en 5 points clés majeurs. " .
+            "Retourne UNIQUEMENT un tableau JSON valide (pas de markdown, pas de texte autour) " .
+            "avec exactement ce format : [{\"point\": \"Titre du point\", \"explication\": \"Détail...\"}].\n\nTexte du document :\n%s",
+            $textContext
         );
 
-        // Traçabilité
+        // 3.3. Appel à l'API via DeepSeek Service
+        $response = $this->deepSeekService->call($prompt, [
+            'temperature' => 0.3,
+        ]);
+
+        // 3.4. Parser la réponse
+        $points = $this->parsePoints($response);
+
+        // 4. Mettre en cache Redis
+        $this->cacheService->set($cacheKey, $points, self::CACHE_TTL_SYNTHESIS);
+
+        // 5. Sauvegarder en base de données pour la durabilité (restauration hors-cache)
         $interaction = new Interaction();
         $interaction->setProject($project);
         $interaction->setType('reading_synthesis');

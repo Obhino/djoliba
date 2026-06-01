@@ -45,9 +45,15 @@ Depuis son lancement, Djoliba est construit sur des technologies robustes, moder
     *   Support natif des formats scientifiques : **PDF**, **DOCX**, et **LaTeX (.tex)**.
     *   Validation stricte de la taille (limite à 25 Mo) et scan antivirus en temps réel.
 *   **Synthèse de Lecture Interactive** :
-    *   Extraction de contenu et génération instantanée de fiches de lecture (problématique, méthodologie, résultats clés, limites).
-*   **Chat interactif en Streaming (SSE - Server-Sent Events)** :
-    *   Interface de chat permettant de questionner directement l'article scientifique importé. L'IA répond en flux continu (streaming) avec injection du contexte de l'article pour des réponses ultra-précises sans hallucination.
+    *   Extraction de contenu et génération de points clés synthétiques.
+    *   *Optimisation Ergonomique* : Inversion de la grille d'affichage (la zone de chat interactif dynamique est placée à gauche occupant 7 colonnes pour un confort de lecture optimal, tandis que la zone d'import et la synthèse statique occupent 5 colonnes sur la droite).
+*   **Chat Interactif Sémantique & Streaming (SSE)** :
+    *   Interface de chat dynamique permettant de questionner l'article scientifique importé.
+    *   **Gestion d'Historique de Conversation** : Mise en place d'un historique intelligent (`ReadingService` avec limitation aux 10 derniers échanges) pour exploiter le **cache de contexte DeepSeek**. Le fichier PDF n'est envoyé qu'au premier message, ce qui évite la sur-facturation de tokens lors des questions suivantes.
+    *   **Cache local Redis de Session** : Intégration d'un cache local Redis (`DeepSeekService->call()`) avec TTL de 24h pour retourner instantanément et gratuitement les réponses aux requêtes identiques au sein de la même session (zéro coût API et zéro latence au rechargement).
+    *   **Ajustement Visuel Premium & Font Controls** :
+        *   Textes des bulles de messages utilisateur entièrement blancs (`#ffffff !important`) même en cas de balises imbriquées générées par le parseur de markdown.
+        *   Intégration de boutons dynamiques de contrôle de la taille de la police (`A-` / `A+`) dans l'en-tête du chat, persistant le choix de l'utilisateur dans le `localStorage` du navigateur.
 
 ### ✍️ MODULE 4 : Assistant de Rédaction Scientifique (Rich Editor v2)
 *   **Composant d'Édition Réutilisable (`_writing_editor.html.twig`)** :
@@ -93,6 +99,9 @@ Depuis son lancement, Djoliba est construit sur des technologies robustes, moder
 | **Recherche** | Génération de revues de littérature structurées | Inception | **100% Fonctionnel** |
 | **Analyse PDF** | Upload sécurisé & Antivirus (25 Mo) | Inception | **100% Fonctionnel** |
 | **Analyse PDF** | Synthèse interactive & Chat streaming (SSE) | Inception | **100% Fonctionnel** |
+| **Analyse PDF** | Cache local Redis de Session (24h) | Inception | **100% Fonctionnel** |
+| **Analyse PDF** | Cache contextuel DeepSeek (Historique des 10 échanges) | Inception | **100% Fonctionnel** |
+| **Analyse PDF** | Contrôle dynamique de police (A-/A+ & localStorage) | Raffinement | **100% Fonctionnel** |
 | **Écriture v2** | TipTap WYSIWYG & CodeMirror LaTeX sombre | v2 | **100% Fonctionnel** |
 | **Écriture v2** | Split screen 50/50 side-by-side & KaTeX | v2 | **100% Fonctionnel** |
 | **Écriture v2** | Importation DOCX/TEX & Raccourcis format | v2 | **100% Fonctionnel** |
