@@ -41,10 +41,11 @@ class LiteratureService
         $aiResponse = $this->cacheService->remember(
             $cacheKey,
             function () use ($query) {
-                // Prompt défini en section 6 du PROJECT_CONTEXT.md
+                // Prompt de revue de littérature robuste sans citations en texte
                 return $this->deepSeekService->call(
                     sprintf(
-                        "Effectue une revue de littérature surcé sur: %s. Inclus: fondement théorique, tendances récentes, lacunes, articles incontournables et bibliographie.",
+                        "Effectue une revue de littérature scientifique détaillée sur : %s. Inclus : fondements théoriques, tendances récentes, lacunes, et pistes de recherche futures.
+                        CONSIGNES STRICTES SUR LES RÉFÉRENCES : Ne cite AUCUN article ou auteur directement dans le corps du texte (pas de citations entre parenthèses ni de renvois en cours de texte, pour éviter les hallucinations). Termine obligatoirement par une section '### Bibliographie' listant 3 à 5 articles réels et pertinents (format Auteur, Année, Titre, Journal).",
                         $query
                     )
                 );

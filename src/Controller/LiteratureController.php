@@ -166,6 +166,11 @@ class LiteratureController extends AbstractController
             'content' => sprintf(
                 "Effectue une revue de littérature scientifique extrêmement détaillée et structurée en Markdown sur le sujet suivant: \"%s\".
                 Inclus des fondements théoriques, les tendances récentes de la recherche, les lacunes identifiées dans la littérature actuelle, et des pistes de recherche futures.
+                
+                CONSIGNES STRICTES SUR LES RÉFÉRENCES :
+                - Ne cite AUCUN article ou auteur directement dans le corps du texte (pas de citations entre parenthèses ni de renvois en cours de texte, pour éliminer tout risque d'hallucination).
+                - Termine obligatoirement la revue par une section \"### Bibliographie\" listant 3 à 5 articles réels et pertinents (format Auteur, Année, Titre, Journal) servant de références globales pour le sujet.
+                
                 Sois précis, académique et utilise un ton rigoureux.",
                 $data['query']
             )
