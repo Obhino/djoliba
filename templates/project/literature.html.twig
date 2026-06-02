@@ -3,7 +3,7 @@
 {% block title %}Revue de Littérature - Djoliba{% endblock %}
 
 {% block main %}
-<div class="p-8 max-w-5xl mx-auto" 
+<div class="py-8 px-6 max-w-none w-full" 
      data-controller="literature" 
      data-literature-project-id-value="{{ project.id }}"
      data-literature-last-query-value="{{ last_query|default('') }}"
@@ -52,8 +52,24 @@
                         <svg class="w-4 h-4 text-emerald_ia" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                         Analyse Synthétique
                     </h2>
-                    <div data-literature-target="status" class="hidden">
-                        <span class="flex h-2 w-2 rounded-full bg-emerald_ia animate-pulse"></span>
+                    <div class="flex items-center gap-4">
+                        {# Contrôle de la taille de police #}
+                        <div class="flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+                            <button data-action="click->literature#zoomOut" 
+                                    class="w-6 h-6 flex items-center justify-center text-slate-600 hover:text-djoliba hover:bg-white rounded transition-colors font-bold text-sm"
+                                    title="Diminuer la taille de police">
+                                -
+                            </button>
+                            <button data-action="click->literature#zoomIn" 
+                                    class="w-6 h-6 flex items-center justify-center text-slate-600 hover:text-djoliba hover:bg-white rounded transition-colors font-bold text-sm"
+                                    title="Augmenter la taille de police">
+                                +
+                            </button>
+                        </div>
+
+                        <div data-literature-target="status" class="hidden">
+                            <span class="flex h-2 w-2 rounded-full bg-emerald_ia animate-pulse"></span>
+                        </div>
                     </div>
                 </div>
 
@@ -88,6 +104,29 @@
 
 {% block styles %}
 <style>
+    /* Zoom proportionnel de la police de la synthèse */
+    [data-literature-target="output"] {
+        --synth-font-size-multiplier: 1.0;
+    }
+    [data-literature-target="output"] p,
+    [data-literature-target="output"] li,
+    [data-literature-target="output"] .ref {
+        font-size: calc(0.75rem * var(--synth-font-size-multiplier, 1.0)) !important;
+        line-height: 1.625 !important;
+    }
+    [data-literature-target="output"] h3 {
+        font-size: calc(1.125rem * var(--synth-font-size-multiplier, 1.0)) !important;
+        line-height: 1.4 !important;
+    }
+    [data-literature-target="output"] h4 {
+        font-size: calc(0.875rem * var(--synth-font-size-multiplier, 1.0)) !important;
+        line-height: 1.4 !important;
+    }
+    [data-literature-target="output"] .katex-display,
+    [data-literature-target="output"] .katex {
+        font-size: calc(1em * var(--synth-font-size-multiplier, 1.0)) !important;
+    }
+
     /* Scrollbar fine et élégante pour la zone d'analyse */
     .synth-scroll {
         max-height: 440px !important;

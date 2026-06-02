@@ -2,11 +2,13 @@ import { Controller } from '@hotwired/stimulus';
 
 /* stimulusFetch: 'lazy' */
 export default class extends Controller {
-    static targets = ['input', 'output', 'status', 'suggestions']
+    static targets = ['input', 'output', 'status', 'suggestions', 'fontSizeIndicator']
     static values = { projectId: Number, autostart: String, lastQuery: String }
 
     connect() {
         this.isSearching = false;
+        this.fontSizeLevel = 100;
+        this.updateFontSize();
 
         // Si session précédente restaurée (lastQuery présent)
         if (this.hasLastQueryValue && this.lastQueryValue.trim()) {
@@ -540,6 +542,27 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
         this.statusTarget.classList.toggle('hidden', !isLoading);
         if (isLoading) {
             this.outputTarget.innerHTML = '...';
+        }
+    }
+
+    zoomIn() {
+        if (this.fontSizeLevel < 150) {
+            this.fontSizeLevel += 10;
+            this.updateFontSize();
+        }
+    }
+
+    zoomOut() {
+        if (this.fontSizeLevel > 80) {
+            this.fontSizeLevel -= 10;
+            this.updateFontSize();
+        }
+    }
+
+    updateFontSize() {
+        this.outputTarget.style.setProperty('--synth-font-size-multiplier', this.fontSizeLevel / 100);
+        if (this.hasFontSizeIndicatorTarget) {
+            this.fontSizeIndicatorTarget.textContent = `${this.fontSizeLevel}%`;
         }
     }
 }
