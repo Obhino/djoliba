@@ -100,6 +100,25 @@ class SuggestionService
                     // Extraire l'année depuis le snippet ou le titre
                     $year = (int) ($snippetData['year'] ?: $this->referenceCorrector->extractYearFromString($res['title'] . ' ' . $res['description']) ?: 0);
 
+                    // Si un DOI est présent, on enrichit les métadonnées via Crossref
+                    if ($doi) {
+                        $doiMeta = $this->referenceCorrector->resolveDoiMetadata($doi);
+                        if ($doiMeta) {
+                            if (!empty($doiMeta['authors'])) {
+                                $snippetData['author'] = $doiMeta['authors'];
+                            }
+                            if (!empty($doiMeta['year'])) {
+                                $year = $doiMeta['year'];
+                            }
+                            if (!empty($doiMeta['journal'])) {
+                                $snippetData['journal'] = $doiMeta['journal'];
+                            }
+                            if (!empty($doiMeta['title'])) {
+                                $cleanTitle = $doiMeta['title'];
+                            }
+                        }
+                    }
+
                     // Formater le snippet pour l'abstract
                     $abstract = trim($res['description']);
                     $abstract = preg_replace('/\s*\.\.\.\s*$/', '...', $abstract);

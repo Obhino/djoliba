@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Service\Search\OpenSerpSearchService;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class ReferenceCorrector
 {
@@ -13,7 +14,8 @@ class ReferenceCorrector
 
     public function __construct(
         private OpenSerpSearchService $openSerpSearchService,
-        private CacheInterface $cache
+        private CacheInterface $cache,
+        private HttpClientInterface $httpClient
     ) {
     }
 
@@ -105,6 +107,24 @@ class ReferenceCorrector
 
                     // Extraire les métadonnées réelles du snippet
                     $snippetData = $this->parseSnippet($bestResult['description'], $bestResult['title'], $bestResult['url']);
+
+                    if ($extractedDoi) {
+                        $doiMeta = $this->resolveDoiMetadata($extractedDoi);
+                        if ($doiMeta) {
+                            if (!empty($doiMeta['authors'])) {
+                                $snippetData['author'] = $doiMeta['authors'];
+                            }
+                            if (!empty($doiMeta['year'])) {
+                                $snippetData['year'] = (string) $doiMeta['year'];
+                            }
+                            if (!empty($doiMeta['journal'])) {
+                                $snippetData['journal'] = $doiMeta['journal'];
+                            }
+                            if (!empty($doiMeta['title'])) {
+                                $bestResult['title'] = $doiMeta['title'];
+                            }
+                        }
+                    }
 
                     $correctedMetadata = [
                         'author'  => $snippetData['author'] ?: ($ref['parsed']['author'] ?: 'Auteur inconnu'),
@@ -322,5 +342,95 @@ class ReferenceCorrector
             'year'    => $year,
             'journal' => $journal,
         ];
+    }
+
+    /**
+     * Résout les métadonnées officielles d'un DOI auprès de l'API Crossref (avec cache).
+     *
+     * @param string $doi
+     * @return array{authors: string|null, year: int|null, journal: string|null, title: string|null} | null
+     */
+    public function resolveDoiMetadata(string $doi): ?array
+    {
+        $cleanDoi = trim(strtolower($doi));
+        if (empty($cleanDoi)) {
+            return null;
+        }
+
+        $cacheKey = 'doi_meta_' . md5($cleanDoi);
+
+        try {
+            return $this->cache->get($cacheKey, function (ItemInterface $item) use ($cleanDoi) {
+                $item->expiresAfter(self::CACHE_TTL); // 7 jours
+
+                $url = 'https://api.crossref.org/works/' . urlencode($cleanDoi);
+                
+                $response = $this->httpClient->request('GET', $url, [
+                    'headers' => [
+                        'User-Agent' => 'DjolibaSearch/2.0 (mailto:admin@djoliba.local)',
+                    ],
+                    'timeout' => 5,
+                ]);
+
+                if ($response->getStatusCode() !== 200) {
+                    return null;
+                }
+
+                $data = $response->toArray();
+                $message = $data['message'] ?? [];
+                if (empty($message)) {
+                    return null;
+                }
+
+                // 1. Extraire les auteurs
+                $authorsList = [];
+                if (!empty($message['author'])) {
+                    foreach ($message['author'] as $author) {
+                        $nameParts = [];
+                        if (!empty($author['given'])) {
+                            $nameParts[] = $author['given'];
+                        }
+                        if (!empty($author['family'])) {
+                            $nameParts[] = $author['family'];
+                        }
+                        if (!empty($nameParts)) {
+                            $authorsList[] = implode(' ', $nameParts);
+                        }
+                    }
+                }
+                $authorsStr = !empty($authorsList) ? implode(', ', $authorsList) : null;
+
+                // 2. Extraire l'année
+                $year = null;
+                if (!empty($message['published-print']['date-parts'][0][0])) {
+                    $year = (int) $message['published-print']['date-parts'][0][0];
+                } elseif (!empty($message['published-online']['date-parts'][0][0])) {
+                    $year = (int) $message['published-online']['date-parts'][0][0];
+                } elseif (!empty($message['created']['date-parts'][0][0])) {
+                    $year = (int) $message['created']['date-parts'][0][0];
+                }
+
+                // 3. Extraire le journal
+                $journal = null;
+                if (!empty($message['container-title'][0])) {
+                    $journal = $message['container-title'][0];
+                }
+
+                // 4. Extraire le titre
+                $title = null;
+                if (!empty($message['title'][0])) {
+                    $title = $message['title'][0];
+                }
+
+                return [
+                    'authors' => $authorsStr,
+                    'year'    => $year,
+                    'journal' => $journal,
+                    'title'   => $title,
+                ];
+            });
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 }

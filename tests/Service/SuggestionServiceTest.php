@@ -79,6 +79,19 @@ class SuggestionServiceTest extends TestCase
         $referenceCorrectorMock->method('extractYearFromString')
             ->willReturn(null);
 
+        $referenceCorrectorMock->method('resolveDoiMetadata')
+            ->willReturnCallback(function ($doi) {
+                if ($doi === '10.1038/s41586-019-1666-5') {
+                    return [
+                        'authors' => 'F Arute, K Arya, R Babbush',
+                        'year' => 2019,
+                        'journal' => 'Nature',
+                        'title' => 'Quantum supremacy using a programmable superconducting processor'
+                    ];
+                }
+                return null;
+            });
+
         $service = new SuggestionService($openSerpMock, $cacheServiceMock, $referenceCorrectorMock, $deepSeekMock);
         $articles = $service->suggest($query, $limit);
 
