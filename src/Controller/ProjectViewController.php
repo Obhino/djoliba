@@ -118,10 +118,25 @@ class ProjectViewController extends AbstractController
 
     #[IsGranted('ROLE_USER')]
     #[Route('/project/{id}/literature', name: 'app_project_literature')]
-    public function literature(int $id): Response
+    public function literature(int $id, \Doctrine\ORM\EntityManagerInterface $entityManager): Response
     {
         $project = $this->projectManager->getProject($id);
-        return $this->render('project/literature.html.twig', ['project' => $project]);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            throw $this->createNotFoundException('Projet non trouvé.');
+        }
+
+        // Trouver la dernière interaction de type literature_review pour ce projet
+        $lastInteraction = $entityManager->getRepository(\App\Entity\Interaction::class)->findOneBy(
+            ['project' => $project, 'type' => 'literature_review'],
+            ['createdAt' => 'DESC']
+        );
+
+        return $this->render('project/literature.html.twig', [
+            'project' => $project,
+            'last_synthesis' => $lastInteraction ? $lastInteraction->getAiResponse() : null,
+            'last_query' => $lastInteraction ? $lastInteraction->getUserPrompt() : null,
+        ]);
     }
 
     #[IsGranted('ROLE_USER')]

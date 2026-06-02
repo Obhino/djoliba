@@ -3,13 +3,25 @@ import { Controller } from '@hotwired/stimulus';
 /* stimulusFetch: 'lazy' */
 export default class extends Controller {
     static targets = ['input', 'output', 'status', 'suggestions']
-    static values = { projectId: Number, autostart: String }
+    static values = { projectId: Number, autostart: String, lastQuery: String }
 
     connect() {
         this.isSearching = false;
 
-        // Si redirigé depuis le hub (?autostart=1), lancer la recherche via l'API
-        if (this.autostartValue === 'true' && this.hasInputTarget && this.inputTarget.value.trim()) {
+        // Si session précédente restaurée (lastQuery présent)
+        if (this.hasLastQueryValue && this.lastQueryValue.trim()) {
+            // Parser le contenu initial (Markdown brut mixé avec HTML)
+            const initialContent = this.outputTarget.innerHTML;
+            if (initialContent.trim()) {
+                // Remplacer les entités d'échappement qui auraient pu être insérées par Twig pour &
+                const cleanContent = initialContent.replace(/&amp;/g, '&');
+                this.outputTarget.innerHTML = this.parseMarkdown(cleanContent);
+            }
+            // Charger les suggestions pour la thématique précédente
+            this.loadSuggestions(this.lastQueryValue);
+            // Re-render les équations sur le HTML restauré
+            this.renderMath();
+        } else if (this.autostartValue === 'true' && this.hasInputTarget && this.inputTarget.value.trim()) {
             setTimeout(() => this.onSearch(), 150);
         } else {
             // Afficher le texte de bienvenue formaté en Markdown
@@ -123,6 +135,7 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
         const query = this.inputTarget.value.trim();
         if (!query || this.isSearching) return;
 
+        this.lastQueryValue = query;
         this.isSearching = true;
         this.toggleLoading(true);
         this.responseText = '';
@@ -159,13 +172,16 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
 
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
-                        const data = line.replace('data: ', '');
+                        const data = line.slice(6).trim();
                         if (data === '[DONE]') break;
 
                         try {
                             const parsed = JSON.parse(data);
                             if (parsed.chunk) {
                                 this.appendChunk(parsed.chunk);
+                            } else if (parsed.enriched) {
+                                // Réponse enrichie finale (HTML avec badges de références)
+                                this.applyEnrichedResponse(parsed.enriched);
                             } else if (parsed.error) {
                                 throw new Error(parsed.error);
                             }
@@ -201,6 +217,7 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
 
             const result = await response.json();
             if (result.success) {
+                this.articlesList = result.data;
                 this.renderSuggestions(result.data);
             } else {
                 this.suggestionsTarget.innerHTML = '<p class="text-xs text-red-400">Erreur suggestions.</p>';
@@ -227,15 +244,40 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
         }
     }
 
-    async finishStreaming() {
-        // Enlève le curseur et affiche le HTML final
-        this.outputTarget.innerHTML = this.parseMarkdown(this.responseText);
+    /**
+     * Applique la réponse enrichie (HTML avec badges de références) envoyée par le serveur.
+     */
+    applyEnrichedResponse(enrichedHtml) {
+        this._enrichedApplied = true;
+        if (!this.responseText) {
+            this.isFromCache = true;
+        }
+        this.fullResponse = enrichedHtml;
 
-        // Rendre les équations LaTeX finales
+        // Convertir le Markdown restant en HTML tout en protégeant les références enrichies
+        this.outputTarget.innerHTML = this.parseMarkdown(enrichedHtml);
+        // Re-render les équations qui pourraient encore être dans le HTML enrichi
         this.renderMath();
+        // Scroll final
+        const scrollContainer = this.outputTarget.parentElement;
+        if (scrollContainer) scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    }
 
-        // Sauvegarde la réponse complète
-        this.fullResponse = this.responseText;
+    async finishStreaming() {
+        // Si aucun enrichissement n'est arrivé, on affiche le Markdown brut parsé
+        if (!this._enrichedApplied) {
+            this.outputTarget.innerHTML = this.parseMarkdown(this.responseText);
+            this.renderMath();
+            this.fullResponse = this.responseText;
+        }
+        this._enrichedApplied = false;
+
+        if (this.isFromCache) {
+            console.log("Servi par le cache Redis, pas de sauvegarde requise.");
+            this.isFromCache = false;
+            return;
+        }
+        this.isFromCache = false;
 
         console.log("Streaming terminé, sauvegarde en cours...");
 
@@ -271,38 +313,57 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
             return;
         }
 
-        this.suggestionsTarget.innerHTML = articles.map(article => `
-            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:border-djoliba/30 transition-all group flex flex-col h-full">
-                <h4 class="text-xs font-bold text-djoliba mb-2">${article.title}</h4>
+        this.suggestionsTarget.innerHTML = articles.map((article, index) => {
+            const isVerified = article.verified === true;
+            const verifBadge = isVerified
+                ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200" title="Source vérifiée">✅ Vérifié</span>`
+                : `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-600 border border-amber-200" title="Non vérifié dans les bases de données">⚠️ Non vérifié</span>`;
+
+            const doiLink = article.doi
+                ? `<a href="https://doi.org/${article.doi}" target="_blank" class="p-1.5 bg-slate-50 text-djoliba rounded-lg hover:bg-djoliba hover:text-white transition-colors" title="Ouvrir le DOI">
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                   </a>`
+                : (article.url ? `<a href="${article.url}" target="_blank" class="p-1.5 bg-slate-50 text-djoliba rounded-lg hover:bg-djoliba hover:text-white transition-colors" title="Ouvrir le lien">
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                   </a>` : '');
+
+            return `
+            <div class="bg-white p-5 rounded-2xl border ${ isVerified ? 'border-emerald-100' : 'border-slate-100'} shadow-sm hover:border-djoliba/30 transition-all group flex flex-col">
+                <div class="flex items-start justify-between mb-2 gap-2">
+                    <h4 class="text-xs font-bold text-djoliba leading-snug flex-grow">${article.title}</h4>
+                    ${verifBadge}
+                </div>
                 <div class="text-[10px] text-slate-500 mb-2">
                     <p class="truncate font-medium text-djoliba/70">${article.authors || 'Auteurs inconnus'}</p>
-                    <p>${article.year || 'N/A'} • ${article.journal || 'Journal inconnu'}</p>
+                    <p>${article.year || 'N/A'} • <span class="italic">${article.journal || 'Journal inconnu'}</span></p>
                 </div>
                 <p class="text-[10px] text-slate-600 mb-4 line-clamp-3 flex-grow">${article.abstract || 'Résumé non disponible pour cet article.'}</p>
                 
                 <div class="mt-auto space-y-3">
                     <div class="flex justify-between items-center">
-                        <span class="text-[9px] font-mono text-slate-400 truncate max-w-[120px]">${article.doi || 'Pas de DOI'}</span>
-                        ${article.doi ? `
-                        <a href="https://doi.org/${article.doi}" target="_blank" class="p-1.5 bg-slate-50 text-djoliba rounded-lg hover:bg-djoliba hover:text-white transition-colors" title="Ouvrir le DOI">
-                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                        </a>
-                        ` : ''}
+                        <span class="text-[9px] font-mono text-slate-400 truncate max-w-[120px]">${article.doi || (article.url ? 'Lien disponible' : 'Pas de DOI')}</span>
+                        ${doiLink}
                     </div>
                     <button data-action="click->literature#addToProject" 
-                            data-literature-article-param='${JSON.stringify(article).replace(/'/g, "&apos;")}'
+                            data-literature-index-param="${index}"
                             class="w-full py-2 bg-slate-50 hover:bg-djoliba text-djoliba hover:text-white text-[10px] font-bold rounded-lg transition-colors border border-slate-200 hover:border-djoliba flex justify-center items-center gap-1">
                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                         Ajouter au projet
                     </button>
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     }
 
     async addToProject(event) {
         const button = event.currentTarget;
-        const article = event.params.article;
+        const index = event.params.index;
+        const article = this.articlesList ? this.articlesList[index] : null;
+
+        if (!article) {
+            console.error("Article non trouvé à l'index:", index);
+            return;
+        }
 
         if (button.disabled) return;
         button.disabled = true;
@@ -345,8 +406,17 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
     parseMarkdown(text) {
         if (!text) return '';
 
-        const mathBlocks = [];
         let html = text;
+
+        // Protection des balises HTML span et a (utilisées pour les références enrichies)
+        const htmlTags = [];
+        html = html.replace(/<\/?(?:span|a)\b[^>]*>/gi, (match) => {
+            const placeholder = `__HTML_TAG_${htmlTags.length}__`;
+            htmlTags.push({ placeholder, tag: match });
+            return placeholder;
+        });
+
+        const mathBlocks = [];
 
         // 1. Extraire les blocs d'équations ($$ ... $$)
         html = html.replace(/\$\$([\s\S]*?)\$\$/g, (match, equation) => {
@@ -392,7 +462,7 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
             if (!trimmed) return '';
 
             // Si c'est déjà un titre, une liste, une règle ou un bloc math, ne pas encapsuler dans <p>
-            if (trimmed.startsWith('<h') || trimmed.startsWith('<li') || trimmed.startsWith('<hr') || trimmed.startsWith('__MATH_BLOCK_')) {
+            if (trimmed.startsWith('<h') || trimmed.startsWith('<li') || trimmed.startsWith('<hr') || trimmed.startsWith('__MATH_BLOCK_') || trimmed.startsWith('__HTML_TAG_')) {
                 if (trimmed.startsWith('<li')) {
                     return `<ul class="list-disc pl-5 my-2 space-y-1">${trimmed}</ul>`;
                 }
@@ -423,6 +493,11 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
                 const delimiter = display ? '$$' : '$';
                 html = html.split(placeholder).join(delimiter + equation + delimiter);
             }
+        });
+
+        // 5. Restaurer les balises HTML protégées (span, a)
+        htmlTags.forEach(({ placeholder, tag }) => {
+            html = html.split(placeholder).join(tag);
         });
 
         return html;

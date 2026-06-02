@@ -232,8 +232,8 @@ GET /api/user/quota (phase 2)
 - Prompt: "Effectue une revue de littérature sur: {query}. Inclus: fondement théorique, tendances récentes, lacunes, articles incontournables."
 
 ### SuggestionService
-- `suggest(query, limit=5)`: Suggestions d'articles
-- Prompt: "Suggère {limit} articles scientifiques complémentaires à: {query}. Réponse JSON: [{title, authors, year, abstract, doi}]."
+- `suggest(query, limit=5)`: Suggestions d'articles scientifiques réels
+- Processus : Traduit/Génère des mots-clés en anglais via `DeepSeekService` pour optimiser la pertinence académique mondiale, effectue la recherche via `OpenSerpSearchService` sur ces mots-clés, et extrait les métadonnées (auteurs, année, DOI, journal) en PHP via `ReferenceCorrector`. S'il n'y a pas de DOI, le lien direct d'origine ou Google Scholar est renvoyé.
 
 ### ReadingService
 - `synthesize(document)`: Génère synthèse du PDF

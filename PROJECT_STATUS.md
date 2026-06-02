@@ -34,11 +34,7 @@ Depuis son lancement, Djoliba est construit sur des technologies robustes, moder
     *   **Identité Académique** : Saisie et contrôle strict de format de l'identifiant chercheur unique **ORCID** (`XXXX-XXXX-XXXX-XXXX`), de l'affiliation institutionnelle (institution / université), du domaine de recherche scientifique, du **statut académique** (Licence, Master, Doctorant, Enseignant-chercheur, etc.), de la **biographie scientifique** et du lien **Google Scholar** pour lier ses publications.
     *   **Préférences Système** : Personnalisation bilingue de la langue de l'interface (FR/EN) et activation de l'assistant d'aide contextuelle à la rédaction.
 
-### 🔍 MODULE 2 : Recherche & Revue de Littérature (pgvector)
-*   **Moteur de Recherche Scientifique** : Analyse de requêtes sémantiques combinant mots-clés classiques et similarité cosinusoïdale vectorielle (grâce à l'extension `pgvector` de PostgreSQL).
-*   **Revue de Littérature Automatique (`LiteratureService.php`)** :
-    *   Synthèse automatique structurée abordant les fondements théoriques, les tendances récentes, les lacunes de recherche courantes et les articles incontournables liés à la thématique.
-*   **Suggestions d'Articles Scientifiques** : Extraction et structuration au format JSON (`title`, `authors`, `year`, `abstract`, `doi`) de publications connexes et opportunités de citations.
+*   **Suggestions d'Articles Scientifiques** : Génération de mots-clés optimisés en anglais via `DeepSeekService` à partir de la thématique utilisateur, recherche en temps réel via `OpenSerpSearchService`, et extraction en PHP des métadonnées réelles (auteurs, année, journal, DOI) via `ReferenceCorrector`. Fournit le lien direct ou Google Scholar d'origine en l'absence de DOI.
 
 ### 📚 MODULE 3 : Compagnon de Lecture & Analyse de PDF
 *   **Upload Sécurisé de Documents (`FileStorageService.php`)** :

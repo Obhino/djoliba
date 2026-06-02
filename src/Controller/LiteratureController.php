@@ -21,6 +21,8 @@ class LiteratureController extends AbstractController
         private ProjectManager $projectManager,
         private \App\Service\IA\DeepSeekService $deepSeekService,
         private \Doctrine\ORM\EntityManagerInterface $entityManager,
+        private \Symfony\Contracts\Cache\CacheInterface $cache,
+        private \App\Service\ReferenceInterceptor $referenceInterceptor,
     ) {
     }
 
@@ -53,34 +55,157 @@ class LiteratureController extends AbstractController
             ], Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
+        // 1. Logique Cache Local (Redis)
+        $cacheKey = 'literature_review_v2_' . md5($data['query'] . '_' . ($project ? $project->getId() : '0'));
+        $cacheItem = $this->cache->getItem($cacheKey);
+
+        if ($cacheItem->isHit()) {
+            $cachedContent = $cacheItem->get();
+            return new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($cachedContent) {
+                if (ob_get_level() > 0) ob_end_clean();
+                // Diffuser le contenu en cache enrichi directement
+                echo "data: " . json_encode(['enriched' => $cachedContent]) . "\n\n";
+                echo "data: [DONE]\n\n";
+                flush();
+            }, 200, [
+                'Content-Type' => 'text/event-stream',
+                'Cache-Control' => 'no-cache',
+                'Connection' => 'keep-alive',
+            ]);
+        }
+
+        // 2. Logique Cache Contextuel (DeepSeek Prompt Cache)
+        $messages = [];
+        $messages[] = [
+            'role' => 'system',
+            'content' => "Tu es un assistant IA spécialisé dans la recherche académique, scientifique et technique pour la plateforme Djoliba. Réponds toujours de manière structurée, précise et rigoureuse. Utilise un formatage Markdown riche, clair et très lisible. Intègre des équations mathématiques sous forme KaTeX ($$ pour hors-texte, $ pour en-ligne) si nécessaire."
+        ];
+
+        // Construction du contexte projet + documents du projet
+        $projectContext = "Sujet du projet de synthèse : " . ($project ? $project->getName() : $data['query']);
+        if ($project && $project->getMetadata() && isset($project->getMetadata()['description'])) {
+            $projectContext .= "\nDescription : " . $project->getMetadata()['description'];
+        }
+
+        // Lecture des fichiers sources s'ils existent
+        $documentTexts = [];
+        if ($project) {
+            $documents = $this->entityManager->getRepository(\App\Entity\Document::class)->findBy(['project' => $project]);
+            foreach ($documents as $doc) {
+                try {
+                    $path = $doc->getStoredPath();
+                    if (file_exists($path)) {
+                        $text = '';
+                        $mimeType = $doc->getMimeType();
+                        if (in_array($mimeType, ['application/x-tex', 'text/x-tex'], true)) {
+                            $text = file_get_contents($path);
+                        } elseif ($mimeType === 'application/pdf') {
+                            $parser = new \Smalot\PdfParser\Parser();
+                            $pdf = $parser->parseFile($path);
+                            $text = $pdf->getText();
+                        }
+                        if (!empty($text)) {
+                            $documentTexts[] = "--- Document: " . $doc->getFilename() . " ---\n" . mb_substr($text, 0, 10000);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    // Ignorer les erreurs de fichiers
+                }
+            }
+        }
+
+        if (!empty($documentTexts)) {
+            $projectContext .= "\n\nVoici les documents sources associés au projet :\n\n" . implode("\n\n", $documentTexts);
+        }
+
+        // Injection du contexte documentaire
+        $messages[] = [
+            'role' => 'user',
+            'content' => $projectContext
+        ];
+
+        $messages[] = [
+            'role' => 'assistant',
+            'content' => "Entendu. J'ai bien pris en compte le sujet du projet de synthèse ainsi que ses documents sources. Je suis prêt à rédiger la revue de littérature scientifique détaillée et structurée."
+        ];
+
+        // Historique des interactions précédentes de type literature_review pour ce projet (max 4 tours / 8 messages)
+        if ($project) {
+            $previousInteractions = $this->entityManager->getRepository(\App\Entity\Interaction::class)->findBy(
+                ['project' => $project, 'type' => 'literature_review'],
+                ['createdAt' => 'ASC']
+            );
+            $chatTurns = [];
+            foreach ($previousInteractions as $interaction) {
+                $chatTurns[] = [
+                    'role' => 'user',
+                    'content' => "Effectue une revue de littérature sur : " . $interaction->getUserPrompt()
+                ];
+                if ($interaction->getAiResponse()) {
+                    $chatTurns[] = [
+                        'role' => 'assistant',
+                        'content' => $interaction->getAiResponse()
+                    ];
+                }
+            }
+
+            $maxHistory = 8;
+            if (count($chatTurns) > $maxHistory) {
+                $chatTurns = array_slice($chatTurns, -$maxHistory);
+            }
+            if (!empty($chatTurns) && $chatTurns[0]['role'] === 'assistant') {
+                array_shift($chatTurns);
+            }
+
+            $messages = array_merge($messages, $chatTurns);
+        }
+
+        // Requête principale
+        $messages[] = [
+            'role' => 'user',
+            'content' => sprintf(
+                "Effectue une revue de littérature scientifique extrêmement détaillée et structurée en Markdown sur le sujet suivant: \"%s\".
+                Inclus des fondements théoriques, les tendances récentes de la recherche, les lacunes identifiées dans la littérature actuelle, et des pistes de recherche futures.
+                Sois précis, académique et utilise un ton rigoureux.",
+                $data['query']
+            )
+        ];
+
         $deepSeekService = $this->deepSeekService;
         $entityManager = $this->entityManager;
+        $referenceInterceptor = $this->referenceInterceptor;
+        $cache = $this->cache;
 
-        return new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($data, $project, $deepSeekService, $entityManager) {
+        return new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($data, $project, $deepSeekService, $entityManager, $messages, $referenceInterceptor, $cache, $cacheItem) {
             if (ob_get_level() > 0) ob_end_clean();
 
             try {
-                $prompt = sprintf(
-                    "Effectue une revue de littérature scientifique extrêmement détaillée et structurée en Markdown sur le sujet suivant: \"%s\".
-                    Inclus des fondements théoriques, les tendances récentes de la recherche, les lacunes identifiées dans la littérature actuelle, et des pistes de recherche futures.
-                    Sois précis, académique et utilise un ton rigoureux.",
-                    $data['query']
-                );
-
                 $fullResponse = '';
-                $deepSeekService->stream($prompt, function ($chunk) use (&$fullResponse) {
+                $deepSeekService->streamWithHistory($messages, function ($chunk) use (&$fullResponse) {
                     $fullResponse .= $chunk;
                     echo "data: " . json_encode(['chunk' => $chunk]) . "\n\n";
                     flush();
                 });
 
-                // Persistance de l'interaction de revue de littérature en base de données
+                // 3. Logique de vérification des références (Enrichissement HTML)
+                $enrichedResponse = $referenceInterceptor->formatEnrichedResponse($fullResponse);
+
+                // Envoyer la réponse enrichie au client via SSE
+                echo "data: " . json_encode(['enriched' => $enrichedResponse]) . "\n\n";
+                flush();
+
+                // Enregistrement dans le cache local (24h)
+                $cacheItem->set($enrichedResponse);
+                $cacheItem->expiresAfter(86400);
+                $cache->save($cacheItem);
+
+                // Persistance de l'interaction en base de données
                 if ($project) {
                     $interaction = new \App\Entity\Interaction();
                     $interaction->setProject($project);
                     $interaction->setType('literature_review');
                     $interaction->setUserPrompt($data['query']);
-                    $interaction->setAiResponse($fullResponse);
+                    $interaction->setAiResponse($enrichedResponse); // On persiste le HTML enrichi
                     $interaction->setResponseTimeMs(0);
                     
                     $entityManager->persist($interaction);

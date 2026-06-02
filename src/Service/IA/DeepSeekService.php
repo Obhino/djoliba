@@ -302,6 +302,94 @@ class DeepSeekService
     }
 
     /**
+     * Appel en streaming SSE avec historique complet (bénéficie du cache contextuel).
+     *
+     * @param array<int, array{role: string, content: string}> $messages
+     */
+    public function streamWithHistory(array $messages, callable $callback, array $options = []): void
+    {
+        try {
+            $payload = $this->buildHistoryPayload($messages, stream: true, options: $options);
+            $attempt = 0;
+
+            while ($attempt < self::MAX_RETRIES) {
+                $attempt++;
+                try {
+                    $this->logger->info('[DeepSeek] Tentative streaming historique #{attempt}', ['attempt' => $attempt]);
+
+                    $response = $this->httpClient->request('POST', $this->apiUrl . '/chat/completions', [
+                        'headers' => $this->buildHeaders(),
+                        'json'    => $payload,
+                        'timeout' => self::TIMEOUT_SECONDS,
+                        'buffer'  => false, // important pour le streaming
+                    ]);
+
+                    // Lecture du flux SSE avec bufferisation des lignes
+                    $buffer = '';
+                    foreach ($this->httpClient->stream($response) as $chunk) {
+                        if ($chunk->isLast()) {
+                            break;
+                        }
+
+                        $buffer .= $chunk->getContent();
+
+                        while (($pos = strpos($buffer, "\n")) !== false) {
+                            $line = substr($buffer, 0, $pos);
+                            $buffer = substr($buffer, $pos + 1);
+
+                            $line = trim($line);
+                            if ($line === '') {
+                                continue;
+                            }
+
+                            // Format SSE : "data: {...}" ou "data: [DONE]"
+                            if (!str_starts_with($line, 'data: ')) {
+                                continue;
+                            }
+
+                            $jsonStr = substr($line, 6);
+
+                            if ($jsonStr === '[DONE]') {
+                                break 2; // Sort de la boucle while et foreach
+                            }
+
+                            $data = json_decode($jsonStr, true);
+                            if (json_last_error() === JSON_ERROR_NONE) {
+                                $content = $data['choices'][0]['delta']['content'] ?? null;
+                                if ($content !== null) {
+                                    $callback($content);
+                                }
+                            }
+                        }
+                    }
+
+                    $this->logger->info('[DeepSeek] Streaming historique terminé.');
+                    return;
+
+                } catch (TransportExceptionInterface $e) {
+                    $this->logger->warning('[DeepSeek] Échec streaming historique tentative #{attempt}: {error}', [
+                        'attempt' => $attempt,
+                        'error'   => $e->getMessage(),
+                    ]);
+
+                    if ($attempt >= self::MAX_RETRIES) {
+                        throw new \RuntimeException(
+                            sprintf('DeepSeek streaming historique indisponible après %d tentatives : %s', self::MAX_RETRIES, $e->getMessage()),
+                            0,
+                            $e
+                        );
+                    }
+
+                    usleep(self::RETRY_DELAY_MS * (2 ** ($attempt - 1)) * 1000);
+                }
+            }
+        } catch (\Exception $e) {
+            $this->logger->error('[DeepSeek Stream History Error] : ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
      * Construit le payload commun pour les appels API.
      */
     private function buildPayload(string $prompt, bool $stream, array $options = []): array

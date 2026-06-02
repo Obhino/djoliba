@@ -64,6 +64,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       DEEPSEEK_API_URL: ${DEEPSEEK_API_URL:-https://api.deepseek.com/v1}
+      OPENSERP_URL: ${OPENSERP_URL:-http://openserp:7000}
     volumes:
       - .:/var/www/html:rw
       - ./var/uploads:/var/www/html/var/uploads:rw
@@ -88,6 +89,7 @@ services:
       APP_ENV: ${APP_ENV:-dev}
       DATABASE_URL: postgresql://${POSTGRES_USER:-djoliba}:${POSTGRES_PASSWORD:-djoliba_secret}@database:5432/${POSTGRES_DB:-djolibadb}?serverVersion=16&charset=utf8
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379
+      OPENSERP_URL: ${OPENSERP_URL:-http://openserp:7000}
     volumes:
       - .:/var/www/html:rw
 
@@ -114,6 +116,17 @@ services:
     depends_on:
       database:
         condition: service_healthy
+
+  # ─────────────────────────────────────────────
+  # OpenSERP — Moteur de recherche open source léger
+  # ─────────────────────────────────────────────
+  openserp:
+    image: karust/openserp:latest
+    container_name: djoliba_openserp
+    restart: unless-stopped
+    command: serve -a 0.0.0.0 -p 7000
+    ports:
+      - "7000:7000"
 
 volumes:
   database_data:

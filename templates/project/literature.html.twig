@@ -6,6 +6,7 @@
 <div class="p-8 max-w-5xl mx-auto" 
      data-controller="literature" 
      data-literature-project-id-value="{{ project.id }}"
+     data-literature-last-query-value="{{ last_query|default('') }}"
      data-literature-autostart-value="{{ app.request.query.get('autostart') == '1' ? 'true' : 'false' }}">
     {# En-tête du projet #}
     <div class="mb-8 flex justify-between items-start">
@@ -30,7 +31,7 @@
             <div class="flex-grow relative">
                 <input type="text" 
                        data-literature-target="input"
-                       value="{{ project.name }}"
+                       value="{{ last_query|default(project.name) }}"
                        class="w-full pl-5 pr-4 py-4 bg-slate-50 border-none rounded-2xl text-djoliba placeholder-slate-400 focus:ring-2 focus:ring-djoliba/20 transition-all"
                        placeholder="Décrivez votre sujet de recherche ou posez une question complexe...">
             </div>
@@ -57,7 +58,11 @@
                 </div>
 
                 <div class="p-8 flex-grow overflow-y-auto synth-scroll">
-                    <div data-literature-target="output" class="prose prose-slate max-w-none text-slate-700 leading-relaxed"></div>
+                    <div data-literature-target="output" class="prose prose-slate max-w-none text-slate-700 leading-relaxed">
+                        {% if last_synthesis %}
+                            {{ last_synthesis|raw }}
+                        {% endif %}
+                    </div>
                 </div>
             </div>
 
@@ -85,6 +90,8 @@
 <style>
     /* Scrollbar fine et élégante pour la zone d'analyse */
     .synth-scroll {
+        max-height: 440px !important;
+        overflow-y: auto !important;
         scrollbar-width: thin;
         scrollbar-color: var(--color-djoliba, #1a3c5e) transparent;
     }
@@ -102,6 +109,100 @@
     }
     .synth-scroll::-webkit-scrollbar-thumb:hover {
         background: rgba(26, 60, 94, 0.5);
+    }
+
+    /* Style Premium pour les Références Scientifiques Enrichies */
+    .prose .ref {
+        display: inline-block;
+        padding: 0.25rem 0.6rem;
+        margin: 0.2rem 0;
+        border-radius: 0.5rem;
+        font-size: 0.75rem;
+        line-height: 1.25rem;
+        font-style: normal !important;
+        text-decoration: none !important;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    }
+    .prose .ref:hover {
+        transform: translateY(-0.5px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    }
+    .prose .ref.verified {
+        background-color: #f0fdf4 !important; /* emerald-50 */
+        border-color: #dcfce7 !important; /* emerald-100 */
+        color: #166534 !important; /* emerald-800 */
+    }
+    .prose .ref.corrected {
+        background-color: #fef8e6 !important; /* amber-50/100 blend */
+        border-color: #fef08a !important; /* amber-200 */
+        color: #854d0e !important; /* amber-800 */
+    }
+    .prose .ref.unverified {
+        background-color: #fef2f2 !important; /* red-50 */
+        border-color: #fee2e2 !important; /* red-100 */
+        color: #991b1b !important; /* red-800 */
+    }
+
+    .prose .ref-authors {
+        font-weight: 700;
+    }
+    .prose .ref-year {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-weight: 500;
+        opacity: 0.85;
+    }
+    .prose .ref-title {
+        font-style: italic;
+        font-weight: 600;
+    }
+    .prose .ref-journal {
+        font-weight: 500;
+        opacity: 0.8;
+    }
+    .prose a.ref-link {
+        display: inline-flex !important;
+        align-items: center;
+        padding: 0.05rem 0.35rem !important;
+        background-color: #ffffff !important;
+        border: 1px solid rgba(26, 60, 94, 0.2) !important;
+        border-radius: 0.25rem !important;
+        font-weight: 700 !important;
+        color: #1a3c5e !important; /* djoliba principal */
+        text-decoration: none !important;
+        margin: 0 0.25rem !important;
+        transition: all 0.15s ease !important;
+    }
+    .prose a.ref-link:hover {
+        background-color: #1a3c5e !important;
+        color: #ffffff !important;
+        border-color: #1a3c5e !important;
+        text-decoration: none !important;
+    }
+    .prose .ref-badge {
+        display: inline-flex;
+        align-items: center;
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        padding: 0.05rem 0.4rem;
+        border-radius: 9999px;
+        margin-left: 0.3rem;
+        border: 1px solid currentColor;
+    }
+    .prose .ref.verified .ref-badge {
+        background-color: #dcfce7 !important;
+        color: #15803d !important; /* emerald-700 */
+    }
+    .prose .ref.corrected .ref-badge {
+        background-color: #fef08a !important;
+        color: #a16207 !important; /* amber-700 */
+    }
+    .prose .ref.unverified .ref-badge {
+        background-color: #fee2e2 !important;
+        color: #b91c1c !important; /* red-700 */
     }
 </style>
 {% endblock %}

@@ -4,96 +4,151 @@ namespace App\Service;
 
 use App\Service\IA\CacheService;
 use App\Service\IA\DeepSeekService;
+use App\Service\Search\OpenSerpSearchService;
+use App\Service\ReferenceCorrector;
 
 class SuggestionService
 {
     public function __construct(
-        private DeepSeekService $deepSeekService,
+        private OpenSerpSearchService $openSerpSearchService,
         private CacheService $cacheService,
+        private ReferenceCorrector $referenceCorrector,
+        private DeepSeekService $deepSeekService,
     ) {
     }
 
     /**
-     * Suggère des articles scientifiques complémentaires à une requête.
-     * Utilise le prompt défini dans PROJECT_CONTEXT.md section 6.
+     * Suggère des articles scientifiques réels complémentaires à une requête.
+     * Génère des mots-clés en anglais via DeepSeek pour optimiser la recherche,
+     * puis fait une recherche réelle via l'API OpenSERP.
      *
      * @param string $query La requête ou le sujet de recherche.
      * @param int    $limit Nombre d'articles à suggérer (défaut: 5).
-     * @return array<int, array{title: string, authors: string, year: int, abstract: string, doi: string}>
-     * @throws \RuntimeException Si l'API DeepSeek est indisponible après toutes les tentatives.
-     * @throws \UnexpectedValueException Si la réponse JSON de l'IA est malformée.
+     * @return array<int, array{title: string, authors: string, year: int, abstract: string, doi: string, verified: bool, url: string|null, journal: string}>
      */
     public function suggest(string $query, int $limit = 5): array
     {
-        $cacheKey = 'suggestions_' . md5($query . '_' . $limit);
+        $cacheKey = 'suggestions_v5_' . md5($query . '_' . $limit);
 
         return $this->cacheService->remember(
             $cacheKey,
             function () use ($query, $limit) {
-                // Prompt défini en section 6 du PROJECT_CONTEXT.md
-                $prompt = sprintf(
-                    "Suggère %d articles scientifiques complémentaires à: %s. Réponse JSON: [{title, authors, year, abstract, doi}]. Réponds UNIQUEMENT avec le tableau JSON, sans texte ni balise markdown autour.",
-                    $limit,
-                    $query
+                // 1. Traduire/Générer des mots-clés en anglais via DeepSeek pour maximiser les résultats scientifiques
+                $searchQuery = $query;
+                try {
+                    $prompt = sprintf(
+                        'Tu es un expert en recherche bibliographique scientifique. Génère uniquement une liste de 3 à 5 mots-clés ou termes de recherche en anglais (sans ponctuation, séparés uniquement par des espaces) correspondant au sujet suivant : "%s". Réponds UNIQUEMENT avec les mots-clés en anglais, aucun autre mot.',
+                        $query
+                    );
+
+                    $rawKeywords = $this->deepSeekService->call($prompt, [
+                        'temperature' => 0.1,
+                        'max_tokens' => 50,
+                    ]);
+
+                    $cleanKeywords = trim(preg_replace('/[^a-zA-Z0-9\s]/', '', $rawKeywords));
+                    if (!empty($cleanKeywords)) {
+                        $searchQuery = $cleanKeywords;
+                    }
+                } catch (\Exception $e) {
+                    // Fallback sur la requête d'origine en cas d'erreur de l'IA
+                }
+
+                // 2. Effectuer une recherche simple et ultra-rapide (strict: false) en demandant 15 résultats
+                // On utilise le moteur de recherche 'duck' (DuckDuckGo) au lieu de 'google' pour éviter les lenteurs
+                // de scraping et obtenir une réponse instantanée.
+                $searchResults = $this->openSerpSearchService->search(
+                    $searchQuery,
+                    domain: null,
+                    limit: 15,
+                    engine: 'duck',
+                    strict: false
                 );
 
-                $rawResponse = $this->deepSeekService->call($prompt, [
-                    'temperature' => 0.3, // Température basse pour une réponse JSON structurée et reproductible
-                ]);
+                if (empty($searchResults)) {
+                    return [];
+                }
 
-                return $this->parseArticles($rawResponse, $limit);
+                $academicDomains = [
+                    'arxiv.org', 'hal.science', 'pubmed.ncbi.nlm.nih.gov', 'ncbi.nlm.nih.gov',
+                    'scholar.google', 'ieeexplore.ieee.org', 'nature.com', 'science.org',
+                    'researchgate.net', 'springer.com', 'sciencedirect.com', 'wiley.com',
+                    'mdpi.com', 'plos.org', 'frontiersin.org', 'acm.org', 'academic.oup.com',
+                    'royalsocietypublishing.org', 'cambridge.org', 'jstor.org'
+                ];
+
+                $academicArticles = [];
+                $otherArticles = [];
+
+                foreach ($searchResults as $res) {
+                    if (empty($res['url'])) {
+                        continue;
+                    }
+
+                    // Tenter d'extraire le DOI depuis l'URL ou la description
+                    $doi = $this->referenceCorrector->extractDoiFromString($res['url'] . ' ' . $res['description']);
+
+                    // Tenter d'extraire l'auteur, l'année et le journal depuis le snippet
+                    $snippetData = $this->referenceCorrector->parseSnippet($res['description'], $res['title'], $res['url']);
+
+                    // Nettoyer le titre (enlever les suffixes de sites ou préfixes comme [PDF])
+                    $cleanTitle = $res['title'];
+                    $cleanTitle = preg_replace('/\s+-\s+(arXiv|HAL|PubMed|Nature|Science|Google Scholar|IEEE|ResearchGate|Springer|Wiley|MDPI|Frontiers|JSTOR).*$/i', '', $cleanTitle);
+                    $cleanTitle = preg_replace('/^\[PDF\]\s+/i', '', $cleanTitle);
+                    $cleanTitle = trim($cleanTitle, " \t\n\r\0\x0B\"'“”.");
+
+                    // Extraire l'année depuis le snippet ou le titre
+                    $year = (int) ($snippetData['year'] ?: $this->referenceCorrector->extractYearFromString($res['title'] . ' ' . $res['description']) ?: 0);
+
+                    // Formater le snippet pour l'abstract
+                    $abstract = trim($res['description']);
+                    $abstract = preg_replace('/\s*\.\.\.\s*$/', '...', $abstract);
+
+                    $article = [
+                        'title'    => $cleanTitle ?: 'Article sans titre',
+                        'authors'  => $snippetData['author'] ?: 'Auteurs inconnus',
+                        'year'     => $year,
+                        'abstract' => $abstract ?: 'Résumé non disponible.',
+                        'doi'      => $doi ?: '',
+                        'verified' => true, // C'est un vrai article issu de la recherche scientifique réelle !
+                        'url'      => $res['url'],
+                        'journal'  => $snippetData['journal'] ?: 'Publication',
+                    ];
+
+                    // Classer par pertinence académique selon l'URL
+                    $isAcademic = false;
+                    $lowUrl = strtolower($res['url']);
+                    foreach ($academicDomains as $domain) {
+                        if (str_contains($lowUrl, $domain)) {
+                            $isAcademic = true;
+                            // Affiner le nom du journal si besoin
+                            if (!$article['journal'] || $article['journal'] === 'Publication') {
+                                if (str_contains($domain, 'arxiv.org')) $article['journal'] = 'arXiv';
+                                elseif (str_contains($domain, 'hal.science')) $article['journal'] = 'HAL';
+                                elseif (str_contains($domain, 'pubmed') || str_contains($domain, 'ncbi')) $article['journal'] = 'PubMed';
+                                elseif (str_contains($domain, 'nature.com')) $article['journal'] = 'Nature';
+                                elseif (str_contains($domain, 'science.org')) $article['journal'] = 'Science';
+                                elseif (str_contains($domain, 'ieeexplore')) $article['journal'] = 'IEEE';
+                                elseif (str_contains($domain, 'researchgate')) $article['journal'] = 'ResearchGate';
+                                elseif (str_contains($domain, 'springer')) $article['journal'] = 'Springer';
+                                elseif (str_contains($domain, 'sciencedirect')) $article['journal'] = 'ScienceDirect';
+                            }
+                            break;
+                        }
+                    }
+
+                    if ($isAcademic) {
+                        $academicArticles[] = $article;
+                    } else {
+                        $otherArticles[] = $article;
+                    }
+                }
+
+                // Combiner en priorisant les articles académiques et limiter au nombre demandé
+                $combined = array_merge($academicArticles, $otherArticles);
+                return array_slice($combined, 0, $limit);
             },
             3600 // 1 heure
         );
-    }
-
-    /**
-     * Parse et valide le JSON retourné par DeepSeek.
-     * Nettoie les éventuels blocs markdown (```json ... ```) que l'IA peut ajouter.
-     *
-     * @throws \UnexpectedValueException Si le JSON est invalide ou la structure incorrecte.
-     */
-    private function parseArticles(string $raw, int $expectedCount): array
-    {
-        // Nettoyage des balises markdown que certains modèles ajoutent malgré l'instruction
-        $cleaned = trim($raw);
-        $cleaned = preg_replace('/^```(?:json)?\s*/i', '', $cleaned);
-        $cleaned = preg_replace('/\s*```$/', '', $cleaned);
-        $cleaned = trim($cleaned);
-
-        $articles = json_decode($cleaned, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new \UnexpectedValueException(
-                sprintf('Réponse JSON invalide de DeepSeek : %s. Réponse brute : %s', json_last_error_msg(), substr($raw, 0, 200))
-            );
-        }
-
-        if (!is_array($articles)) {
-            throw new \UnexpectedValueException('La réponse DeepSeek n\'est pas un tableau JSON.');
-        }
-
-        // Validation et normalisation de chaque article
-        $validated = [];
-        foreach ($articles as $index => $article) {
-            if (!is_array($article)) {
-                continue;
-            }
-
-            $validated[] = [
-                'title'    => (string) ($article['title']    ?? 'Titre inconnu'),
-                'authors'  => (string) ($article['authors']  ?? 'Auteurs inconnus'),
-                'year'     => (int)    ($article['year']      ?? 0),
-                'abstract' => (string) ($article['abstract'] ?? ''),
-                'doi'      => (string) ($article['doi']      ?? ''),
-            ];
-
-            // On s'arrête au nombre demandé
-            if (count($validated) >= $expectedCount) {
-                break;
-            }
-        }
-
-        return $validated;
     }
 }

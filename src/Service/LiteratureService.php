@@ -7,6 +7,8 @@ use App\Entity\Project;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Service\IA\CacheService;
 use App\Service\IA\DeepSeekService;
+use App\Service\Search\OpenSerpSearchService;
+use App\Service\ReferenceInterceptor;
 
 class LiteratureService
 {
@@ -16,6 +18,8 @@ class LiteratureService
         private DeepSeekService $deepSeekService,
         private CacheService $cacheService,
         private EntityManagerInterface $entityManager,
+        private OpenSerpSearchService $openSerpSearchService,
+        private ReferenceInterceptor $referenceInterceptor,
     ) {
     }
 
@@ -26,7 +30,7 @@ class LiteratureService
      *
      * @param string  $query   Le sujet ou la question de recherche.
      * @param Project $project Le projet auquel rattacher cette interaction.
-     * @return array{response: string, interaction: Interaction, from_cache: bool}
+     * @return array{response: string, literature_review: string, web_sources: array, interaction: Interaction, from_cache: bool}
      */
     public function review(string $query, Project $project): array
     {
@@ -48,10 +52,18 @@ class LiteratureService
             self::CACHE_TTL
         );
 
-        // Vérifier si la réponse vient du cache (pour info dans la réponse API)
-        // On détecte si le callback a été appelé ou non via un flag
-        // Note : la logique remember() ne distingue pas nativement, mais c'est transparent pour l'usage
+        // Récupérer les 5 premières sources scientifiques via OpenSERP
+        $webSources = [];
+        try {
+            $webSources = $this->openSerpSearchService->search($query, null, 5, 'google', true);
+        } catch (\Exception $e) {
+            // Ignorer l'erreur pour ne pas faire planter la revue de littérature en cas de souci avec OpenSERP
+        }
+
         $fromCache = false; // Simplifié ici — à affiner si besoin de métriques précises
+
+        // Intercepter et enrichir les références bibliographiques (badges et liens réels)
+        $enrichedReview = $this->referenceInterceptor->formatEnrichedResponse($aiResponse);
 
         $startTime = microtime(true);
 
@@ -62,16 +74,18 @@ class LiteratureService
         $interaction->setProject($project);
         $interaction->setType('literature_review');
         $interaction->setUserPrompt($query);
-        $interaction->setAiResponse($aiResponse);
+        $interaction->setAiResponse($enrichedReview); // On persiste la version enrichie avec badges
         $interaction->setResponseTimeMs($responseTimeMs);
 
         $this->entityManager->persist($interaction);
         $this->entityManager->flush();
 
         return [
-            'response'    => $aiResponse,
-            'interaction' => $interaction,
-            'from_cache'  => $fromCache,
+            'response'            => $aiResponse, // réponse originale DeepSeek (non modifiée)
+            'literature_review'   => $enrichedReview, // version enrichie avec badges et liens
+            'web_sources'         => $webSources,
+            'interaction'         => $interaction,
+            'from_cache'          => $fromCache,
         ];
     }
 }
