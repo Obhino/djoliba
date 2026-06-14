@@ -99,7 +99,7 @@ class OpenSerpSearchService
                         'text' => $finalQuery,
                         'limit' => $limit,
                     ],
-                    'timeout' => 10,
+                    'timeout' => 5,
                 ]);
 
                 if ($response->getStatusCode() !== 200) {

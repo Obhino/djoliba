@@ -20,6 +20,7 @@ class WritingController extends AbstractController
         private WritingService $writingService,
         private ProjectManager $projectManager,
         private FileStorageService $fileStorageService,
+        private \App\Service\File\TextExtractorService $textExtractorService,
     ) {
     }
 
@@ -221,28 +222,6 @@ class WritingController extends AbstractController
      */
     private function extractText(string $path, string $mimeType, string $filename): string
     {
-        if (!file_exists($path)) {
-            throw new \RuntimeException(sprintf('Fichier physique introuvable : %s', $path));
-        }
-
-        if (in_array($mimeType, ['application/x-tex', 'text/x-tex'], true)) {
-            return file_get_contents($path);
-        }
-
-        if ($mimeType === 'application/pdf') {
-            try {
-                $parser = new \Smalot\PdfParser\Parser();
-                $pdf = $parser->parseFile($path);
-                return $pdf->getText();
-            } catch (\Exception $e) {
-                throw new \RuntimeException(sprintf('Erreur lors de la lecture du PDF : %s', $e->getMessage()), 0, $e);
-            }
-        }
-
-        return sprintf(
-            "[Contenu du fichier %s — extraction binaire non encore implémentée. Fichier de type : %s]",
-            $filename,
-            $mimeType
-        );
+        return $this->textExtractorService->extractText($path, $mimeType, $filename);
     }
 }

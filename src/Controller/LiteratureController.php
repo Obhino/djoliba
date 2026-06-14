@@ -23,12 +23,14 @@ class LiteratureController extends AbstractController
         private \Doctrine\ORM\EntityManagerInterface $entityManager,
         private \Symfony\Contracts\Cache\CacheInterface $cache,
         private \App\Service\ReferenceInterceptor $referenceInterceptor,
+        private \App\Service\File\TextExtractorService $textExtractorService,
     ) {
     }
 
     #[Route('/review', name: 'api_literature_review', methods: ['POST'])]
     public function review(Request $request): Response
     {
+        set_time_limit(240);
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['query']) || empty($data['project_id'])) {
@@ -94,19 +96,10 @@ class LiteratureController extends AbstractController
             foreach ($documents as $doc) {
                 try {
                     $path = $doc->getStoredPath();
-                    if (file_exists($path)) {
-                        $text = '';
-                        $mimeType = $doc->getMimeType();
-                        if (in_array($mimeType, ['application/x-tex', 'text/x-tex'], true)) {
-                            $text = file_get_contents($path);
-                        } elseif ($mimeType === 'application/pdf') {
-                            $parser = new \Smalot\PdfParser\Parser();
-                            $pdf = $parser->parseFile($path);
-                            $text = $pdf->getText();
-                        }
-                        if (!empty($text)) {
-                            $documentTexts[] = "--- Document: " . $doc->getFilename() . " ---\n" . mb_substr($text, 0, 10000);
-                        }
+                    $mimeType = $doc->getMimeType();
+                    $text = $this->textExtractorService->extractText($path, $mimeType, $doc->getFilename());
+                    if (!empty($text)) {
+                        $documentTexts[] = "--- Document: " . $doc->getFilename() . " ---\n" . mb_substr($text, 0, 10000);
                     }
                 } catch (\Exception $e) {
                     // Ignorer les erreurs de fichiers

@@ -2,66 +2,67 @@
 
 {% block title %}Revue de Littérature - Djoliba{% endblock %}
 
+{% block footer %}{% endblock %}
+
 {% block main %}
-<div class="py-8 px-6 max-w-none w-full" 
+<div class="h-screen flex flex-col overflow-hidden px-4 pt-4 pb-2" 
      data-controller="literature" 
      data-literature-project-id-value="{{ project.id }}"
      data-literature-last-query-value="{{ last_query|default('') }}"
      data-literature-autostart-value="{{ app.request.query.get('autostart') == '1' ? 'true' : 'false' }}">
-    {# En-tête du projet #}
-    <div class="mb-8 flex justify-between items-start">
-        <div>
-            <nav class="flex text-sm text-slate-400 mb-2" aria-label="Breadcrumb">
-                <ol class="flex items-center space-x-2">
+    {# En-tête compact du projet #}
+    <div class="mb-2 flex justify-between items-center flex-shrink-0">
+        <div class="flex items-center gap-3">
+            <nav class="flex text-xs text-slate-400" aria-label="Breadcrumb">
+                <ol class="flex items-center space-x-1.5">
                     <li><a href="{{ path('app_hub') }}" class="hover:text-djoliba transition-colors">Hub</a></li>
-                    <li><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></li>
+                    <li><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></li>
                     <li class="text-djoliba font-medium">Revue de littérature</li>
                 </ol>
             </nav>
-            <h1 class="text-3xl font-display font-bold text-djoliba">{{ project.name }}</h1>
+            <span class="text-lg font-display font-bold text-djoliba">{{ project.name }}</span>
         </div>
-        <div class="flex gap-2">
-            <span class="px-3 py-1 bg-djoliba/5 text-djoliba rounded-full text-xs font-bold border border-djoliba/10">Mode Intelligence Artificielle</span>
-        </div>
+        <span class="px-2.5 py-0.5 bg-djoliba/5 text-djoliba rounded-full text-[10px] font-bold border border-djoliba/10">Mode IA</span>
     </div>
 
-    {# Zone de recherche #}
-    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 mb-8">
-        <div class="flex gap-4">
+    {# Zone de recherche compacte #}
+    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-2.5 mb-3 flex-shrink-0">
+        <div class="flex gap-2">
             <div class="flex-grow relative">
                 <input type="text" 
                        data-literature-target="input"
                        value="{{ last_query|default(project.name) }}"
-                       class="w-full pl-5 pr-4 py-4 bg-slate-50 border-none rounded-2xl text-djoliba placeholder-slate-400 focus:ring-2 focus:ring-djoliba/20 transition-all"
+                       class="w-full pl-4 pr-4 py-2 bg-slate-50 border-none rounded-lg text-djoliba text-sm placeholder-slate-400 focus:ring-2 focus:ring-djoliba/20 transition-all"
                        placeholder="Décrivez votre sujet de recherche ou posez une question complexe...">
             </div>
             <button data-action="click->literature#onSearch" 
-                    class="px-8 py-4 bg-djoliba text-white rounded-2xl font-bold shadow-lg shadow-djoliba/20 hover:-translate-y-0.5 transition-all flex items-center gap-2">
+                    class="px-5 py-2 bg-djoliba text-white rounded-lg font-bold text-sm shadow-lg shadow-djoliba/20 hover:-translate-y-0.5 transition-all flex items-center gap-1.5">
                 <span>Analyser</span>
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
             </button>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {# Zone principale : Revue de littérature #}
-        <div class="lg:col-span-2 space-y-6">
-            <div class="bg-white rounded-3xl shadow-sm border border-slate-100 h-[520px] flex flex-col">
-                <div class="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/30 rounded-t-3xl flex-shrink-0">
-                    <h2 class="text-sm font-bold text-djoliba flex items-center gap-2">
-                        <svg class="w-4 h-4 text-emerald_ia" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+    {# Grille principale — colonnes indépendantes #}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-grow min-h-0 items-start">
+        {# Zone principale : Revue de littérature — remplit tout l'espace vertical restant #}
+        <div class="lg:col-span-2" style="height: calc(100vh - 140px);">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col h-full">
+                <div class="px-4 py-2.5 border-b border-slate-50 flex justify-between items-center bg-slate-50/30 rounded-t-2xl flex-shrink-0">
+                    <h2 class="text-xs font-bold text-djoliba flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5 text-emerald_ia" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                         Analyse Synthétique
                     </h2>
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-3">
                         {# Contrôle de la taille de police #}
                         <div class="flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5 border border-slate-200">
                             <button data-action="click->literature#zoomOut" 
-                                    class="w-6 h-6 flex items-center justify-center text-slate-600 hover:text-djoliba hover:bg-white rounded transition-colors font-bold text-sm"
+                                    class="w-5 h-5 flex items-center justify-center text-slate-600 hover:text-djoliba hover:bg-white rounded transition-colors font-bold text-xs"
                                     title="Diminuer la taille de police">
                                 -
                             </button>
                             <button data-action="click->literature#zoomIn" 
-                                    class="w-6 h-6 flex items-center justify-center text-slate-600 hover:text-djoliba hover:bg-white rounded transition-colors font-bold text-sm"
+                                    class="w-5 h-5 flex items-center justify-center text-slate-600 hover:text-djoliba hover:bg-white rounded transition-colors font-bold text-xs"
                                     title="Augmenter la taille de police">
                                 +
                             </button>
@@ -73,7 +74,7 @@
                     </div>
                 </div>
 
-                <div class="p-8 flex-grow overflow-y-auto synth-scroll">
+                <div class="p-6 flex-grow overflow-y-auto synth-scroll min-h-0">
                     <div data-literature-target="output" class="prose prose-slate max-w-none text-slate-700 leading-relaxed">
                         {% if last_synthesis %}
                             {{ last_synthesis|raw }}
@@ -81,17 +82,16 @@
                     </div>
                 </div>
             </div>
-
         </div>
 
-        {# Zone latérale : Suggestions d'articles #}
-        <div class="space-y-6">
-            <h3 class="text-sm font-bold text-djoliba uppercase tracking-wider flex items-center gap-2">
+        {# Zone latérale : Suggestions d'articles — indépendante #}
+        <div class="flex flex-col">
+            <h3 class="text-xs font-bold text-djoliba uppercase tracking-wider flex items-center gap-1.5 mb-2 flex-shrink-0">
                 <svg class="w-4 h-4 text-gold_prestige" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                 Sources Recommandées
             </h3>
             
-            <div data-literature-target="suggestions" class="space-y-4">
+            <div data-literature-target="suggestions" class="space-y-3 overflow-y-auto suggestions-scroll pr-1">
                 {# Placeholder initial #}
                 <div class="bg-slate-50/50 rounded-2xl p-6 border border-dashed border-slate-200 text-center">
                     <p class="text-xs text-slate-400">Les articles scientifiques pertinents apparaîtront ici après l'analyse.</p>
@@ -129,7 +129,6 @@
 
     /* Scrollbar fine et élégante pour la zone d'analyse */
     .synth-scroll {
-        max-height: 440px !important;
         overflow-y: auto !important;
         scrollbar-width: thin;
         scrollbar-color: var(--color-djoliba, #1a3c5e) transparent;
@@ -242,6 +241,38 @@
     .prose .ref.unverified .ref-badge {
         background-color: #fee2e2 !important;
         color: #b91c1c !important; /* red-700 */
+    }
+
+    /* Scrollbar fine pour la zone de suggestions */
+    .suggestions-scroll {
+        max-height: 640px;
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-djoliba, #1a3c5e) transparent;
+    }
+    .suggestions-scroll::-webkit-scrollbar {
+        width: 4px;
+    }
+    .suggestions-scroll::-webkit-scrollbar-track {
+        background: transparent;
+        border-radius: 10px;
+    }
+    .suggestions-scroll::-webkit-scrollbar-thumb {
+        background: rgba(26, 60, 94, 0.2);
+        border-radius: 10px;
+    }
+    .suggestions-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(26, 60, 94, 0.5);
+    }
+
+    /* Bloquer le défilement global de la page sur desktop */
+    @media (min-width: 1024px) {
+        html, body {
+            overflow: hidden !important;
+            height: 100vh !important;
+        }
+        .suggestions-scroll {
+            max-height: min(640px, calc(100vh - 170px)) !important;
+        }
     }
 </style>
 {% endblock %}

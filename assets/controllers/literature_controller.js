@@ -10,6 +10,11 @@ export default class extends Controller {
         this.fontSizeLevel = 100;
         this.updateFontSize();
 
+        // Réinitialiser le défilement de la page pour éviter que le haut ne soit masqué
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+
         // Si session précédente restaurée (lastQuery présent)
         if (this.hasLastQueryValue && this.lastQueryValue.trim()) {
             // Parser le contenu initial (Markdown brut mixé avec HTML)
@@ -236,8 +241,8 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
         // Rendu HTML formaté à partir du Markdown avec le curseur clignotant
         this.outputTarget.innerHTML = this.parseMarkdown(this.responseText) + cursorHtml;
 
-        // Rendre les équations LaTeX via KaTeX
-        this.renderMath();
+        // Rendre les équations LaTeX via KaTeX (version throttlée pour éviter de surcharger le navigateur en cours de streaming)
+        this.renderMathThrottled();
 
         // Scroll automatique ciblé sur le conteneur interne de texte
         const scrollContainer = this.outputTarget.parentElement;
@@ -318,8 +323,8 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
         this.suggestionsTarget.innerHTML = articles.map((article, index) => {
             const isVerified = article.verified === true;
             const verifBadge = isVerified
-                ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200" title="Source vérifiée">✅ Vérifié</span>`
-                : `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-600 border border-amber-200" title="Non vérifié dans les bases de données">⚠️ Non vérifié</span>`;
+                ? `<span class="cursor-help text-xs flex-shrink-0" title="Source vérifiée dans les bases de données">✅</span>`
+                : `<span class="cursor-help text-xs flex-shrink-0" title="Non vérifié dans les bases de données">⚠️</span>`;
 
             const doiLink = article.doi
                 ? `<a href="https://doi.org/${article.doi}" target="_blank" class="p-1.5 bg-slate-50 text-djoliba rounded-lg hover:bg-djoliba hover:text-white transition-colors" title="Ouvrir le DOI">
@@ -420,16 +425,30 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
 
         const mathBlocks = [];
 
-        // 1. Extraire les blocs d'équations ($$ ... $$)
+        // 1a. Extraire les blocs d'équations \[...\] (display mode)
+        html = html.replace(/\\\[([\s\S]*?)\\\]/g, (match, equation) => {
+            const placeholder = `__MATH_BLOCK_${mathBlocks.length}__`;
+            mathBlocks.push({ placeholder, equation, display: true });
+            return placeholder;
+        });
+
+        // 1b. Extraire les blocs d'équations ($$ ... $$)
         html = html.replace(/\$\$([\s\S]*?)\$\$/g, (match, equation) => {
             const placeholder = `__MATH_BLOCK_${mathBlocks.length}__`;
             mathBlocks.push({ placeholder, equation, display: true });
             return placeholder;
         });
 
-        // 2. Extraire les équations en ligne ($ ... $)
-        // Évite d'extraire les chaînes vides, de simples espaces ou des dollars orphelins
-        html = html.replace(/\$([^\s$](?:[^\n$]*?[^\s$])?)\$/g, (match, equation) => {
+        // 2a. Extraire les équations en ligne \(...\)
+        html = html.replace(/\\\(([\s\S]*?)\\\)/g, (match, equation) => {
+            const placeholder = `__MATH_INLINE_${mathBlocks.length}__`;
+            mathBlocks.push({ placeholder, equation, display: false });
+            return placeholder;
+        });
+
+        // 2b. Extraire les équations en ligne ($ ... $)
+        // Gère les cas à un seul caractère ($x$) et les expressions multi-caractères
+        html = html.replace(/\$([^\s$][^\n$]*?[^\s$]|[^\s$])\$/g, (match, equation) => {
             const placeholder = `__MATH_INLINE_${mathBlocks.length}__`;
             mathBlocks.push({ placeholder, equation, display: false });
             return placeholder;
@@ -509,15 +528,17 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
         const target = this.outputTarget;
         const doRender = () => {
             try {
-                window.renderMathInElement(target, {
-                    delimiters: [
-                        { left: "$$", right: "$$", display: true },
-                        { left: "$", right: "$", display: false },
-                        { left: "\\(", right: "\\)", display: false },
-                        { left: "\\[", right: "\\]", display: true }
-                    ],
-                    throwOnError: false
-                });
+                if (window.renderMathInElement) {
+                    window.renderMathInElement(target, {
+                        delimiters: [
+                            { left: "$$", right: "$$", display: true },
+                            { left: "$", right: "$", display: false },
+                            { left: "\\(", right: "\\)", display: false },
+                            { left: "\\[", right: "\\]", display: true }
+                        ],
+                        throwOnError: false
+                    });
+                }
             } catch (e) {
                 console.warn("KaTeX render error:", e);
             }
@@ -526,15 +547,63 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
         if (window.renderMathInElement) {
             doRender();
         } else {
-            // KaTeX pas encore chargé (scripts defer) — on attend
+            // Éviter de lancer plusieurs intervalles en parallèle
+            if (this.waitingForKatex) {
+                this.pendingMathTarget = target;
+                return;
+            }
+            this.waitingForKatex = true;
+            this.pendingMathTarget = target;
+
             const poll = setInterval(() => {
                 if (window.renderMathInElement) {
                     clearInterval(poll);
-                    doRender();
+                    this.waitingForKatex = false;
+                    if (this.pendingMathTarget) {
+                        try {
+                            window.renderMathInElement(this.pendingMathTarget, {
+                                delimiters: [
+                                    { left: "$$", right: "$$", display: true },
+                                    { left: "$", right: "$", display: false },
+                                    { left: "\\(", right: "\\)", display: false },
+                                    { left: "\\[", right: "\\]", display: true }
+                                ],
+                                throwOnError: false
+                            });
+                        } catch (e) {
+                            console.warn("KaTeX render error on pending target:", e);
+                        }
+                        this.pendingMathTarget = null;
+                    }
                 }
             }, 50);
+
             // Sécurité : abandon après 5s
-            setTimeout(() => clearInterval(poll), 5000);
+            setTimeout(() => {
+                if (this.waitingForKatex) {
+                    clearInterval(poll);
+                    this.waitingForKatex = false;
+                    this.pendingMathTarget = null;
+                }
+            }, 5000);
+        }
+    }
+
+    renderMathThrottled() {
+        const now = Date.now();
+        const limit = 1000; // Délai de 1s min entre rendus complets pendant le streaming
+
+        if (!this.lastMathRenderTime || (now - this.lastMathRenderTime >= limit)) {
+            this.renderMath();
+            this.lastMathRenderTime = now;
+        } else {
+            if (this.mathRenderTimeout) {
+                clearTimeout(this.mathRenderTimeout);
+            }
+            this.mathRenderTimeout = setTimeout(() => {
+                this.renderMath();
+                this.lastMathRenderTime = Date.now();
+            }, limit);
         }
     }
 

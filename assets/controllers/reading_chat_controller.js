@@ -491,7 +491,7 @@ export default class extends Controller {
         // Utiliser le parseur Markdown premium avec KaTeX
         this.responseTarget.innerHTML = this.parseMarkdown(this.#currentResponseText);
         this.messagesTarget?.scrollTo({ top: this.messagesTarget.scrollHeight, behavior: 'smooth' });
-        this.renderMath(this.responseTarget);
+        this.renderMathThrottled(this.responseTarget);
     }
 
     #finalizeResponse() {
@@ -528,8 +528,8 @@ export default class extends Controller {
         });
 
         // 2. Extraire les équations en ligne ($ ... $ et \( ... \))
-        // Évite d'extraire les chaînes vides, de simples espaces ou des dollars orphelins
-        html = html.replace(/\$([^\s$](?:[^\n$]*?[^\s$])?)\$/g, (match, equation) => {
+        // Gère les cas à un seul caractère ($x$) et les expressions multi-caractères
+        html = html.replace(/\$([^\s$][^\n$]*?[^\s$]|[^\s$])\$/g, (match, equation) => {
             const placeholder = `__MATH_INLINE_${mathBlocks.length}__`;
             mathBlocks.push({ placeholder, equation, display: false });
             return placeholder;
@@ -628,15 +628,63 @@ export default class extends Controller {
         if (window.renderMathInElement) {
             doRender();
         } else {
-            // KaTeX pas encore chargé (scripts defer) — on attend
+            // Éviter de lancer plusieurs intervalles en parallèle
+            if (this.waitingForKatex) {
+                this.pendingMathTarget = targetElement;
+                return;
+            }
+            this.waitingForKatex = true;
+            this.pendingMathTarget = targetElement;
+
             const poll = setInterval(() => {
                 if (window.renderMathInElement) {
                     clearInterval(poll);
-                    doRender();
+                    this.waitingForKatex = false;
+                    if (this.pendingMathTarget) {
+                        try {
+                            window.renderMathInElement(this.pendingMathTarget, {
+                                delimiters: [
+                                    { left: "$$", right: "$$", display: true },
+                                    { left: "$", right: "$", display: false },
+                                    { left: "\\(", right: "\\)", display: false },
+                                    { left: "\\[", right: "\\]", display: true }
+                                ],
+                                throwOnError: false
+                            });
+                        } catch (e) {
+                            console.warn("KaTeX render error on pending target:", e);
+                        }
+                        this.pendingMathTarget = null;
+                    }
                 }
             }, 50);
+
             // Sécurité : abandon après 5s
-            setTimeout(() => clearInterval(poll), 5000);
+            setTimeout(() => {
+                if (this.waitingForKatex) {
+                    clearInterval(poll);
+                    this.waitingForKatex = false;
+                    this.pendingMathTarget = null;
+                }
+            }, 5000);
+        }
+    }
+
+    renderMathThrottled(target = null) {
+        const now = Date.now();
+        const limit = 1000; // Délai de 1s min entre rendus complets pendant le streaming
+
+        if (!this.lastMathRenderTime || (now - this.lastMathRenderTime >= limit)) {
+            this.renderMath(target);
+            this.lastMathRenderTime = now;
+        } else {
+            if (this.mathRenderTimeout) {
+                clearTimeout(this.mathRenderTimeout);
+            }
+            this.mathRenderTimeout = setTimeout(() => {
+                this.renderMath(target);
+                this.lastMathRenderTime = Date.now();
+            }, limit);
         }
     }
 

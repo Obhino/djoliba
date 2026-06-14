@@ -21,6 +21,7 @@ class ReadingService
         private CacheService       $cacheService,
         private DocumentRepository $documentRepository,
         private EntityManagerInterface $entityManager,
+        private \App\Service\File\TextExtractorService $textExtractorService,
     ) {
     }
 
@@ -255,41 +256,10 @@ class ReadingService
      */
     private function extractTextContent(Document $document): string
     {
-        $path = $document->getStoredPath();
-
-        if (!file_exists($path)) {
-            throw new \RuntimeException(sprintf(
-                'Fichier physique introuvable pour le document #%d : %s',
-                $document->getId(),
-                $path
-            ));
-        }
-
-        $mimeType = $document->getMimeType();
-
-        // Fichiers texte (LaTeX, .tex) : lecture directe
-        if (in_array($mimeType, ['application/x-tex', 'text/x-tex'], true)) {
-            return file_get_contents($path);
-        }
-
-        // PDF : extraction via smalot/pdfparser
-        if ($mimeType === 'application/pdf') {
-            try {
-                $parser = new \Smalot\PdfParser\Parser();
-                $pdf = $parser->parseFile($path);
-                return $pdf->getText();
-            } catch (\Exception $e) {
-                throw new \RuntimeException(sprintf('Erreur lors de la lecture du PDF : %s', $e->getMessage()), 0, $e);
-            }
-        }
-
-        // DOCX : retourner une instruction pour DeepSeek
-        // TODO: Implémenter une extraction réelle via phpoffice/phpword
-        // Pour l'instant, on indique le nom du fichier pour que l'IA sache de quoi il s'agit
-        return sprintf(
-            "[Contenu du fichier %s — extraction binaire non encore implémentée. Fichier de type : %s]",
-            $document->getFilename(),
-            $mimeType
+        return $this->textExtractorService->extractText(
+            $document->getStoredPath(),
+            $document->getMimeType(),
+            $document->getFilename()
         );
     }
 
