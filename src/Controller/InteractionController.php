@@ -31,7 +31,7 @@ class InteractionController extends AbstractController
         }
 
         $user = $this->getUser();
-        $isTestMode = $request->getSession()->get('is_test_mode');
+        $isTestMode = $request->hasSession() ? $request->getSession()?->get('is_test_mode') : false;
 
         if (!$user && !$isTestMode) {
             return $this->json(['error' => 'Non autorisé'], Response::HTTP_UNAUTHORIZED);
@@ -65,8 +65,8 @@ class InteractionController extends AbstractController
             }
         } else {
             // Mode Test : Simulation de la sauvegarde
-            $session = $request->getSession();
-            $projects = $session->get('test_projects', []);
+            $session = $request->hasSession() ? $request->getSession() : null;
+            $projects = $session ? $session->get('test_projects', []) : [];
             $found = false;
             foreach ($projects as &$p) {
                 if ($p['id'] == $data['project_id']) {

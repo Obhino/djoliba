@@ -28,13 +28,15 @@ class SecurityControllerTest extends WebTestCase
         if (!$user) {
             $user = new User();
             $user->setEmail('test-functional@djoliba.com');
-            $user->setPassword(
-                $container->get('security.user_password_hasher')->hashPassword($user, 'password123')
-            );
             $user->setFirstName('Tester');
             $em->persist($user);
-            $em->flush();
         }
+        $user->setPassword(
+            $container->get('security.user_password_hasher')->hashPassword($user, 'password123')
+        );
+        $user->setIsVerified(true);
+        $user->setIsActive(true);
+        $em->flush();
 
         $crawler = $client->request('GET', '/login');
         $form = $crawler->selectButton('Se connecter')->form([

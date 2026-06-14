@@ -79,7 +79,9 @@ class ProjectViewController extends AbstractController
     public function hub(): Response
     {
         // On autorise si l'utilisateur est connecté OU si le mode test est actif
-        if (!$this->getUser() && !$this->container->get('request_stack')->getCurrentRequest()->getSession()->get('is_test_mode')) {
+        $request = $this->container->get('request_stack')->getCurrentRequest();
+        $isTestMode = $request && $request->hasSession() ? $request->getSession()?->get('is_test_mode') : false;
+        if (!$this->getUser() && !$isTestMode) {
             return $this->redirectToRoute('app_login');
         }
 

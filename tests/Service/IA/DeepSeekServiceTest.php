@@ -18,9 +18,16 @@ class DeepSeekServiceTest extends TestCase
     {
         $this->httpClient = $this->createMock(HttpClientInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
+        $cache = $this->createMock(\Symfony\Contracts\Cache\CacheInterface::class);
+        $cache->method('get')->willReturnCallback(function ($key, $callback) {
+            $item = $this->createMock(\Symfony\Contracts\Cache\ItemInterface::class);
+            return $callback($item);
+        });
+
         $this->service = new DeepSeekService(
             $this->httpClient,
             $this->logger,
+            $cache,
             'test_api_key',
             'https://api.deepseek.com'
         );

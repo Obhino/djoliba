@@ -38,7 +38,7 @@ class LiteratureController extends AbstractController
         }
 
         $user = $this->getUser();
-        $isTestMode = $request->getSession()->get('is_test_mode');
+        $isTestMode = $request->hasSession() ? $request->getSession()?->get('is_test_mode') : false;
 
         if (!$user && !$isTestMode) {
             return $this->json(['error' => 'Non autorisé'], 401);
@@ -239,7 +239,8 @@ class LiteratureController extends AbstractController
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        if (!$this->getUser() && !$request->getSession()->get('is_test_mode')) {
+        $isTestMode = $request->hasSession() ? $request->getSession()?->get('is_test_mode') : false;
+        if (!$this->getUser() && !$isTestMode) {
             return $this->json([
                 'success' => false,
                 'error'   => ['code' => 401, 'message' => 'Authentification requise.']
@@ -266,6 +267,44 @@ class LiteratureController extends AbstractController
                 'success' => false,
                 'error'   => ['code' => 502, 'message' => 'La réponse de l\'IA est invalide. Veuillez réessayer.']
             ], Response::HTTP_BAD_GATEWAY);
+        }
+    }
+
+    #[Route('/deep-search', name: 'api_literature_deep_search', methods: ['POST'])]
+    public function deepSearch(Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data['query'])) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 400, 'message' => 'Le champ "query" est requis.']
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        $isTestMode = $request->hasSession() ? $request->getSession()?->get('is_test_mode') : false;
+        if (!$this->getUser() && !$isTestMode) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 401, 'message' => 'Authentification requise.']
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $limit = isset($data['limit']) ? (int) $data['limit'] : 12;
+        $limit = max(1, min($limit, 20));
+
+        try {
+            $articles = $this->suggestionService->suggest($data['query'], $limit);
+
+            return $this->json([
+                'success' => true,
+                'data'    => $articles,
+            ]);
+        } catch (\RuntimeException $e) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 503, 'message' => 'Service IA temporairement indisponible. Veuillez réessayer.']
+            ], Response::HTTP_SERVICE_UNAVAILABLE);
         }
     }
 }

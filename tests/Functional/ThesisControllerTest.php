@@ -45,12 +45,15 @@ class ThesisControllerTest extends WebTestCase
     protected function tearDown(): void
     {
         // Clean up chapters created during the tests
-        $chapters = $this->em->getRepository(Chapter::class)->findBy(['project' => $this->project]);
-        foreach ($chapters as $chapter) {
-            $this->em->remove($chapter);
+        $project = $this->em->getRepository(Project::class)->find($this->project->getId());
+        if ($project) {
+            $chapters = $this->em->getRepository(Chapter::class)->findBy(['project' => $project]);
+            foreach ($chapters as $chapter) {
+                $this->em->remove($chapter);
+            }
+            $this->em->remove($project);
+            $this->em->flush();
         }
-        $this->em->remove($this->project);
-        $this->em->flush();
 
         parent::tearDown();
     }

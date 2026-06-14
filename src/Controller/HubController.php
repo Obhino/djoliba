@@ -16,7 +16,9 @@ class HubController extends AbstractController
 
     private function checkAccess(): ?Response
     {
-        if (!$this->getUser() && !$this->container->get('request_stack')->getCurrentRequest()->getSession()->get('is_test_mode')) {
+        $request = $this->container->get('request_stack')->getCurrentRequest();
+        $isTestMode = $request && $request->hasSession() ? $request->getSession()?->get('is_test_mode') : false;
+        if (!$this->getUser() && !$isTestMode) {
             return $this->redirectToRoute('app_login');
         }
         return null;
@@ -29,8 +31,9 @@ class HubController extends AbstractController
             return $this->projectManager->getUserProjects($user, $type);
         }
 
-        $session = $this->container->get('request_stack')->getCurrentRequest()->getSession();
-        $projects = $session->get('test_projects', []);
+        $request = $this->container->get('request_stack')->getCurrentRequest();
+        $session = $request && $request->hasSession() ? $request->getSession() : null;
+        $projects = $session ? $session->get('test_projects', []) : [];
         return array_values(array_filter($projects, fn($p) => isset($p['type']) && $p['type'] === $type));
     }
 

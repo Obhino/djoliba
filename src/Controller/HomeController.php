@@ -11,7 +11,8 @@ class HomeController extends AbstractController
     #[Route('/', name: 'app_home')]
     public function index(\Symfony\Component\HttpFoundation\Request $request): Response
     {
-        if ($this->getUser() || $request->getSession()->get('is_test_mode')) {
+        $isTestMode = $request->hasSession() ? $request->getSession()?->get('is_test_mode') : false;
+        if ($this->getUser() || $isTestMode) {
             return $this->redirectToRoute('app_hub');
         }
 

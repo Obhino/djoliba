@@ -40,6 +40,11 @@
                 <span>Analyser</span>
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
             </button>
+            <button data-action="click->literature#onDeepSearch" 
+                    class="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-djoliba rounded-lg font-bold text-sm border border-slate-200 transition-all flex items-center gap-1.5 shadow-sm">
+                <span>Recherche Approfondie</span>
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </button>
         </div>
     </div>
 
@@ -96,6 +101,42 @@
                 <div class="bg-slate-50/50 rounded-2xl p-6 border border-dashed border-slate-200 text-center">
                     <p class="text-xs text-slate-400">Les articles scientifiques pertinents apparaîtront ici après l'analyse.</p>
                 </div>
+            </div>
+        </div>
+    </div>
+    {# Modal Recherche Approfondie #}
+    <div data-literature-target="deepSearchModal" 
+         class="fixed inset-0 z-[9999] hidden flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300">
+        
+        {# Backdrop Click to Close #}
+        <div data-action="click->literature#closeDeepSearch" class="absolute inset-0 cursor-default"></div>
+
+        {# Modal Container #}
+        <div class="relative bg-white rounded-3xl p-6 border border-slate-100 shadow-2xl flex flex-col z-10 w-full max-w-4xl max-h-[85vh] transform transition-all duration-300">
+            
+            {# Close Button #}
+            <button type="button" data-action="click->literature#closeDeepSearch" class="absolute top-5 right-5 text-slate-400 hover:text-djoliba transition-colors">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+
+            {# Header #}
+            <div class="mb-4 pr-8">
+                <h3 class="text-lg font-bold text-djoliba flex items-center gap-2">
+                    <svg class="w-5 h-5 text-gold_prestige" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    Recherche Approfondie (Web & Bases de données)
+                </h3>
+                <p class="text-xs text-slate-400 mt-1">Résultats bruts de la recherche par mots-clés sur internet. Ajoutez-les au projet pour étendre votre bibliographie.</p>
+            </div>
+
+            {# Loader #}
+            <div data-literature-target="deepSearchLoading" class="flex-grow flex flex-col items-center justify-center p-12 hidden">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-djoliba mb-3"></div>
+                <p class="text-xs text-slate-500 font-semibold animate-pulse">Parcours du web en cours, veuillez patienter...</p>
+            </div>
+
+            {# Scrollable Content Area #}
+            <div data-literature-target="deepSearchContent" class="flex-grow overflow-y-auto pr-1 space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-max p-1 suggestions-scroll">
+                {# Les résultats seront injectés ici en JS #}
             </div>
         </div>
     </div>

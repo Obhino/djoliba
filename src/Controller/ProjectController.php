@@ -32,7 +32,8 @@ class ProjectController extends AbstractController
             $projects = $this->projectManager->getUserProjects($user);
         } else {
             // Mode Test : Récupération depuis la session
-            $projects = $request->getSession()->get('test_projects', []);
+            $session = $request->hasSession() ? $request->getSession() : null;
+            $projects = $session ? $session->get('test_projects', []) : [];
         }
         
         if ($limit) {
@@ -70,8 +71,8 @@ class ProjectController extends AbstractController
             $project = $this->projectManager->createProject($user, $data['type'], $data['name']);
         } else {
             // Mode Test : Sauvegarde en session
-            $session = $request->getSession();
-            $projects = $session->get('test_projects', []);
+            $session = $request->hasSession() ? $request->getSession() : null;
+            $projects = $session ? $session->get('test_projects', []) : [];
             
             $name = $data['name'];
             if (mb_strlen($name) > 50) {
@@ -168,7 +169,7 @@ class ProjectController extends AbstractController
     public function addArticle(int $id, Request $request): JsonResponse
     {
         $user = $this->getUser();
-        $isTestMode = $request->getSession()->get('is_test_mode');
+        $isTestMode = $request->hasSession() ? $request->getSession()?->get('is_test_mode') : false;
 
         if (!$user && !$isTestMode) {
             return $this->json(['success' => false, 'error' => ['message' => 'Non autorisé']], 401);
@@ -190,8 +191,8 @@ class ProjectController extends AbstractController
             $currentMetadata['articles'][] = $articleData;
             $this->projectManager->updateProject($project, ['metadata' => $currentMetadata]);
         } else {
-            $session = $request->getSession();
-            $projects = $session->get('test_projects', []);
+            $session = $request->hasSession() ? $request->getSession() : null;
+            $projects = $session ? $session->get('test_projects', []) : [];
             $found = false;
             foreach ($projects as &$p) {
                 if ($p['id'] == $id) {
@@ -213,7 +214,7 @@ class ProjectController extends AbstractController
     public function uploadImage(int $id, Request $request): JsonResponse
     {
         $user = $this->getUser();
-        $isTestMode = $request->getSession()->get('is_test_mode');
+        $isTestMode = $request->hasSession() ? $request->getSession()?->get('is_test_mode') : false;
 
         if (!$user && !$isTestMode) {
             return $this->json([
@@ -236,8 +237,8 @@ class ProjectController extends AbstractController
             $projectType = $project->getType();
         } else {
             // Mode Test : Session
-            $session = $request->getSession();
-            $projects = $session->get('test_projects', []);
+            $session = $request->hasSession() ? $request->getSession() : null;
+            $projects = $session ? $session->get('test_projects', []) : [];
             $foundProject = null;
             foreach ($projects as $p) {
                 if ($p['id'] == $id) {
