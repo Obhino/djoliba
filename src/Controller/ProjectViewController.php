@@ -141,6 +141,7 @@ class ProjectViewController extends AbstractController
         ]);
     }
 
+
     #[IsGranted('ROLE_USER')]
     #[Route('/project/{id}/reading', name: 'app_project_reading')]
     public function reading(int $id, \App\Repository\DocumentRepository $documentRepository): Response

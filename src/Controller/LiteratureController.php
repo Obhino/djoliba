@@ -291,7 +291,7 @@ class LiteratureController extends AbstractController
         }
 
         $limit = isset($data['limit']) ? (int) $data['limit'] : 12;
-        $limit = max(1, min($limit, 20));
+        $limit = max(1, min($limit, 50));
 
         try {
             $articles = $this->suggestionService->suggest($data['query'], $limit);

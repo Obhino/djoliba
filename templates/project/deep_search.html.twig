@@ -1,0 +1,122 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Recherche Approfondie - Djoliba{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block main %}
+<div class="h-screen flex flex-col overflow-hidden px-6 pt-4 pb-4 bg-slate-50/50" 
+     data-controller="deep-search" 
+     data-deep-search-project-id-value="{{ project.id }}"
+     data-deep-search-initial-query-value="{{ initial_query|default('') }}">
+    
+    {# Breadcrumb & En-tête #}
+    <div class="mb-4 flex justify-between items-center flex-shrink-0">
+        <div class="flex items-center gap-3">
+            <nav class="flex text-xs text-slate-400" aria-label="Breadcrumb">
+                <ol class="flex items-center space-x-1.5">
+                    <li><a href="{{ path('app_hub') }}" class="hover:text-djoliba transition-colors">Hub</a></li>
+                    <li><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></li>
+                    <li><a href="{{ path('app_project_literature', {'id': project.id}) }}" class="hover:text-djoliba transition-colors">{{ project.name }}</a></li>
+                    <li><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></li>
+                    <li class="text-djoliba font-medium">Recherche Approfondie</li>
+                </ol>
+            </nav>
+            <span class="text-lg font-display font-bold text-djoliba">Recherche Approfondie</span>
+        </div>
+        <a href="{{ path('app_project_literature', {'id': project.id}) }}" 
+           class="px-4 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-djoliba hover:bg-slate-50 rounded-xl font-bold text-xs shadow-sm transition-colors flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+            Retour au projet
+        </a>
+    </div>
+
+    {# Panneau de Recherche Premium #}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-4 flex-shrink-0">
+        <div class="flex gap-3 items-center">
+            <div class="flex-grow relative">
+                <input type="text" 
+                       data-deep-search-target="input"
+                       value="{{ initial_query|default(project.name) }}"
+                       class="w-full pl-4 pr-4 py-2.5 bg-slate-50/50 border border-slate-100 rounded-xl text-djoliba text-sm placeholder-slate-400 focus:ring-2 focus:ring-djoliba/20 transition-all font-medium"
+                       placeholder="Saisissez vos mots-clés pour chercher dans les bases de données et sur le web...">
+            </div>
+            <div class="flex items-center gap-1.5 bg-slate-50/50 border border-slate-100 px-3 py-2 rounded-xl">
+                <label class="text-xs text-slate-500 font-bold whitespace-nowrap">Nombre de résultats :</label>
+                <select data-deep-search-target="limitSelect" 
+                        class="bg-transparent border-none py-0 pl-1 pr-6 text-djoliba text-xs focus:ring-0 font-bold cursor-pointer">
+                    <option value="12" selected>12 résultats</option>
+                    <option value="20">20 résultats</option>
+                    <option value="30">30 résultats</option>
+                    <option value="50">50 résultats</option>
+                </select>
+            </div>
+            <button data-action="click->deep-search#triggerSearch" 
+                    class="px-6 py-2.5 bg-djoliba hover:bg-djoliba/95 text-white rounded-xl font-bold text-sm shadow-lg shadow-djoliba/20 transition-all flex items-center gap-2">
+                <span>Rechercher</span>
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </button>
+        </div>
+    </div>
+
+    {# Zone principale de résultats #}
+    <div class="bg-white rounded-3xl border border-slate-100 p-6 flex-grow flex flex-col min-h-0 shadow-sm relative">
+        
+        {# Loader #}
+        <div data-deep-search-target="loading" class="flex-grow flex flex-col items-center justify-center p-12 hidden">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-djoliba mb-4"></div>
+            <p class="text-xs text-slate-500 font-semibold animate-pulse">Parcours des serveurs académiques et du web, veuillez patienter...</p>
+        </div>
+
+        {# Zone de scroll des cartes #}
+        <div class="flex-grow overflow-y-auto pr-1 flex flex-col min-h-0">
+            <div data-deep-search-target="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 auto-rows-max p-1 suggestions-scroll flex-grow hidden">
+                {# Les cartes d'articles seront générées ici par JS #}
+            </div>
+
+            {# Bouton Voir Plus #}
+            <div class="mt-6 flex justify-center flex-shrink-0">
+                <button type="button" 
+                        data-deep-search-target="loadMoreBtn"
+                        data-action="click->deep-search#loadMore"
+                        class="hidden px-8 py-2.5 bg-slate-50 hover:bg-djoliba hover:text-white hover:border-djoliba text-djoliba text-xs font-bold rounded-xl border border-slate-200 transition-all shadow-sm">
+                    Afficher plus de résultats
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    /* Scrollbar fine et élégante pour la zone de résultats */
+    .suggestions-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-djoliba, #1a3c5e) transparent;
+    }
+    .suggestions-scroll::-webkit-scrollbar {
+        width: 5px;
+    }
+    .suggestions-scroll::-webkit-scrollbar-track {
+        background: transparent;
+        border-radius: 10px;
+    }
+    .suggestions-scroll::-webkit-scrollbar-thumb {
+        background: rgba(26, 60, 94, 0.15);
+        border-radius: 10px;
+        transition: background 0.2s;
+    }
+    .suggestions-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(26, 60, 94, 0.4);
+    }
+
+    /* Bloquer le défilement global de la page sur desktop */
+    @media (min-width: 1024px) {
+        html, body {
+            overflow: hidden !important;
+            height: 100vh !important;
+        }
+    }
+</style>
+{% endblock %}
