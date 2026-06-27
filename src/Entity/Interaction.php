@@ -75,6 +75,9 @@ class Interaction
     public function setProject(?Project $project): static
     {
         $this->project = $project;
+        if ($project && $project->getSubProject()) {
+            $this->subProject = $project->getSubProject();
+        }
 
         return $this;
     }

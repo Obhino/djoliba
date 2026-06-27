@@ -30,6 +30,24 @@ class ProjectManager
      */
     public function createProject(User $user, string $type, string $name, ?ResearchProject $researchProject = null): Project
     {
+        // 1. Créer le sous-projet compagnon unifié
+        $subProject = new \App\Entity\SubProject();
+        $subProject->setUser($user);
+        
+        $unifiedType = $type;
+        if ($type === 'literature_review') {
+            $unifiedType = 'literature';
+        }
+        $subProject->setType($unifiedType);
+        $subProject->setName($name);
+        $subProject->setStatus('active');
+        $subProject->setCreatedAt(new \DateTime());
+        $subProject->setResearchProject($researchProject);
+
+        $this->entityManager->persist($subProject);
+        $this->entityManager->flush();
+
+        // 2. Créer le projet hérité
         $project = new Project();
         $project->setUser($user);
         $project->setType($type);
@@ -38,6 +56,7 @@ class ProjectManager
         $project->setCreatedAt(new \DateTime());
         $project->setLastAccessedAt(new \DateTime());
         $project->setResearchProject($researchProject);
+        $project->setSubProject($subProject);
 
         $this->entityManager->persist($project);
         $this->entityManager->flush();

@@ -129,7 +129,7 @@ class ProjectViewController extends AbstractController
 
     #[IsGranted('ROLE_USER')]
     #[Route('/project/{id}/literature', name: 'app_project_literature')]
-    public function literature(int $id, \Doctrine\ORM\EntityManagerInterface $entityManager): Response
+    public function literature(int $id, \Symfony\Component\HttpFoundation\Request $request, \Doctrine\ORM\EntityManagerInterface $entityManager): Response
     {
         $project = $this->projectManager->getProject($id);
 
@@ -143,10 +143,13 @@ class ProjectViewController extends AbstractController
             ['createdAt' => 'DESC']
         );
 
+        $queryParam = $request->query->get('query');
+        $lastQuery = $lastInteraction ? $lastInteraction->getUserPrompt() : ($queryParam ?: $project->getName());
+
         return $this->render('project/literature.html.twig', [
             'project' => $project,
             'last_synthesis' => $lastInteraction ? $lastInteraction->getAiResponse() : null,
-            'last_query' => $lastInteraction ? $lastInteraction->getUserPrompt() : null,
+            'last_query' => $lastQuery,
         ]);
     }
 

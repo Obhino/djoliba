@@ -27,8 +27,8 @@ class ProjectManagerTest extends TestCase
         $user = new User();
         $user->setEmail('test@example.com');
 
-        $this->entityManager->expects($this->once())->method('persist');
-        $this->entityManager->expects($this->once())->method('flush');
+        $this->entityManager->expects($this->exactly(2))->method('persist');
+        $this->entityManager->expects($this->exactly(2))->method('flush');
 
         $project = $this->manager->createProject($user, 'thesis', 'Ma Thèse');
 
@@ -84,8 +84,8 @@ class ProjectManagerTest extends TestCase
         $user = new User();
         $user->setEmail('test@example.com');
 
-        $this->entityManager->expects($this->once())->method('persist');
-        $this->entityManager->expects($this->once())->method('flush');
+        $this->entityManager->expects($this->exactly(2))->method('persist');
+        $this->entityManager->expects($this->exactly(2))->method('flush');
 
         // Name is 60 characters long
         $longName = str_repeat('A', 60);

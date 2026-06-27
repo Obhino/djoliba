@@ -57,23 +57,26 @@ class LiteratureController extends AbstractController
             ], Response::HTTP_SERVICE_UNAVAILABLE);
         }
 
-        // 1. Logique Cache Local (Redis)
-        $cacheKey = 'literature_review_v2_' . md5($data['query'] . '_' . ($project ? $project->getId() : '0'));
+        // 1. Logique Cache Local (Redis) - Bypassed for independent queries
+        $cacheKey = 'literature_review_v2_' . md5($data['query'] . '_' . ($project ? $project->getId() : '0') . '_' . microtime(true));
         $cacheItem = $this->cache->getItem($cacheKey);
 
-        if ($cacheItem->isHit()) {
-            $cachedContent = $cacheItem->get();
-            return new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($cachedContent) {
-                if (ob_get_level() > 0) ob_end_clean();
-                // Diffuser le contenu en cache enrichi directement
-                echo "data: " . json_encode(['enriched' => $cachedContent]) . "\n\n";
-                echo "data: [DONE]\n\n";
-                flush();
-            }, 200, [
-                'Content-Type' => 'text/event-stream',
-                'Cache-Control' => 'no-cache',
-                'Connection' => 'keep-alive',
-            ]);
+        // Récupération du contexte du projet de recherche actif
+        $researchProject = $project ? $project->getResearchProject() : null;
+        if (!$researchProject && $request->hasSession()) {
+            $activeId = $request->getSession()->get('active_research_project_id');
+            if ($activeId) {
+                $researchProject = $this->entityManager->getRepository(\App\Entity\ResearchProject::class)->find((int)$activeId);
+            }
+        }
+
+        $userQuery = $data['query'];
+        if ($researchProject) {
+            $contextText = sprintf("dans le cadre du projet de recherche \"%s\"", $researchProject->getTitle());
+            if ($researchProject->getDescription()) {
+                $contextText .= sprintf(" (%s)", $researchProject->getDescription());
+            }
+            $userQuery = $contextText . ", " . $userQuery;
         }
 
         // 2. Logique Cache Contextuel (DeepSeek Prompt Cache)
@@ -165,7 +168,7 @@ class LiteratureController extends AbstractController
                 - Termine obligatoirement la revue par une section \"### Bibliographie\" listant 3 à 5 articles réels et pertinents (format Auteur, Année, Titre, Journal) servant de références globales pour le sujet.
                 
                 Sois précis, académique et utilise un ton rigoureux.",
-                $data['query']
+                $userQuery
             )
         ];
 
@@ -192,23 +195,7 @@ class LiteratureController extends AbstractController
                 echo "data: " . json_encode(['enriched' => $enrichedResponse]) . "\n\n";
                 flush();
 
-                // Enregistrement dans le cache local (24h)
-                $cacheItem->set($enrichedResponse);
-                $cacheItem->expiresAfter(86400);
-                $cache->save($cacheItem);
-
-                // Persistance de l'interaction en base de données
-                if ($project) {
-                    $interaction = new \App\Entity\Interaction();
-                    $interaction->setProject($project);
-                    $interaction->setType('literature_review');
-                    $interaction->setUserPrompt($data['query']);
-                    $interaction->setAiResponse($enrichedResponse); // On persiste le HTML enrichi
-                    $interaction->setResponseTimeMs(0);
-                    
-                    $entityManager->persist($interaction);
-                    $entityManager->flush();
-                }
+                // Persistance de l'interaction en base de données gérée via le POST /api/interaction du client frontend pour éviter les doublons.
 
             } catch (\Exception $e) {
                 echo "data: " . json_encode(['error' => $e->getMessage()]) . "\n\n";

@@ -15,8 +15,12 @@ export default class extends Controller {
         document.documentElement.scrollTop = 0;
         document.body.scrollTop = 0;
 
-        // Si session précédente restaurée (lastQuery présent)
-        if (this.hasLastQueryValue && this.lastQueryValue.trim()) {
+        // Si autostart est actif, on lance immédiatement la recherche (prioritaire)
+        if (this.autostartValue === 'true' && this.hasInputTarget && this.inputTarget.value.trim()) {
+            setTimeout(() => this.onSearch(), 150);
+        }
+        // Sinon, si session précédente restaurée (lastQuery présent)
+        else if (this.hasLastQueryValue && this.lastQueryValue.trim()) {
             // Parser le contenu initial (Markdown brut mixé avec HTML)
             const initialContent = this.outputTarget.innerHTML;
             if (initialContent.trim()) {
@@ -28,8 +32,6 @@ export default class extends Controller {
             this.loadSuggestions(this.lastQueryValue);
             // Re-render les équations sur le HTML restauré
             this.renderMath();
-        } else if (this.autostartValue === 'true' && this.hasInputTarget && this.inputTarget.value.trim()) {
-            setTimeout(() => this.onSearch(), 150);
         } else {
             // Afficher le texte de bienvenue formaté en Markdown
             this.renderDefaultText();
@@ -134,6 +136,39 @@ Ou, en version intégrale : $\\int_{-\\infty}^{+\\infty} |\\psi(x)|^2 \\, dx = 1
         }, intervalMs);
     }
 
+    /**
+     * Intercepte l'analyse pour créer un tout nouveau sous-projet et y rediriger
+     */
+    async onSearchClick(event) {
+        if (event && event.type === 'keydown' && event.key !== 'Enter') return;
+
+        const query = this.inputTarget.value.trim();
+        if (!query || this.isSearching) return;
+
+        try {
+            const response = await fetch('/api/projects', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: query,
+                    type: 'literature_review'
+                })
+            });
+
+            if (!response.ok) throw new Error("Erreur lors de la création de la recherche");
+
+            const result = await response.json();
+            const project = result.data || result;
+
+            window.location.href = `/project/${project.id}/literature?autostart=1&query=${encodeURIComponent(query)}`;
+        } catch (error) {
+            console.error(error);
+            alert("Erreur lors du lancement de l'analyse : " + error.message);
+        }
+    }
 
     /**
      * Lance la recherche avec streaming SSE (via fetch + readable stream pour le POST)

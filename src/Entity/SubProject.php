@@ -67,7 +67,7 @@ class SubProject
     /**
      * @var Collection<int, Project>
      */
-    #[ORM\OneToMany(targetEntity: Project::class, mappedBy: 'subProject', cascade: ['persist'])]
+    #[ORM\OneToMany(targetEntity: Project::class, mappedBy: 'subProject', cascade: ['persist', 'remove'])]
     private Collection $projects;
 
     /**

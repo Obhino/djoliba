@@ -117,4 +117,87 @@ class SubProjectViewControllerTest extends WebTestCase
         $this->assertSelectorTextContains('h1', 'Créer une nouvelle activité');
         $this->assertSelectorTextContains('option[selected]', "Projet d'écriture (Rédaction d'article)");
     }
+
+    public function testCentralSearchAssociation(): void
+    {
+        $this->client->loginUser($this->user);
+
+        // 1. Créer et activer un projet de recherche
+        $rp = new ResearchProject();
+        $rp->setUser($this->user);
+        $rp->setTitle('Projet de Recherche Actif');
+        $this->entityManager->persist($rp);
+        $this->entityManager->flush();
+
+        // Rendre actif en session
+        $this->client->request('POST', "/api/research-projects/{$rp->getId()}/select");
+        $this->assertResponseIsSuccessful();
+
+        // 2. Simuler la recherche synthétique du hub (POST /api/projects)
+        $this->client->request('POST', '/api/projects', [], [], [
+            'CONTENT_TYPE' => 'application/json'
+        ], json_encode([
+            'name' => 'Ma recherche IA Sahel',
+            'type' => 'literature_review'
+        ]));
+
+        $this->assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        
+        $projectId = $data['id'] ?? $data['data']['id'] ?? null;
+        $this->assertNotNull($projectId);
+
+        // 3. Vérifier l'association en BDD
+        $project = $this->entityManager->getRepository(\App\Entity\Project::class)->find($projectId);
+        $this->assertNotNull($project);
+        
+        // Le projet hérité doit être rattaché au projet de recherche actif
+        $this->assertEquals($rp->getId(), $project->getResearchProject()->getId());
+
+        // Le sous-projet compagnon créé doit aussi être rattaché au projet de recherche actif
+        $subProject = $project->getSubProject();
+        $this->assertNotNull($subProject);
+        $this->assertEquals($rp->getId(), $subProject->getResearchProject()->getId());
+        $this->assertEquals('literature', $subProject->getType());
+    }
+
+    public function testSubProjectDeletionCascadesToProject(): void
+    {
+        $this->client->loginUser($this->user);
+
+        // 1. Créer un sous-projet et un projet hérité lié
+        $subProject = new SubProject();
+        $subProject->setUser($this->user);
+        $subProject->setName('Sous-projet à supprimer');
+        $subProject->setType('literature');
+        $subProject->setStatus('active');
+        $this->entityManager->persist($subProject);
+
+        $project = new \App\Entity\Project();
+        $project->setUser($this->user);
+        $project->setName('Projet compagnon');
+        $project->setType('literature_review');
+        $project->setStatus('active');
+        $subProject->addProject($project);
+        $this->entityManager->persist($project);
+
+        $this->entityManager->flush();
+
+        $subProjectId = $subProject->getId();
+        $projectId = $project->getId();
+
+        // 2. Supprimer le sous-projet via le manager
+        $subProjectManager = static::getContainer()->get(\App\Service\Project\SubProjectManager::class);
+        $subProjectManager->deleteSubProject($subProject);
+
+        // Vider l'EntityManager pour s'assurer que les requêtes suivantes interrogent la base
+        $this->entityManager->clear();
+
+        // 3. Vérifier que les deux entités sont bien supprimées de la base
+        $deletedSubProject = $this->entityManager->getRepository(SubProject::class)->find($subProjectId);
+        $this->assertNull($deletedSubProject);
+
+        $deletedProject = $this->entityManager->getRepository(\App\Entity\Project::class)->find($projectId);
+        $this->assertNull($deletedProject);
+    }
 }
