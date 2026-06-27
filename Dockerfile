@@ -10,6 +10,10 @@ ENV FRANKENPHP_DOCUMENT_ROOT=/var/www/html/public
 ENV SERVER_NAME=:8000
 ENV PHP_MEMORY_LIMIT=256M
 
+# Configurer les limites PHP globales
+RUN echo "memory_limit=256M" > /usr/local/etc/php/conf.d/docker-php-settings.ini \
+    && echo "max_execution_time=240" >> /usr/local/etc/php/conf.d/docker-php-settings.ini
+
 # Installer les dépendances système
 RUN apk add --no-cache \
     bash \

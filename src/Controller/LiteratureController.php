@@ -230,6 +230,7 @@ class LiteratureController extends AbstractController
     #[Route('/suggestions', name: 'api_literature_suggestions', methods: ['POST'])]
     public function suggestions(Request $request): JsonResponse
     {
+        set_time_limit(240);
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['query'])) {
@@ -273,6 +274,7 @@ class LiteratureController extends AbstractController
     #[Route('/deep-search', name: 'api_literature_deep_search', methods: ['POST'])]
     public function deepSearch(Request $request): JsonResponse
     {
+        set_time_limit(240);
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['query'])) {

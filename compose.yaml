@@ -62,9 +62,8 @@ services:
       APP_ENV: ${APP_ENV:-dev}
       DATABASE_URL: postgresql://${POSTGRES_USER:-djoliba}:${POSTGRES_PASSWORD:-djoliba_secret}@database:5432/${POSTGRES_DB:-djolibadb}?serverVersion=16&charset=utf8
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
-      DEEPSEEK_API_URL: ${DEEPSEEK_API_URL:-https://api.deepseek.com/v1}
-      OPENSERP_URL: ${OPENSERP_URL:-http://openserp:7000}
+      # Laissé libre pour que Symfony lise la clé API depuis .env.local
+      OPENSERP_URL: http://openserp:7000
     volumes:
       - .:/var/www/html:rw
       - ./var/uploads:/var/www/html/var/uploads:rw
@@ -89,7 +88,7 @@ services:
       APP_ENV: ${APP_ENV:-dev}
       DATABASE_URL: postgresql://${POSTGRES_USER:-djoliba}:${POSTGRES_PASSWORD:-djoliba_secret}@database:5432/${POSTGRES_DB:-djolibadb}?serverVersion=16&charset=utf8
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379
-      OPENSERP_URL: ${OPENSERP_URL:-http://openserp:7000}
+      OPENSERP_URL: http://openserp:7000
     volumes:
       - .:/var/www/html:rw
 

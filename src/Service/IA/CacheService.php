@@ -49,6 +49,28 @@ class CacheService
     }
 
     /**
+     * Récupère une valeur depuis le cache par sa clé logique.
+     */
+    public function get(string $key): mixed
+    {
+        $cacheKey = $this->buildKey($key);
+        $item = $this->cache->getItem($cacheKey);
+        return $item->isHit() ? $item->get() : null;
+    }
+
+    /**
+     * Stocke une valeur en cache avec une clé logique et un TTL.
+     */
+    public function set(string $key, mixed $value, int $ttl = self::DEFAULT_TTL): void
+    {
+        $cacheKey = $this->buildKey($key);
+        $item = $this->cache->getItem($cacheKey);
+        $item->set($value);
+        $item->expiresAfter($ttl);
+        $this->cache->save($item);
+    }
+
+    /**
      * Invalide une entrée du cache par sa clé logique.
      */
     public function invalidate(string $key): void

@@ -91,6 +91,7 @@ class ReadingController extends AbstractController
     #[Route('/{id}/chat', name: 'api_reading_document_chat', methods: ['POST'])]
     public function documentChat(int $id, Request $request): JsonResponse
     {
+        set_time_limit(240);
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['question'])) {
@@ -140,6 +141,7 @@ class ReadingController extends AbstractController
     #[Route('/{id}/synthesize', name: 'api_reading_document_synthesize', methods: ['GET'])]
     public function documentSynthesize(int $id): JsonResponse
     {
+        set_time_limit(240);
         $document = $this->documentRepository->findOneBy([
             'id'   => $id,
             'user' => $this->getUser(),
@@ -177,6 +179,7 @@ class ReadingController extends AbstractController
     #[Route('/synthesize', name: 'api_reading_synthesize', methods: ['POST'])]
     public function synthesize(Request $request): JsonResponse
     {
+        set_time_limit(240);
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['document_id']) || empty($data['project_id'])) {
@@ -219,6 +222,7 @@ class ReadingController extends AbstractController
     #[Route('/chat', name: 'api_reading_chat', methods: ['POST'])]
     public function chat(Request $request): JsonResponse
     {
+        set_time_limit(240);
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['project_id']) || empty($data['question'])) {
