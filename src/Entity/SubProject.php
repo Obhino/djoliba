@@ -13,6 +13,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Index(columns: ['research_project_id'])]
 #[ORM\Index(columns: ['user_id'])]
 #[ORM\Index(columns: ['type'])]
+#[ORM\Index(columns: ['status'])]
 class SubProject
 {
     #[ORM\Id]

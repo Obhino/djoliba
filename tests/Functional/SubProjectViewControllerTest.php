@@ -234,6 +234,13 @@ class SubProjectViewControllerTest extends WebTestCase
             $user->setIsActive(true);
             $this->entityManager->persist($user);
             $this->entityManager->flush();
+        } else {
+            // Nettoyer les sous-projets existants pour cet utilisateur de test pour éviter l'accumulation entre les exécutions de tests
+            $existing = $this->entityManager->getRepository(SubProject::class)->findBy(['user' => $user]);
+            foreach ($existing as $sp) {
+                $this->entityManager->remove($sp);
+            }
+            $this->entityManager->flush();
         }
 
         $this->client->loginUser($user);

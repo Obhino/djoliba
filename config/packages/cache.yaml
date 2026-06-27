@@ -8,7 +8,7 @@ framework:
 
         # Pools
         app: cache.adapter.redis
-        system: cache.adapter.redis
+        system: cache.adapter.system
         pools:
             cache.rate_limiter:
                 adapter: cache.adapter.redis

@@ -9,15 +9,22 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Scheb\TwoFactorBundle\Model\Totp\TwoFactorInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFactorInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
+
+    #[ORM\Column(type: Types::JSON)]
+    private array $roles = [];
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $totpSecret = null;
 
     #[ORM\Column(length: 255, unique: true)]
     private ?string $email = null;
@@ -94,6 +101,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->isVerified = false;
         $this->researchProjects = new ArrayCollection();
         $this->subProjects = new ArrayCollection();
+        $this->roles = [];
     }
 
     public function getId(): ?int
@@ -129,10 +137,62 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     public function getRoles(): array
     {
-        $roles = ['ROLE_USER'];
+        $roles = $this->roles;
         // guarantee every user at least has ROLE_USER
+        $roles[] = 'ROLE_USER';
 
         return array_unique($roles);
+    }
+
+    public function setRoles(array $roles): static
+    {
+        $this->roles = $roles;
+
+        return $this;
+    }
+
+    public function getTotpSecret(): ?string
+    {
+        return $this->totpSecret;
+    }
+
+    public function setTotpSecret(?string $totpSecret): static
+    {
+        $this->totpSecret = $totpSecret;
+
+        return $this;
+    }
+
+    /**
+     * Scheb TwoFactorInterface methods
+     */
+    public function isTotpAuthenticationEnabled(): bool
+    {
+        return $this->totpSecret !== null;
+    }
+
+    public function getTotpAuthenticationSecret(): ?string
+    {
+        return $this->totpSecret;
+    }
+
+    public function getTotpAuthenticationUsername(): string
+    {
+        return (string) $this->email;
+    }
+
+    public function getTotpAuthenticationConfiguration(): ?\Scheb\TwoFactorBundle\Model\Totp\TotpConfigurationInterface
+    {
+        if (null === $this->totpSecret) {
+            return null;
+        }
+
+        return new \Scheb\TwoFactorBundle\Model\Totp\TotpConfiguration(
+            $this->totpSecret,
+            \Scheb\TwoFactorBundle\Model\Totp\TotpConfiguration::ALGORITHM_SHA1,
+            30,
+            6
+        );
     }
 
     /**
@@ -425,5 +485,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         }
 
         return $this;
+    }
+
+    public function __toString(): string
+    {
+        return $this->email ?? '';
     }
 }

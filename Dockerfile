@@ -51,6 +51,7 @@ RUN composer install --no-interaction --optimize-autoloader \
 
 # Copier le reste du code source
 COPY . .
+COPY Caddyfile /etc/caddy/Caddyfile
 
 # Exécuter les scripts post-installation
 RUN DATABASE_URL=sqlite:///:memory: composer run-script post-install-cmd --no-interaction || true

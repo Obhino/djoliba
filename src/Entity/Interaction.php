@@ -8,6 +8,8 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: InteractionRepository::class)]
 #[ORM\Index(columns: ['project_id'])]
+#[ORM\Index(columns: ['created_at'])]
+#[ORM\Index(columns: ['sub_project_id'])]
 class Interaction
 {
     #[ORM\Id]

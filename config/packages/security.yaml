@@ -27,7 +27,6 @@ security:
             
             logout:
                 path: app_logout
-                # target: app_home
 
             remember_me:
                 secret: '%kernel.secret%'
@@ -35,9 +34,13 @@ security:
                 path: /
                 always_remember_me: true
 
+            two_factor:
+                auth_form_path: 2fa_login
+                check_path: 2fa_login_check
+
     access_control:
-        # - { path: ^/admin, roles: ROLE_ADMIN }
-        # - { path: ^/profile, roles: ROLE_USER }
+        - { path: ^/admin, roles: ROLE_ADMIN }
+        - { path: ^/, requires_channel: '%env(default::IS_HTTPS_ENFORCED)%' }
 
 when@test:
     security:

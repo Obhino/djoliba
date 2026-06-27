@@ -1,0 +1,80 @@
+{% extends '@EasyAdmin/page/content.html.twig' %}
+
+{% block content_title %}Interface d'Envoi d'Emails{% endblock %}
+
+{% block main %}
+    <div class="card shadow-sm border-0" style="border-radius: 12px;">
+        <div class="card-header bg-white border-0 py-3" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+            <h5 class="card-title mb-0 font-weight-bold" style="color: #1e293b;">Rédiger et envoyer un message</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ path('admin_email_sender') }}">
+                
+                <div class="form-group mb-4">
+                    <label class="font-weight-bold mb-2">Type de destinataire</label>
+                    <div class="custom-control custom-radio mb-2">
+                        <input type="radio" id="type_targeted" name="recipient_type" value="targeted" class="custom-control-input" checked>
+                        <label class="custom-control-label" for="type_targeted">Ciblé (une adresse email spécifique)</label>
+                    </div>
+                    <div class="custom-control custom-radio mb-2">
+                        <input type="radio" id="type_bulk" name="recipient_type" value="bulk" class="custom-control-input">
+                        <label class="custom-control-label" for="type_bulk">Groupé (tous les utilisateurs actifs)</label>
+                    </div>
+                    <div class="custom-control custom-radio mb-2">
+                        <input type="radio" id="type_personalized" name="recipient_type" value="personalized" class="custom-control-input">
+                        <label class="custom-control-label" for="type_personalized">Personnalisé (tous les utilisateurs avec variables: %firstName%, %lastName%)</label>
+                    </div>
+                </div>
+
+                <div class="form-group mb-4" id="specific_recipient_group">
+                    <label for="specific_recipient" class="font-weight-bold mb-2">Adresse email du destinataire</label>
+                    <input type="email" id="specific_recipient" name="specific_recipient" class="form-control" placeholder="destinataire@exemple.com">
+                </div>
+
+                <div class="form-group mb-4">
+                    <label for="subject" class="font-weight-bold mb-2">Sujet de l'email</label>
+                    <input type="text" id="subject" name="subject" class="form-control" required placeholder="Entrez le sujet de votre message">
+                </div>
+
+                <div class="form-group mb-4">
+                    <label for="body" class="font-weight-bold mb-2">Corps du message (Supporte le format Markdown léger)</label>
+                    <textarea id="body" name="body" class="form-control" rows="12" required placeholder="Rédigez votre message ici. Vous pouvez utiliser du Markdown comme **gras**, *italique* ou [Lien](URL)."></textarea>
+                    <small class="form-text text-muted">Placeholders disponibles pour le mode personnalisé : <code>%firstName%</code>, <code>%lastName%</code>, <code>%email%</code>.</small>
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary px-4" style="background-color: #4f46e5; border-color: #4f46e5;">
+                        <i class="fa fa-paper-plane mr-2" style="margin-right: 5px;"></i> Mettre en file d'attente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const targetedRadio = document.getElementById('type_targeted');
+            const bulkRadio = document.getElementById('type_bulk');
+            const personalizedRadio = document.getElementById('type_personalized');
+            const specificRecipientGroup = document.getElementById('specific_recipient_group');
+            const specificRecipientInput = document.getElementById('specific_recipient');
+
+            function toggleRecipientInput() {
+                if (targetedRadio.checked) {
+                    specificRecipientGroup.style.display = 'block';
+                    specificRecipientInput.required = true;
+                } else {
+                    specificRecipientGroup.style.display = 'none';
+                    specificRecipientInput.required = false;
+                }
+            }
+
+            targetedRadio.addEventListener('change', toggleRecipientInput);
+            bulkRadio.addEventListener('change', toggleRecipientInput);
+            personalizedRadio.addEventListener('change', toggleRecipientInput);
+
+            // Initial call
+            toggleRecipientInput();
+        });
+    </script>
+{% endblock %}

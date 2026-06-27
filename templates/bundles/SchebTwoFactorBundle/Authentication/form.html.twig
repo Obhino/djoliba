@@ -1,0 +1,75 @@
+{% extends 'base.html.twig' %}
+{% set hide_sidebar = true %}
+
+{% block title %}Authentification à deux facteurs - Djoliba{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
+    <div class="max-w-md w-full space-y-8">
+        <div>
+            <div class="mx-auto h-12 w-12 bg-djoliba rounded-xl flex items-center justify-center text-white font-bold text-2xl shadow-lg">D</div>
+            <h2 class="mt-6 text-center text-3xl font-display font-extrabold text-djoliba">
+                Vérification de sécurité
+            </h2>
+            <p class="mt-2 text-center text-sm text-slate-500">
+                Veuillez saisir le code temporaire généré par votre application d'authentification (2FA).
+            </p>
+        </div>
+
+        {# Authentication errors #}
+        {% if authenticationError %}
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-red-700">
+                            {{ authenticationError|trans(authenticationErrorData, 'SchebTwoFactorBundle') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <form class="mt-8 space-y-6" action="{{ checkPathUrl ? checkPathUrl: path(checkPathRoute) }}" method="post">
+            <div class="rounded-2xl bg-white shadow-sm border border-slate-100 p-8 space-y-4">
+                <div>
+                    <label for="_auth_code" class="block text-sm font-medium text-slate-700 mb-1">Code d'authentification (TOTP)</label>
+                    <input id="_auth_code" name="{{ authCodeParameterName }}" type="text" autocomplete="one-time-code" autofocus required
+                        inputmode="numeric" pattern="[0-9]*"
+                        class="appearance-none block w-full px-3 py-3 border border-slate-200 rounded-xl shadow-sm placeholder-slate-400 text-center text-xl font-mono tracking-widest focus:outline-none focus:ring-emerald_ia focus:border-emerald_ia transition-all"
+                        placeholder="000000">
+                </div>
+
+                {% if displayTrustedOption %}
+                    <div class="flex items-center pt-2">
+                        <input id="_trusted" name="{{ trustedParameterName }}" type="checkbox"
+                            class="h-4 w-4 text-djoliba focus:ring-djoliba border-slate-300 rounded">
+                        <label for="_trusted" class="ml-2 block text-sm text-slate-600">Faire confiance à ce navigateur</label>
+                    </div>
+                {% endif %}
+
+                {% if isCsrfProtectionEnabled %}
+                    <input type="hidden" name="{{ csrfParameterName }}" value="{{ csrf_token(csrfTokenId) }}">
+                {% endif %}
+
+                <div>
+                    <button type="submit"
+                        class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-djoliba hover:bg-emerald_ia focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-djoliba transition-all shadow-md hover:shadow-lg">
+                        Valider et se connecter
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <div class="text-center">
+            <a href="{{ logoutPath }}" class="font-medium text-slate-500 hover:text-slate-700 transition-colors text-sm">
+                Annuler et se déconnecter
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

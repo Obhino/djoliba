@@ -90,17 +90,56 @@ class SearchControllerTest extends WebTestCase
         });
         $container->set(\App\Service\IA\DeepSeekService::class, $deepSeekMock);
 
-        // 3. Exécuter la requête
-        $client->request('POST', '/api/literature/review', [], [], [
-            'CONTENT_TYPE' => 'application/json'
-        ], json_encode([
-            'query' => 'Mon sujet de recherche',
-            'project_id' => $project->getId()
-        ]));
+        // 3. Ajouter un écouteur temporaire sur kernel.response pour intercepter le StreamedResponse
+        // et le convertir en Response classique en protégeant les tampons de sortie de PHPUnit.
+        $dispatcher = $container->get('event_dispatcher');
+        $listener = function (\Symfony\Component\HttpKernel\Event\ResponseEvent $event) {
+            $response = $event->getResponse();
+            if ($response instanceof \Symfony\Component\HttpFoundation\StreamedResponse) {
+                $initialObLevel = ob_get_level();
+                ob_start();
+                ob_start();
+                try {
+                    $response->sendContent();
+                } finally {
+                    $content = '';
+                    if (ob_get_level() > $initialObLevel) {
+                        $content = ob_get_clean();
+                    }
+                    while (ob_get_level() < $initialObLevel) {
+                        ob_start();
+                    }
+                }
+                
+                $event->setResponse(new \Symfony\Component\HttpFoundation\Response(
+                    $content,
+                    $response->getStatusCode(),
+                    $response->headers->all()
+                ));
+            }
+        };
+        $dispatcher->addListener('kernel.response', $listener, 1000);
+
+        try {
+            $client->request('POST', '/api/literature/review', [], [], [
+                'CONTENT_TYPE' => 'application/json'
+            ], json_encode([
+                'query' => 'Mon sujet de recherche',
+                'project_id' => $project->getId()
+            ]));
+        } finally {
+            // Retirer l'écouteur temporaire pour ne pas polluer les autres tests
+            $dispatcher->removeListener('kernel.response', $listener);
+        }
 
         $this->assertResponseIsSuccessful();
+        $responseContent = $client->getResponse()->getContent();
 
-        // 4. Valider le prompt contextualisé
+        // 4. Valider le contenu textuel du flux d'événements capturé et enrichi
+        $this->assertStringContainsString('Contenu g\u00e9n\u00e9r\u00e9 de test', $responseContent);
+        $this->assertStringContainsString('[DONE]', $responseContent);
+
+        // 5. Valider le prompt contextualisé
         $this->assertNotNull($capturedMessages);
         $lastMessage = end($capturedMessages);
         $this->assertEquals('user', $lastMessage['role']);

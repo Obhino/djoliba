@@ -10,6 +10,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Entity(repositoryClass: ProjectActivityRepository::class)]
 #[ORM\Index(columns: ['research_project_id'])]
 #[ORM\Index(columns: ['user_id'])]
+#[ORM\Index(columns: ['created_at'])]
 class ProjectActivity
 {
     #[ORM\Id]

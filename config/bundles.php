@@ -12,4 +12,7 @@ return [
     Symfony\Bundle\MonologBundle\MonologBundle::class => ['all' => true],
     Symfonycasts\TailwindBundle\SymfonycastsTailwindBundle::class => ['all' => true],
     SymfonyCasts\Bundle\VerifyEmail\SymfonyCastsVerifyEmailBundle::class => ['all' => true],
+    Symfony\UX\TwigComponent\TwigComponentBundle::class => ['all' => true],
+    EasyCorp\Bundle\EasyAdminBundle\EasyAdminBundle::class => ['all' => true],
+    Scheb\TwoFactorBundle\SchebTwoFactorBundle::class => ['all' => true],
 ];

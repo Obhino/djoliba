@@ -8,6 +8,8 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: DocumentRepository::class)]
 #[ORM\Index(columns: ['user_id'])]
+#[ORM\Index(columns: ['project_id'])]
+#[ORM\Index(columns: ['sub_project_id'])]
 class Document
 {
     #[ORM\Id]
