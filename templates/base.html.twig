@@ -173,6 +173,63 @@
         </div>
     </div>
 
+    {# Global Premium Research Project Creation Modal #}
+    {% if app.user %}
+    <div id="research-project-create-modal" 
+         data-controller="research-project-modal" 
+         class="fixed inset-0 z-[9999] hidden flex items-center justify-center p-4 transition-all duration-300 opacity-0 bg-slate-950/20 backdrop-blur-md">
+        
+        {# Backdrop Click to Close #}
+        <div data-action="click->research-project-modal#close" class="absolute inset-0 cursor-default"></div>
+
+        {# Modal Box #}
+        <div data-research-project-modal-target="card" 
+             style="max-width: 440px; width: 100%;"
+             class="relative bg-white rounded-3xl p-8 border border-slate-100 shadow-2xl transform scale-95 opacity-0 transition-all duration-300 ease-out z-10">
+            
+            {# Close Button #}
+            <button type="button" data-action="click->research-project-modal#close" class="absolute top-6 right-6 text-slate-400 hover:text-djoliba transition-colors">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+
+            {# Modal Header #}
+            <div class="mb-6">
+                <h3 class="text-2xl font-display font-bold text-djoliba">Nouveau projet de recherche</h3>
+                <p class="text-sm text-slate-400 mt-1">Créez un conteneur pour vos revues, rédactions et lectures.</p>
+            </div>
+
+            {# Form #}
+            <form data-action="submit->research-project-modal#submit" class="space-y-6">
+                <div>
+                    <label for="rp-name-input" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Nom du projet de recherche</label>
+                    <input id="rp-name-input" 
+                           type="text" 
+                           required 
+                           data-research-project-modal-target="nameInput" 
+                           placeholder="Ex: Thèse de doctorat en IA" 
+                           class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold placeholder:text-slate-300">
+                </div>
+                <div>
+                    <label for="rp-desc-input" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Description</label>
+                    <textarea id="rp-desc-input" 
+                              rows="3" 
+                              data-research-project-modal-target="descInput" 
+                              placeholder="Ex: Analyse de la littérature et modélisation des architectures multi-agents..." 
+                              class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-sm text-djoliba font-semibold placeholder:text-slate-300"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-50">
+                    <button type="button" data-action="click->research-project-modal#close" class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-500 font-bold text-xs hover:bg-slate-50 hover:text-djoliba transition-all">
+                        Annuler
+                    </button>
+                    <button type="submit" data-research-project-modal-target="submitBtn" class="px-5 py-2.5 rounded-xl bg-djoliba hover:bg-djoliba/90 text-white font-bold text-xs shadow-lg shadow-djoliba/20 transition-all">
+                        Créer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
     {% block javascript %}{% endblock %}
 </body>
 </html>

@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Project;
 use App\Service\Project\ProjectManager;
+use App\Service\Project\ResearchProjectManager;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,10 +17,12 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class ProjectController extends AbstractController
 {
     private ProjectManager $projectManager;
+    private ResearchProjectManager $researchProjectManager;
 
-    public function __construct(ProjectManager $projectManager)
+    public function __construct(ProjectManager $projectManager, ResearchProjectManager $researchProjectManager)
     {
         $this->projectManager = $projectManager;
+        $this->researchProjectManager = $researchProjectManager;
     }
 
     #[Route('', name: 'api_projects_list', methods: ['GET'])]
@@ -68,7 +71,26 @@ class ProjectController extends AbstractController
 
         $user = $this->getUser();
         if ($user) {
-            $project = $this->projectManager->createProject($user, $data['type'], $data['name']);
+            $researchProject = null;
+            // 1. Check if research_project_id is passed in the payload
+            $rpId = isset($data['research_project_id']) ? (int)$data['research_project_id'] : (int)$request->request->get('research_project_id');
+            if ($rpId > 0) {
+                $researchProject = $this->researchProjectManager->getResearchProject($rpId);
+            }
+            // 2. Otherwise check session active project
+            if (!$researchProject && $request->hasSession()) {
+                $session = $request->getSession();
+                $activeId = $session->get('active_research_project_id');
+                if ($activeId) {
+                    $researchProject = $this->researchProjectManager->getResearchProject((int)$activeId);
+                }
+            }
+            // 3. Ensure the project belongs to the current user
+            if ($researchProject && $researchProject->getUser() !== $user) {
+                $researchProject = null;
+            }
+
+            $project = $this->projectManager->createProject($user, $data['type'], $data['name'], $researchProject);
         } else {
             // Mode Test : Sauvegarde en session
             $session = $request->hasSession() ? $request->getSession() : null;

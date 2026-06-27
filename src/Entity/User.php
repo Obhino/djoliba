@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -74,10 +76,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $googleScholar = null;
 
+    /**
+     * @var Collection<int, ResearchProject>
+     */
+    #[ORM\OneToMany(targetEntity: ResearchProject::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
+    private Collection $researchProjects;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
         $this->isVerified = false;
+        $this->researchProjects = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -348,6 +357,36 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setGoogleScholar(?string $googleScholar): static
     {
         $this->googleScholar = $googleScholar;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, ResearchProject>
+     */
+    public function getResearchProjects(): Collection
+    {
+        return $this->researchProjects;
+    }
+
+    public function addResearchProject(ResearchProject $researchProject): static
+    {
+        if (!$this->researchProjects->contains($researchProject)) {
+            $this->researchProjects->add($researchProject);
+            $researchProject->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeResearchProject(ResearchProject $researchProject): static
+    {
+        if ($this->researchProjects->removeElement($researchProject)) {
+            // set the owning side to null (unless already changed)
+            if ($researchProject->getUser() === $this) {
+                $researchProject->setUser(null);
+            }
+        }
 
         return $this;
     }

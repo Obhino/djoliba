@@ -4,6 +4,7 @@ namespace App\Service\Project;
 
 use App\Entity\Project;
 use App\Entity\User;
+use App\Entity\ResearchProject;
 use App\Repository\ProjectRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -24,9 +25,10 @@ class ProjectManager
      * @param User $user
      * @param string $type ('literature_review', 'reading', 'writing', 'thesis')
      * @param string $name
+     * @param ResearchProject|null $researchProject
      * @return Project
      */
-    public function createProject(User $user, string $type, string $name): Project
+    public function createProject(User $user, string $type, string $name, ?ResearchProject $researchProject = null): Project
     {
         $project = new Project();
         $project->setUser($user);
@@ -35,6 +37,7 @@ class ProjectManager
         $project->setStatus('active');
         $project->setCreatedAt(new \DateTime());
         $project->setLastAccessedAt(new \DateTime());
+        $project->setResearchProject($researchProject);
 
         $this->entityManager->persist($project);
         $this->entityManager->flush();

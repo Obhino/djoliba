@@ -1,0 +1,7 @@
+OUT:
+
+ERR:
+WARNING: Error loading config file: open C:\Users\ulric\.docker\config.json: Acc├¿s refus├®.
+docker: unknown command: docker compose
+
+Run 'docker --help' for more information

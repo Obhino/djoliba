@@ -22,6 +22,11 @@ class Project
     #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
 
+    #[ORM\ManyToOne(targetEntity: ResearchProject::class, inversedBy: 'projects')]
+    #[ORM\JoinColumn(name: 'research_project_id', referencedColumnName: 'id', nullable: true)]
+    #[Groups(['project:read'])]
+    private ?ResearchProject $researchProject = null;
+
     /**
      * Valeurs autorisées : literature_review, reading, writing, thesis
      */
@@ -190,6 +195,18 @@ class Project
     public function setMetadata(?array $metadata): static
     {
         $this->metadata = $metadata;
+
+        return $this;
+    }
+
+    public function getResearchProject(): ?ResearchProject
+    {
+        return $this->researchProject;
+    }
+
+    public function setResearchProject(?ResearchProject $researchProject): static
+    {
+        $this->researchProject = $researchProject;
 
         return $this;
     }
