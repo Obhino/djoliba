@@ -101,62 +101,116 @@ class SubProjectManager
     /**
      * Récupère tous les sous-projets non supprimés d'un utilisateur, éventuellement filtrés par type.
      *
-     * @return SubProject[]
+     * @return array
      */
-    public function getSubProjectsForUser(User $user, ?string $type = null): array
+    public function getSubProjectsForUser(User $user, ?string $type = null, ?int $page = null, ?int $limit = null): array
     {
-        $criteria = [
-            'user' => $user,
-            'status' => ['active', 'archived']
-        ];
+        $qb = $this->subProjectRepository->createQueryBuilder('sp')
+            ->where('sp.user = :user')
+            ->andWhere('sp.status IN (:statuses)')
+            ->setParameter('user', $user)
+            ->setParameter('statuses', ['active', 'archived'])
+            ->orderBy('sp.createdAt', 'DESC');
 
         if ($type !== null) {
-            $criteria['type'] = $type;
+            $qb->andWhere('sp.type = :type')
+               ->setParameter('type', $type);
         }
 
-        return $this->subProjectRepository->findBy(
-            $criteria,
-            ['createdAt' => 'DESC']
-        );
+        if ($page !== null && $limit !== null) {
+            $qb->setFirstResult(($page - 1) * $limit)
+               ->setMaxResults($limit);
+
+            $paginator = new \Doctrine\ORM\Tools\Pagination\Paginator($qb);
+            $total = count($paginator);
+
+            return [
+                'items' => iterator_to_array($paginator),
+                'total' => $total,
+                'page' => $page,
+                'limit' => $limit,
+                'pages' => (int) ceil($total / $limit)
+            ];
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
     /**
      * Récupère les sous-projets d'un projet de recherche.
      *
-     * @return SubProject[]
+     * @return array
      */
-    public function getSubProjectsForProject(ResearchProject $researchProject): array
+    public function getSubProjectsForProject(ResearchProject $researchProject, ?string $type = null, ?int $page = null, ?int $limit = null): array
     {
-        return $this->subProjectRepository->findBy(
-            [
-                'researchProject' => $researchProject,
-                'status' => ['active', 'archived']
-            ],
-            ['createdAt' => 'DESC']
-        );
+        $qb = $this->subProjectRepository->createQueryBuilder('sp')
+            ->where('sp.researchProject = :researchProject')
+            ->andWhere('sp.status IN (:statuses)')
+            ->setParameter('researchProject', $researchProject)
+            ->setParameter('statuses', ['active', 'archived'])
+            ->orderBy('sp.createdAt', 'DESC');
+
+        if ($type !== null) {
+            $qb->andWhere('sp.type = :type')
+               ->setParameter('type', $type);
+        }
+
+        if ($page !== null && $limit !== null) {
+            $qb->setFirstResult(($page - 1) * $limit)
+               ->setMaxResults($limit);
+
+            $paginator = new \Doctrine\ORM\Tools\Pagination\Paginator($qb);
+            $total = count($paginator);
+
+            return [
+                'items' => iterator_to_array($paginator),
+                'total' => $total,
+                'page' => $page,
+                'limit' => $limit,
+                'pages' => (int) ceil($total / $limit)
+            ];
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
     /**
      * Récupère les sous-projets orphelins (sans projet de recherche parent) d'un utilisateur.
      *
-     * @return SubProject[]
+     * @return array
      */
-    public function getOrphanSubProjectsForUser(User $user, ?string $type = null): array
+    public function getOrphanSubProjectsForUser(User $user, ?string $type = null, ?int $page = null, ?int $limit = null): array
     {
-        $criteria = [
-            'user' => $user,
-            'researchProject' => null,
-            'status' => ['active', 'archived']
-        ];
+        $qb = $this->subProjectRepository->createQueryBuilder('sp')
+            ->where('sp.user = :user')
+            ->andWhere('sp.researchProject IS NULL')
+            ->andWhere('sp.status IN (:statuses)')
+            ->setParameter('user', $user)
+            ->setParameter('statuses', ['active', 'archived'])
+            ->orderBy('sp.createdAt', 'DESC');
 
         if ($type !== null) {
-            $criteria['type'] = $type;
+            $qb->andWhere('sp.type = :type')
+               ->setParameter('type', $type);
         }
 
-        return $this->subProjectRepository->findBy(
-            $criteria,
-            ['createdAt' => 'DESC']
-        );
+        if ($page !== null && $limit !== null) {
+            $qb->setFirstResult(($page - 1) * $limit)
+               ->setMaxResults($limit);
+
+            $paginator = new \Doctrine\ORM\Tools\Pagination\Paginator($qb);
+            $total = count($paginator);
+
+            return [
+                'items' => iterator_to_array($paginator),
+                'total' => $total,
+                'page' => $page,
+                'limit' => $limit,
+                'pages' => (int) ceil($total / $limit)
+            ];
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
     /**

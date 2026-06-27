@@ -218,4 +218,57 @@ class SubProjectViewControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
         $this->assertSelectorNotExists('div[data-controller="reading-list-drag-drop"]');
     }
+
+    public function testPaginationAndJsonApiResponse(): void
+    {
+        // Utiliser un utilisateur unique pour éviter toute pollution de base de données par d'autres tests
+        $uniqueEmail = 'pagination-test@djoliba.com';
+        $user = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $uniqueEmail]);
+        if (!$user) {
+            $user = new User();
+            $user->setEmail($uniqueEmail);
+            $user->setPassword(
+                static::getContainer()->get('security.user_password_hasher')->hashPassword($user, 'password123')
+            );
+            $user->setIsVerified(true);
+            $user->setIsActive(true);
+            $this->entityManager->persist($user);
+            $this->entityManager->flush();
+        }
+
+        $this->client->loginUser($user);
+
+        // 1. Créer 25 sous-projets de type thesis
+        for ($i = 1; $i <= 25; $i++) {
+            $sp = new SubProject();
+            $sp->setUser($user);
+            $sp->setName('These Partie ' . $i);
+            $sp->setType('thesis');
+            $sp->setCreatedAt(new \DateTime());
+            $this->entityManager->persist($sp);
+        }
+        $this->entityManager->flush();
+
+        // 2. Requête HTML avec pagination (limit 10)
+        $crawler = $this->client->request('GET', '/sub-projects/type/thesis?page=1&limit=10');
+        $this->assertResponseIsSuccessful();
+
+        // On vérifie qu'on a bien nos contrôles de pagination dans le DOM
+        $this->assertSelectorExists('nav[aria-label="Pagination"]');
+
+        // 3. Requête JSON (API) avec pagination
+        $this->client->request('GET', '/sub-projects/type/thesis?page=1&limit=10', [], [], [
+            'HTTP_ACCEPT' => 'application/json'
+        ]);
+        $response = $this->client->getResponse();
+        $this->assertEquals(200, $response->getStatusCode());
+        
+        $data = json_decode($response->getContent(), true);
+        $this->assertTrue($data['success']);
+        $this->assertCount(10, $data['data']['items']);
+        $this->assertEquals(25, $data['data']['pagination']['total']);
+        $this->assertEquals(1, $data['data']['pagination']['page']);
+        $this->assertEquals(10, $data['data']['pagination']['limit']);
+        $this->assertEquals(3, $data['data']['pagination']['pages']);
+    }
 }

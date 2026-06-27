@@ -70,12 +70,15 @@ class SubProjectViewController extends AbstractController
 
     #[Route('/research-project/{projectId}/sub-projects/{type}', name: 'app_research_project_subprojects', methods: ['GET'])]
     #[Route('/sub-projects/type/{type}', name: 'app_orphan_subprojects', methods: ['GET'])]
-    public function list(string $type, ?int $projectId = null): Response
+    public function list(string $type, Request $request, ?int $projectId = null): Response
     {
         // Validation du type
         if (!in_array($type, ['reading', 'literature', 'writing', 'thesis'])) {
             throw $this->createNotFoundException('Type de sous-projet inconnu.');
         }
+
+        $page = $request->query->getInt('page', 1);
+        $limit = $request->query->getInt('limit', 20);
 
         $researchProject = null;
         if ($projectId !== null) {
@@ -83,9 +86,7 @@ class SubProjectViewController extends AbstractController
             if (!$researchProject || $researchProject->getUser() !== $this->getUser()) {
                 throw $this->createNotFoundException('Projet de recherche introuvable.');
             }
-            $subProjects = $this->spManager->getSubProjectsForProject($researchProject);
-            // Filtrer par le type demandé
-            $subProjects = array_values(array_filter($subProjects, fn($sp) => $sp->getType() === $type));
+            $pagination = $this->spManager->getSubProjectsForProject($researchProject, $type, $page, $limit);
         } else {
             // Pas de projet de recherche explicite dans l'URL. On regarde si un projet est actif en session.
             $activeRp = $this->projectSwitcher->getActiveProject($this->getUser());
@@ -93,12 +94,29 @@ class SubProjectViewController extends AbstractController
                 // Redirection transparente vers l'URL spécifique pour maintenir la cohérence de navigation
                 return $this->redirectToRoute('app_research_project_subprojects', [
                     'projectId' => $activeRp->getId(),
-                    'type' => $type
+                    'type' => $type,
+                    'page' => $page,
+                    'limit' => $limit
                 ]);
             }
             
             // Sinon, afficher les sous-projets orphelins
-            $subProjects = $this->spManager->getOrphanSubProjectsForUser($this->getUser(), $type);
+            $pagination = $this->spManager->getOrphanSubProjectsForUser($this->getUser(), $type, $page, $limit);
+        }
+
+        if ($request->isXmlHttpRequest() || str_contains($request->headers->get('Accept', ''), 'application/json')) {
+            return $this->json([
+                'success' => true,
+                'data' => [
+                    'items' => $pagination['items'],
+                    'pagination' => [
+                        'total' => $pagination['total'],
+                        'page' => $pagination['page'],
+                        'limit' => $pagination['limit'],
+                        'pages' => $pagination['pages']
+                    ]
+                ]
+            ], Response::HTTP_OK, [], ['groups' => 'project:read']);
         }
 
         $titles = [
@@ -119,7 +137,8 @@ class SubProjectViewController extends AbstractController
             'type' => $type,
             'title' => $titles[$type],
             'subtitle' => $subtitles[$type],
-            'sub_projects' => $subProjects,
+            'sub_projects' => $pagination['items'],
+            'pagination' => $pagination,
             'research_project' => $researchProject
         ]);
     }

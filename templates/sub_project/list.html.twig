@@ -3,7 +3,7 @@
 {% block title %}{{ title }} - Djoliba{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" data-controller="research-project-page">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" data-controller="research-project-page sub-projects-search">
     
     <!-- Messages Flash -->
     {% for label, messages in app.flashes %}
@@ -43,6 +43,16 @@
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
             Nouveau sous-projet
         </button>
+    </div>
+
+    <!-- Barre de recherche -->
+    <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center gap-4">
+        <span class="text-slate-400 text-lg">🔍</span>
+        <input type="text" 
+               data-action="input->sub-projects-search#filter" 
+               data-sub-projects-search-target="input"
+               placeholder="Rechercher une activité par son nom..." 
+               class="w-full text-sm text-slate-800 font-semibold focus:outline-none placeholder:text-slate-300 bg-transparent">
     </div>
 
     <!-- Drag & Drop Zone (uniquement pour le type lecture) -->
@@ -85,9 +95,9 @@
     {% endif %}
 
     <!-- Liste des sous-projets -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-sub-projects-search-target="container">
         {% for sp in sub_projects %}
-            <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:border-djoliba hover:shadow-md transition-all flex flex-col justify-between group">
+            <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:border-djoliba hover:shadow-md transition-all flex flex-col justify-between group" data-sub-projects-search-target="item" data-name="{{ sp.name }}">
                 <div>
                     <div class="flex items-center justify-between gap-4 mb-4">
                         <span class="text-xs text-slate-400 font-semibold">{{ sp.createdAt|date('d/m/Y') }}</span>
@@ -136,7 +146,66 @@
                 </button>
             </div>
         {% endfor %}
+
+        <!-- État vide pour la recherche -->
+        <div data-sub-projects-search-target="emptyState" class="col-span-full py-20 text-center bg-white rounded-3xl border border-slate-200 shadow-sm hidden">
+            <span class="text-5xl">🔍</span>
+            <h2 class="text-xl font-bold text-djoliba mt-4 mb-2">Aucun résultat trouvé</h2>
+            <p class="text-slate-400 max-w-sm mx-auto">Essayez de modifier votre recherche ou de vider le filtre.</p>
+        </div>
     </div>
+
+    <!-- Contrôles de pagination -->
+    {% if pagination is defined and pagination.pages > 1 %}
+        <div class="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 rounded-3xl mt-8 shadow-sm">
+            <div class="flex flex-1 justify-between sm:hidden">
+                {% if pagination.page > 1 %}
+                    <a href="{{ path(app.request.attributes.get('_route'), app.request.attributes.get('_route_params')|merge(app.request.query.all)|merge({'page': pagination.page - 1})) }}" class="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Précédent</a>
+                {% endif %}
+                {% if pagination.page < pagination.pages %}
+                    <a href="{{ path(app.request.attributes.get('_route'), app.request.attributes.get('_route_params')|merge(app.request.query.all)|merge({'page': pagination.page + 1})) }}" class="relative ml-3 inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Suivant</a>
+                {% endif %}
+            </div>
+            <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm text-slate-700">
+                        Affichage de
+                        <span class="font-semibold">{{ ((pagination.page - 1) * pagination.limit) + 1 }}</span>
+                        à
+                        <span class="font-semibold">{{ min(pagination.page * pagination.limit, pagination.total) }}</span>
+                        sur
+                        <span class="font-semibold">{{ pagination.total }}</span>
+                        résultats
+                    </p>
+                </div>
+                <div>
+                    <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                        {% if pagination.page > 1 %}
+                            <a href="{{ path(app.request.attributes.get('_route'), app.request.attributes.get('_route_params')|merge(app.request.query.all)|merge({'page': pagination.page - 1})) }}" class="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0">
+                                <span class="sr-only">Précédent</span>
+                                ◀
+                            </a>
+                        {% endif %}
+                        
+                        {% for p in 1..pagination.pages %}
+                            {% if p == pagination.page %}
+                                <span aria-current="page" class="relative z-10 inline-flex items-center bg-djoliba px-4 py-2 text-sm font-semibold text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-djoliba">{{ p }}</span>
+                            {% else %}
+                                <a href="{{ path(app.request.attributes.get('_route'), app.request.attributes.get('_route_params')|merge(app.request.query.all)|merge({'page': p})) }}" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-900 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0">{{ p }}</a>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if pagination.page < pagination.pages %}
+                            <a href="{{ path(app.request.attributes.get('_route'), app.request.attributes.get('_route_params')|merge(app.request.query.all)|merge({'page': pagination.page + 1})) }}" class="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0">
+                                <span class="sr-only">Suivant</span>
+                                ▶
+                            </a>
+                        {% endif %}
+                    </nav>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 
     <!-- Modale de Création (Adaptée) -->
     <div data-research-project-page-target="createModal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center p-4 bg-slate-950/20 backdrop-blur-md">
