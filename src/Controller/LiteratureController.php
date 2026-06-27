@@ -12,6 +12,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
+use App\Attribute\RateLimiter;
+
 #[Route('/api/literature')]
 class LiteratureController extends AbstractController
 {
@@ -28,6 +30,7 @@ class LiteratureController extends AbstractController
     }
 
     #[Route('/review', name: 'api_literature_review', methods: ['POST'])]
+    #[RateLimiter('api_ia')]
     public function review(Request $request): Response
     {
         set_time_limit(240);

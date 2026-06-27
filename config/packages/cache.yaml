@@ -9,9 +9,15 @@ framework:
         # Pools
         app: cache.adapter.redis
         system: cache.adapter.redis
+        pools:
+            cache.rate_limiter:
+                adapter: cache.adapter.redis
 
 when@test:
     framework:
         cache:
             app: cache.adapter.array
             system: cache.adapter.array
+            pools:
+                cache.rate_limiter:
+                    adapter: cache.adapter.filesystem

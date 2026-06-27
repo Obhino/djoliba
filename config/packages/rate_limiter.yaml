@@ -1,0 +1,13 @@
+framework:
+    rate_limiter:
+        api_default:
+            policy: 'token_bucket'
+            limit: 50
+            rate: { interval: '1 minute', amount: 50 }
+            cache_pool: 'cache.rate_limiter'
+
+        api_ia:
+            policy: 'token_bucket'
+            limit: 20
+            rate: { interval: '1 minute', amount: 20 }
+            cache_pool: 'cache.rate_limiter'

@@ -12,6 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use App\Attribute\RateLimiter;
 
 #[Route('/api/reading')]
 #[IsGranted('ROLE_USER')]
@@ -32,6 +33,7 @@ class ReadingController extends AbstractController
      * Upload, valide, scan et déclenche le traitement asynchrone (ProcessDocumentMessage).
      */
     #[Route('/upload', name: 'api_reading_upload', methods: ['POST'])]
+    #[RateLimiter('api_default')]
     public function upload(Request $request): JsonResponse
     {
         $file      = $request->files->get('file');
@@ -89,6 +91,7 @@ class ReadingController extends AbstractController
      * Contexte limité à CE document (vs /chat qui agrège tout le projet).
      */
     #[Route('/{id}/chat', name: 'api_reading_document_chat', methods: ['POST'])]
+    #[RateLimiter('api_ia')]
     public function documentChat(int $id, Request $request): JsonResponse
     {
         set_time_limit(240);

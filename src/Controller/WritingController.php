@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use App\Attribute\RateLimiter;
 
 #[Route('/api/writing')]
 #[IsGranted('ROLE_USER')]
@@ -57,6 +58,7 @@ class WritingController extends AbstractController
      */
     #[Route('/check', name: 'api_writing_check', methods: ['POST'])]
     #[Route('/originality', name: 'api_writing_originality', methods: ['POST'])]
+    #[RateLimiter('api_ia')]
     public function checkOriginality(Request $request): JsonResponse
     {
         $text = null;
@@ -144,6 +146,7 @@ class WritingController extends AbstractController
      */
     #[Route('/suggest-journal', name: 'api_writing_suggest_journal', methods: ['POST'])]
     #[Route('/journals', name: 'api_writing_journals', methods: ['POST'])]
+    #[RateLimiter('api_ia')]
     public function suggestJournal(Request $request): JsonResponse
     {
         $text = null;

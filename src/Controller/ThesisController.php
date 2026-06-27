@@ -12,6 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use App\Attribute\RateLimiter;
 
 #[Route('/api/thesis')]
 #[IsGranted('ROLE_USER')]
@@ -210,6 +211,7 @@ class ThesisController extends AbstractController
      * Génère du contenu pour un chapitre basé sur un prompt utilisateur et le contexte du projet.
      */
     #[Route('/write', name: 'api_thesis_write', methods: ['POST'])]
+    #[RateLimiter('api_ia')]
     public function writeContent(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
