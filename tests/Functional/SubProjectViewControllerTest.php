@@ -200,4 +200,22 @@ class SubProjectViewControllerTest extends WebTestCase
         $deletedProject = $this->entityManager->getRepository(\App\Entity\Project::class)->find($projectId);
         $this->assertNull($deletedProject);
     }
+
+    public function testReadingListHasDragDropZone(): void
+    {
+        $this->client->loginUser($this->user);
+
+        // 1. Accéder à la liste des sous-projets de type lecture
+        $this->client->request('GET', '/sub-projects/type/reading');
+        $this->assertResponseIsSuccessful();
+
+        // 2. Vérifier que la zone de drag & drop existe bien dans le DOM
+        $this->assertSelectorExists('div[data-controller="reading-list-drag-drop"]');
+        $this->assertSelectorExists('input[type="file"][accept="application/pdf"]');
+
+        // 3. Accéder à la liste des sous-projets d'un autre type (ex: literature) et s'assurer qu'elle n'y est pas
+        $this->client->request('GET', '/sub-projects/type/literature');
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorNotExists('div[data-controller="reading-list-drag-drop"]');
+    }
 }

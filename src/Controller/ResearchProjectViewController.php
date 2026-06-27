@@ -93,11 +93,11 @@ class ResearchProjectViewController extends AbstractController
             return $this->redirectToRoute('app_research_project_show', ['id' => $rp->getId()]);
         }
 
-        $this->spManager->createForUser($this->getUser(), $type, $name, $rp);
+        $subProject = $this->spManager->createForUser($this->getUser(), $type, $name, $rp);
 
         $this->addFlash('success', 'Sous-projet créé avec succès.');
 
-        return $this->redirectToRoute('app_research_project_show', ['id' => $rp->getId()]);
+        return $this->redirectToRoute('app_subproject_show', ['id' => $subProject->getId()]);
     }
 
     #[Route('/sub-project/{id}/edit', name: 'app_subproject_edit', methods: ['POST'])]

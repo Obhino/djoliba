@@ -52,12 +52,15 @@ class ResearchProjectViewControllerTest extends WebTestCase
             'type' => 'reading'
         ]);
 
-        $this->assertResponseRedirects("/research-project/{$rp->getId()}");
+        $this->assertResponseRedirects();
+        $redirectUrl = $this->client->getResponse()->headers->get('Location');
+        $this->assertStringStartsWith('/sub-project/', $redirectUrl);
+        $subProjectId = (int) str_replace('/sub-project/', '', $redirectUrl);
+        
         $this->client->followRedirect();
-        $this->assertSelectorTextContains('h3', 'Mon premier sous-projet');
 
         // Récupérer le sous-projet
-        $subProject = $this->entityManager->getRepository(SubProject::class)->findOneBy(['name' => 'Mon premier sous-projet']);
+        $subProject = $this->entityManager->getRepository(SubProject::class)->find($subProjectId);
         $this->assertNotNull($subProject);
 
         // 3. Modifier le sous-projet
