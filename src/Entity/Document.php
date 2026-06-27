@@ -44,6 +44,10 @@ class Document
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $createdAt = null;
 
+    #[ORM\ManyToOne(targetEntity: SubProject::class, inversedBy: 'documents')]
+    #[ORM\JoinColumn(name: 'sub_project_id', referencedColumnName: 'id', nullable: true)]
+    private ?SubProject $subProject = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
@@ -160,5 +164,17 @@ class Document
     public function isScanned(): ?bool
     {
         return $this->isScanned;
+    }
+
+    public function getSubProject(): ?SubProject
+    {
+        return $this->subProject;
+    }
+
+    public function setSubProject(?SubProject $subProject): static
+    {
+        $this->subProject = $subProject;
+
+        return $this;
     }
 }

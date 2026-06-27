@@ -19,13 +19,17 @@ class ResearchProject
     #[Groups(['project:read', 'research_project:read'])]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'researchProjects')]
     #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
 
     #[ORM\Column(length: 255)]
     #[Groups(['project:read', 'research_project:read'])]
-    private ?string $name = null;
+    private ?string $title = null;
+
+    #[ORM\Column(options: ['default' => false])]
+    #[Groups(['project:read', 'research_project:read'])]
+    private bool $isTemplate = false;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     #[Groups(['project:read', 'research_project:read'])]
@@ -53,12 +57,20 @@ class ResearchProject
     #[Groups(['research_project:read'])]
     private Collection $projects;
 
+    /**
+     * @var Collection<int, SubProject>
+     */
+    #[ORM\OneToMany(targetEntity: SubProject::class, mappedBy: 'researchProject', cascade: ['persist', 'remove'])]
+    #[Groups(['research_project:read'])]
+    private Collection $subProjects;
+
     private const VALID_STATUSES = ['active', 'archived', 'deleted'];
 
     public function __construct()
     {
         $this->createdAt = new \DateTime();
         $this->projects = new ArrayCollection();
+        $this->subProjects = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -77,14 +89,63 @@ class ResearchProject
         return $this;
     }
 
+    public function getTitle(): ?string
+    {
+        return $this->title;
+    }
+
+    public function setTitle(string $title): static
+    {
+        $this->title = $title;
+        return $this;
+    }
+
+    #[Groups(['project:read', 'research_project:read'])]
     public function getName(): ?string
     {
-        return $this->name;
+        return $this->getTitle();
     }
 
     public function setName(string $name): static
     {
-        $this->name = $name;
+        return $this->setTitle($name);
+    }
+
+    public function isTemplate(): bool
+    {
+        return $this->isTemplate;
+    }
+
+    public function setIsTemplate(bool $isTemplate): static
+    {
+        $this->isTemplate = $isTemplate;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, SubProject>
+     */
+    public function getSubProjects(): Collection
+    {
+        return $this->subProjects;
+    }
+
+    public function addSubProject(SubProject $subProject): static
+    {
+        if (!$this->subProjects->contains($subProject)) {
+            $this->subProjects->add($subProject);
+            $subProject->setResearchProject($this);
+        }
+        return $this;
+    }
+
+    public function removeSubProject(SubProject $subProject): static
+    {
+        if ($this->subProjects->removeElement($subProject)) {
+            if ($subProject->getResearchProject() === $this) {
+                $subProject->setResearchProject(null);
+            }
+        }
         return $this;
     }
 

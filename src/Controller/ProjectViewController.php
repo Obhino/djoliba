@@ -12,7 +12,9 @@ class ProjectViewController extends AbstractController
 {
     public function __construct(
         private ProjectManager $projectManager,
-        private \App\Service\Project\ProjectExporterService $exporterService
+        private \App\Service\Project\ProjectExporterService $exporterService,
+        private \App\Service\Project\ResearchProjectManager $rpManager,
+        private \App\Service\Project\SubProjectManager $spManager
     ) {}
 
     #[IsGranted('ROLE_USER')]
@@ -85,10 +87,17 @@ class ProjectViewController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
-        $projects = $this->getUser() ? $this->projectManager->getUserProjects($this->getUser()) : [];
+        $researchProjects = [];
+        $subProjects = [];
+
+        if ($this->getUser()) {
+            $researchProjects = $this->rpManager->getUserResearchProjects($this->getUser());
+            $subProjects = $this->spManager->getSubProjectsForUser($this->getUser());
+        }
         
         return $this->render('project/hub.html.twig', [
-            'projects' => $projects,
+            'research_projects' => $researchProjects,
+            'sub_projects' => $subProjects,
         ]);
     }
 

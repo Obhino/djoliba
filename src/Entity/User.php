@@ -82,11 +82,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(targetEntity: ResearchProject::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
     private Collection $researchProjects;
 
+    /**
+     * @var Collection<int, SubProject>
+     */
+    #[ORM\OneToMany(targetEntity: SubProject::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
+    private Collection $subProjects;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
         $this->isVerified = false;
         $this->researchProjects = new ArrayCollection();
+        $this->subProjects = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -385,6 +392,35 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             // set the owning side to null (unless already changed)
             if ($researchProject->getUser() === $this) {
                 $researchProject->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, SubProject>
+     */
+    public function getSubProjects(): Collection
+    {
+        return $this->subProjects;
+    }
+
+    public function addSubProject(SubProject $subProject): static
+    {
+        if (!$this->subProjects->contains($subProject)) {
+            $this->subProjects->add($subProject);
+            $subProject->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeSubProject(SubProject $subProject): static
+    {
+        if ($this->subProjects->removeElement($subProject)) {
+            if ($subProject->getUser() === $this) {
+                $subProject->setUser(null);
             }
         }
 

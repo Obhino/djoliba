@@ -6,30 +6,41 @@ use App\Entity\ResearchProject;
 use App\Entity\User;
 use App\Repository\ResearchProjectRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 class ResearchProjectManager
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private ResearchProjectRepository $rpRepository
+        private ResearchProjectRepository $rpRepository,
+        private ?RequestStack $requestStack = null
     ) {}
 
     /**
      * Crée un nouveau projet de recherche et le sauvegarde.
      */
-    public function createResearchProject(User $user, string $name, ?string $description = null): ResearchProject
+    public function createForUser(User $user, string $title, ?string $description = null, bool $isTemplate = false): ResearchProject
     {
         $rp = new ResearchProject();
         $rp->setUser($user);
-        $rp->setName($name);
+        $rp->setTitle($title);
         $rp->setDescription($description);
         $rp->setStatus('active');
+        $rp->setIsTemplate($isTemplate);
         $rp->setCreatedAt(new \DateTime());
 
         $this->entityManager->persist($rp);
         $this->entityManager->flush();
 
         return $rp;
+    }
+
+    /**
+     * Wrapper pour la compatibilité avec l'ancien code.
+     */
+    public function createResearchProject(User $user, string $name, ?string $description = null): ResearchProject
+    {
+        return $this->createForUser($user, $name, $description);
     }
 
     /**
@@ -49,6 +60,22 @@ class ResearchProjectManager
     }
 
     /**
+     * Récupère tous les projets de recherche actifs (non archivés ni supprimés) d'un utilisateur.
+     *
+     * @return ResearchProject[]
+     */
+    public function getActiveProjectsForUser(User $user): array
+    {
+        return $this->rpRepository->findBy(
+            [
+                'user' => $user,
+                'status' => 'active'
+            ],
+            ['createdAt' => 'DESC']
+        );
+    }
+
+    /**
      * Récupère un projet de recherche spécifique par son ID.
      */
     public function getResearchProject(int $id): ?ResearchProject
@@ -57,11 +84,21 @@ class ResearchProjectManager
     }
 
     /**
+     * Alias de getResearchProject pour la spécification.
+     */
+    public function getProject(int $id): ?ResearchProject
+    {
+        return $this->getResearchProject($id);
+    }
+
+    /**
      * Met à jour un projet de recherche.
      */
     public function updateResearchProject(ResearchProject $rp, array $data): ResearchProject
     {
-        if (isset($data['name'])) {
+        if (isset($data['title'])) {
+            $rp->setTitle($data['title']);
+        } elseif (isset($data['name'])) {
             $rp->setName($data['name']);
         }
 
@@ -73,6 +110,10 @@ class ResearchProjectManager
             $rp->setStatus($data['status']);
         }
 
+        if (isset($data['is_template'])) {
+            $rp->setIsTemplate((bool)$data['is_template']);
+        }
+
         $rp->setUpdatedAt(new \DateTime());
         $this->entityManager->flush();
 
@@ -80,25 +121,40 @@ class ResearchProjectManager
     }
 
     /**
-     * Marque un projet de recherche comme supprimé (soft delete).
+     * Alias de updateResearchProject pour la spécification.
+     */
+    public function updateProject(ResearchProject $rp, array $data): ResearchProject
+    {
+        return $this->updateResearchProject($rp, $data);
+    }
+
+    /**
+     * Marque un projet de recherche comme supprimé (soft delete) et détache ses sous-projets.
      */
     public function deleteResearchProject(ResearchProject $rp): void
     {
         $rp->setStatus('deleted');
         $rp->setUpdatedAt(new \DateTime());
         
-        // Dissocier optionnellement les sous-projets ou les soft-deleter également?
-        // Pour être sûr de ne rien casser et garder les projets accessibles (ou indépendants),
-        // on peut soit les laisser associés mais cachés, soit les détacher.
-        // Laissons-les associés pour historique, ou détachons-les.
-        // Option la plus sûre : détacher les sous-projets pour qu'ils redeviennent des projets indépendants.
-        // "les nouveaux projets peuvent être rattachés à un ResearchProject (ou rester indépendants)"
-        // En les détachant, ils ne sont pas supprimés, ce qui respecte la règle de ne pas supprimer/modifier l'existant.
+        // Dissocier les anciens projets liés pour la compatibilité
         foreach ($rp->getProjects() as $project) {
             $project->setResearchProject(null);
         }
+
+        // Dissocier les nouveaux sous-projets liés
+        foreach ($rp->getSubProjects() as $subProject) {
+            $subProject->setResearchProject(null);
+        }
         
         $this->entityManager->flush();
+    }
+
+    /**
+     * Alias de deleteResearchProject pour la spécification.
+     */
+    public function deleteProject(ResearchProject $rp): void
+    {
+        $this->deleteResearchProject($rp);
     }
 
     /**
@@ -109,5 +165,43 @@ class ResearchProjectManager
         $rp->setStatus('archived');
         $rp->setUpdatedAt(new \DateTime());
         $this->entityManager->flush();
+    }
+
+    /**
+     * Alias de archiveResearchProject pour la spécification.
+     */
+    public function archiveProject(ResearchProject $rp): void
+    {
+        $this->archiveResearchProject($rp);
+    }
+
+    /**
+     * Définit le projet de recherche actif en session.
+     */
+    public function setActiveProject(User $user, ?ResearchProject $project): void
+    {
+        try {
+            if ($this->requestStack === null) {
+                return;
+            }
+            $session = $this->requestStack->getSession();
+            if ($project === null) {
+                $session->remove('active_research_project_id');
+            } else {
+                $session->set('active_research_project_id', $project->getId());
+            }
+        } catch (\Exception $e) {
+            // Ignorer silencieusement si la session n'est pas démarrée (ex: CLI / tests)
+        }
+    }
+
+    /**
+     * Récupère la liste des sous-projets d'un projet de recherche.
+     *
+     * @return \App\Entity\SubProject[]
+     */
+    public function getSubProjects(ResearchProject $rp): array
+    {
+        return $rp->getSubProjects()->toArray();
     }
 }

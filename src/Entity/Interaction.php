@@ -53,6 +53,10 @@ class Interaction
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $createdAt = null;
 
+    #[ORM\ManyToOne(targetEntity: SubProject::class, inversedBy: 'interactions')]
+    #[ORM\JoinColumn(name: 'sub_project_id', referencedColumnName: 'id', nullable: true)]
+    private ?SubProject $subProject = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
@@ -160,6 +164,18 @@ class Interaction
     public function setCreatedAt(\DateTimeInterface $createdAt): static
     {
         $this->createdAt = $createdAt;
+
+        return $this;
+    }
+
+    public function getSubProject(): ?SubProject
+    {
+        return $this->subProject;
+    }
+
+    public function setSubProject(?SubProject $subProject): static
+    {
+        $this->subProject = $subProject;
 
         return $this;
     }

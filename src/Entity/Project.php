@@ -65,6 +65,11 @@ class Project
     #[Groups(['project:read'])]
     private ?array $metadata = null;
 
+    #[ORM\ManyToOne(targetEntity: SubProject::class, inversedBy: 'projects')]
+    #[ORM\JoinColumn(name: 'sub_project_id', referencedColumnName: 'id', nullable: true)]
+    #[Groups(['project:read'])]
+    private ?SubProject $subProject = null;
+
     private const VALID_TYPES = ['literature_review', 'reading', 'writing', 'thesis'];
     private const VALID_STATUSES = ['active', 'archived', 'deleted'];
 
@@ -207,6 +212,18 @@ class Project
     public function setResearchProject(?ResearchProject $researchProject): static
     {
         $this->researchProject = $researchProject;
+
+        return $this;
+    }
+
+    public function getSubProject(): ?SubProject
+    {
+        return $this->subProject;
+    }
+
+    public function setSubProject(?SubProject $subProject): static
+    {
+        $this->subProject = $subProject;
 
         return $this;
     }

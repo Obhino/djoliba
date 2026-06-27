@@ -142,23 +142,33 @@
         <!-- Section Projets Récents -->
         <div class="fade-in" style="animation-delay: 0.3s">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-display font-bold text-djoliba">Projets récents</h2>
-                <a href="{{ path('app_dashboard') }}" class="text-sm font-bold text-emerald_ia hover:underline flex items-center gap-1">
-                    Tous mes projets
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                </a>
+                <h2 class="text-2xl font-display font-bold text-djoliba">Sous-projets récents</h2>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {% for project in projects|slice(0, 4) %}
-                    <a href="{{ path('app_project_show', {id: project.id}) }}" class="group">
+                {% for sp in sub_projects|slice(0, 4) %}
+                    <a href="{{ path('app_subproject_show', {id: sp.id}) }}" class="group">
                         <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:border-djoliba hover:shadow-md transition-all flex items-center gap-4">
-                            <div class="w-12 h-12 bg-slate-50 text-djoliba rounded-xl flex items-center justify-center transition-all">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                            <div class="w-12 h-12 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center text-xl transition-all">
+                                {% if sp.type == 'reading' %}📖
+                                {% elseif sp.type == 'literature' %}📚
+                                {% elseif sp.type == 'writing' %}✍️
+                                {% elseif sp.type == 'thesis' %}🎓
+                                {% endif %}
                             </div>
                             <div class="flex-grow min-w-0">
-                                <h4 class="font-bold text-djoliba truncate">{{ project.name }}</h4>
-                                <p class="text-xs text-slate-400">Modifié le {{ project.createdAt|date('d/m/Y') }}</p>
+                                <h4 class="font-bold text-djoliba truncate">{{ sp.name }}</h4>
+                                <div class="flex items-center gap-1.5 mt-0.5">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                        {% if sp.type == 'reading' %}Lecture
+                                        {% elseif sp.type == 'literature' %}Synthèse
+                                        {% elseif sp.type == 'writing' %}Écriture
+                                        {% elseif sp.type == 'thesis' %}Thèse
+                                        {% endif %}
+                                    </span>
+                                    <span class="w-1 h-1 rounded-full bg-slate-200"></span>
+                                    <p class="text-xs text-slate-400">Modifié le {{ sp.createdAt|date('d/m/Y') }}</p>
+                                </div>
                             </div>
                             <svg class="w-5 h-5 text-slate-200 group-hover:text-djoliba transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                         </div>

@@ -36,6 +36,10 @@ class Chapter
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $updatedAt = null;
 
+    #[ORM\ManyToOne(targetEntity: SubProject::class, inversedBy: 'chapters')]
+    #[ORM\JoinColumn(name: 'sub_project_id', referencedColumnName: 'id', nullable: true)]
+    private ?SubProject $subProject = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
@@ -126,6 +130,18 @@ class Chapter
     public function setUpdatedAt(?\DateTimeInterface $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
+
+        return $this;
+    }
+
+    public function getSubProject(): ?SubProject
+    {
+        return $this->subProject;
+    }
+
+    public function setSubProject(?SubProject $subProject): static
+    {
+        $this->subProject = $subProject;
 
         return $this;
     }
