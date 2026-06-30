@@ -23,6 +23,7 @@ export default class extends Controller {
         this.projectId = this.element.getAttribute('data-writing-editor-project-id-value');
         this.currentSelection = '';
         this.currentInteractionId = null;
+        this.currentSuggestionText = '';
         
         // Liaison des événements de sélection
         this.handleSelectionBound = this.handleSelection.bind(this);
@@ -203,6 +204,7 @@ export default class extends Controller {
      */
     async triggerAction(action, options = {}) {
         this.hideFloatingToolbar();
+        this.currentSuggestionText = '';
         
         let title = "Assistant IA";
         switch (action) {
@@ -330,6 +332,7 @@ export default class extends Controller {
     renderResponse(text, action) {
         // Formater proprement la réponse (Markdown simple ou JSON pour références)
         if (action === 'reference') {
+            this.currentSuggestionText = '';
             try {
                 const refs = JSON.parse(text);
                 let html = '<div class="space-y-3 font-sans">';
@@ -358,7 +361,50 @@ export default class extends Controller {
             }
         }
 
+        if (action === 'reasoning') {
+            try {
+                const cleaned = this.#cleanJson(text);
+                const data = JSON.parse(cleaned);
+                
+                const analysis = data.analysis || '';
+                const reformulation = data.reformulation || '';
+                
+                this.currentSuggestionText = reformulation;
+
+                // Formater proprement l'analyse et la reformulation
+                const formattedAnalysis = this.#escapeHtml(analysis)
+                    .replace(/\n/g, '<br>')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+                const formattedReformulation = this.#escapeHtml(reformulation)
+                    .replace(/\n/g, '<br>')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+                let html = `
+                    <div class="space-y-6 text-xs font-serif leading-relaxed text-slate-700">
+                        <div>
+                            <h4 class="text-[10px] font-bold text-djoliba uppercase tracking-wider mb-2">🔍 Analyse du raisonnement</h4>
+                            <div class="p-4 bg-slate-50 border border-slate-100 rounded-2xl italic">
+                                ${formattedAnalysis}
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="text-[10px] font-bold text-djoliba uppercase tracking-wider mb-2">✍️ Reformulation scientifique proposée</h4>
+                            <div class="p-4 bg-emerald-50/50 border border-emerald-100/50 rounded-2xl text-emerald-950 font-semibold">
+                                ${formattedReformulation}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                this.modalContentTarget.innerHTML = html;
+                return;
+            } catch (e) {
+                // Fallback sur rendu texte simple
+            }
+        }
+
         // Rendu texte simple (LaTeX ou Markdown) avec remplacement des retours à la ligne
+        this.currentSuggestionText = text;
         const formatted = this.#escapeHtml(text)
             .replace(/\n/g, '<br>')
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -375,18 +421,27 @@ export default class extends Controller {
             .replace(/'/g, "&#039;");
     }
 
+    #cleanJson(text) {
+        let cleaned = text.trim();
+        if (cleaned.startsWith('```json')) {
+            cleaned = cleaned.substring(7);
+        } else if (cleaned.startsWith('```')) {
+            cleaned = cleaned.substring(3);
+        }
+        if (cleaned.endsWith('```')) {
+            cleaned = cleaned.substring(0, cleaned.length - 3);
+        }
+        return cleaned.trim();
+    }
+
     /**
      * Applique la suggestion en remplaçant le texte sélectionné.
      */
     applyReplacement() {
         const editor = this.getEditor();
-        const contentDiv = this.modalContentTarget.querySelector('div');
-        if (!editor || !contentDiv) return;
+        if (!editor || !this.currentSuggestionText) return;
 
-        // Récupérer le texte propre
-        const text = contentDiv.innerText || contentDiv.textContent;
-        editor.chain().focus().insertContent(text).run();
-        
+        editor.chain().focus().insertContent(this.currentSuggestionText).run();
         this.acceptInteraction();
     }
 
@@ -395,13 +450,10 @@ export default class extends Controller {
      */
     applyInsertAfter() {
         const editor = this.getEditor();
-        const contentDiv = this.modalContentTarget.querySelector('div');
-        if (!editor || !contentDiv) return;
+        if (!editor || !this.currentSuggestionText) return;
 
-        const text = contentDiv.innerText || contentDiv.textContent;
         // Insère après la sélection
-        editor.chain().focus().collapseToEnd().insertContent("\n" + text).run();
-        
+        editor.chain().focus().collapseToEnd().insertContent("\n" + this.currentSuggestionText).run();
         this.acceptInteraction();
     }
 

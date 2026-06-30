@@ -18,7 +18,11 @@ class ReasoningVerifier
             "1. Les prémisses implicites ou explicites.\n" .
             "2. La validité des inférences ou des liens de cause à effet.\n" .
             "3. La solidité de la conclusion par rapport aux arguments présentés.\n\n" .
-            "Signale toute faille logique (généralisation hâtive, faux dilemme, corrélation confondue avec causalité) et propose une formulation alternative plus rigoureuse.\n" .
+            "Tu dois impérativement répondre au format JSON brut suivant (pas de texte avant ni après) :\n" .
+            "{\n" .
+            "  \"analysis\": \"<L'analyse détaillée du raisonnement, avec les prémisses et les failles éventuelles en format texte ou Markdown simple>\",\n" .
+            "  \"reformulation\": \"<La formulation alternative corrigée et plus rigoureuse en français, prête à remplacer le texte initial>\"\n" .
+            "}\n\n" .
             "Texte à analyser : \"%s\"",
             $text
         );

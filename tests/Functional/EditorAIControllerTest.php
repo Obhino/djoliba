@@ -92,6 +92,22 @@ class EditorAIControllerTest extends WebTestCase
                 ];
             }
 
+            if ($action === 'reasoning') {
+                $reasoningResult = json_encode([
+                    'analysis' => 'Mocked reasoning analysis',
+                    'reformulation' => 'Mocked reformulation text'
+                ]);
+                $interaction->setSuggestion($reasoningResult);
+                $this->em->persist($interaction);
+                $this->em->flush();
+
+                return [
+                    'interaction_id' => $interaction->getId(),
+                    'result' => $reasoningResult,
+                    'meta' => []
+                ];
+            }
+
             $interaction->setSuggestion('Mocked AI response');
             $this->em->persist($interaction);
             $this->em->flush();
@@ -154,6 +170,38 @@ class EditorAIControllerTest extends WebTestCase
         $this->assertEquals('equation', $interaction->getAction());
         $this->assertEquals('E=mc^2', $interaction->getSelectedText());
         $this->assertEquals('Mocked AI response', $interaction->getSuggestion());
+    }
+
+    public function testExecuteReasoningAction(): void
+    {
+        $this->client->loginUser($this->user);
+        $this->mockAIService();
+
+        $url = sprintf('/api/projects/%d/editor-ai/execute', $this->project->getId());
+
+        $this->client->request('POST', $url, [], [], [
+            'CONTENT_TYPE' => 'application/json'
+        ], json_encode([
+            'action' => 'reasoning',
+            'text' => 'Tous les chats ont quatre pattes'
+        ]));
+
+        $this->assertResponseIsSuccessful();
+        $res = json_decode($this->client->getResponse()->getContent(), true);
+        
+        $this->assertTrue($res['success']);
+        $this->assertNotNull($res['data']['interaction_id']);
+        
+        $result = json_decode($res['data']['result'], true);
+        $this->assertEquals('Mocked reasoning analysis', $result['analysis']);
+        $this->assertEquals('Mocked reformulation text', $result['reformulation']);
+
+        // Vérifier l'historique enregistré en base
+        $interaction = $this->em->getRepository(EditorInteraction::class)->find($res['data']['interaction_id']);
+        $this->assertNotNull($interaction);
+        $this->assertEquals('reasoning', $interaction->getAction());
+        $this->assertEquals('Tous les chats ont quatre pattes', $interaction->getSelectedText());
+        $this->assertStringContainsString('Mocked reasoning analysis', $interaction->getSuggestion());
     }
 
     public function testStreamAiAction(): void
