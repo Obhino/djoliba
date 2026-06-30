@@ -25,7 +25,8 @@ export default class extends Controller {
         'footnoteModal', 'footnoteTextInput',
         'referenceModal', 'referenceLabelSelect',
         'toolbarDeleteTableBtn', 'toolbarDeleteFigureBtn',
-        'figureImageFileInput', 'figureUploadStatus'
+        'figureImageFileInput', 'figureUploadStatus',
+        'mathModal', 'mathFormulaInput', 'mathDisplaySelect'
     ];
 
     static values = {
@@ -2202,5 +2203,85 @@ export default class extends Controller {
         });
 
         return labels;
+    }
+
+    // =============================================
+    // ANNULER / RÉTABLIR (UNDO / REDO)
+    // =============================================
+
+    undo() {
+        if (this.currentMode === 'wysiwyg' && this.editor) {
+            this.editor.chain().focus().undo().run();
+        } else if (this.currentMode === 'latex' && this.codeMirror) {
+            this.codeMirror.undo();
+            this.codeMirror.focus();
+        }
+    }
+
+    redo() {
+        if (this.currentMode === 'wysiwyg' && this.editor) {
+            this.editor.chain().focus().redo().run();
+        } else if (this.currentMode === 'latex' && this.codeMirror) {
+            this.codeMirror.redo();
+            this.codeMirror.focus();
+        }
+    }
+
+    // =============================================
+    // BOÎTE À OUTILS LATEX (∑)
+    // =============================================
+
+    insertMathModal() {
+        if (!this.editor && this.currentMode === 'wysiwyg') return;
+        this.mathFormulaInputTarget.value = '';
+        this.openMathModal();
+    }
+
+    openMathModal() {
+        if (!this.hasMathModalTarget) return;
+        const modal = this.mathModalTarget;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            const card = modal.querySelector('.modal-card');
+            if (card) card.classList.remove('scale-95', 'opacity-0');
+            if (card) card.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    closeMathModal() {
+        if (!this.hasMathModalTarget) return;
+        const modal = this.mathModalTarget;
+        const card = modal.querySelector('.modal-card');
+        if (card) card.classList.remove('scale-100', 'opacity-100');
+        if (card) card.classList.add('scale-95', 'opacity-0');
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
+    }
+
+    confirmInsertMath() {
+        const formula = this.mathFormulaInputTarget.value.trim();
+        if (!formula) return;
+
+        const isBlock = this.mathDisplaySelectTarget.value === 'block';
+        const mathString = isBlock ? `\n$$${formula}$$\n` : `$${formula}$`;
+
+        if (this.currentMode === 'wysiwyg' && this.editor) {
+            this.editor.chain().focus().insertContent(mathString).run();
+        } else if (this.currentMode === 'latex' && this.codeMirror) {
+            const doc = this.codeMirror.getDoc();
+            const cursor = doc.getCursor();
+            doc.replaceRange(mathString, cursor);
+            this.codeMirror.focus();
+        }
+
+        this.closeMathModal();
+        this.#handleContentChange();
     }
 }
