@@ -26,7 +26,10 @@ export default class extends Controller {
         'referenceModal', 'referenceLabelSelect',
         'toolbarDeleteTableBtn', 'toolbarDeleteFigureBtn',
         'figureImageFileInput', 'figureUploadStatus',
-        'mathModal', 'mathFormulaInput', 'mathDisplaySelect'
+        'mathModal', 'mathFormulaInput', 'mathDisplaySelect',
+        'searchReplaceBar', 'searchInput', 'replaceInput', 'searchIndexIndicator',
+        'focusBtn',
+        'outlineBtn', 'outlinePanel', 'outlineContent'
     ];
 
     static values = {
@@ -43,11 +46,17 @@ export default class extends Controller {
         this.tipTapLoaded = false;
         this.autosaveTimeout = null;
         this.fontSize = 13;
+        this.searchResults = [];
+        this.currentSearchIndex = -1;
 
         // Éviter tout dysfonctionnement si la zone brute n'est pas encore visible
         if (this.hasInputTarget) {
             this.inputTarget.style.fontSize = `${this.fontSize}px`;
         }
+
+        // Raccourcis clavier
+        this.handleShortcutsBound = this.handleShortcuts.bind(this);
+        document.addEventListener('keydown', this.handleShortcutsBound);
 
         try {
             await this.#loadLibraries();
@@ -67,6 +76,7 @@ export default class extends Controller {
         if (this.autosaveTimeout) {
             clearTimeout(this.autosaveTimeout);
         }
+        document.removeEventListener('keydown', this.handleShortcutsBound);
     }
 
     // ─────────────────────────────────────────────
@@ -456,6 +466,7 @@ export default class extends Controller {
     #handleContentChange() {
         this.#updateCounters();
         this.#updatePreview();
+        this.updateOutline();
         this.#triggerAutosave();
     }
 
@@ -2283,5 +2294,302 @@ export default class extends Controller {
 
         this.closeMathModal();
         this.#handleContentChange();
+    }
+
+    // =============================================
+    // SHORTCUTS & GENERAL BINDINGS
+    // =============================================
+
+    handleShortcuts(event) {
+        // Intercepter Ctrl+F (ou Cmd+F) pour Rechercher & Remplacer
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+            const activeEl = document.activeElement;
+            if (this.element.contains(activeEl)) {
+                event.preventDefault();
+                this.toggleSearchReplace();
+            }
+        }
+    }
+
+    // =============================================
+    // RECHERCHER & REMPLACER
+    // =============================================
+
+    toggleSearchReplace() {
+        if (!this.hasSearchReplaceBarTarget) return;
+
+        const bar = this.searchReplaceBarTarget;
+        if (bar.classList.contains('hidden')) {
+            bar.classList.remove('hidden');
+            this.searchInputTarget.focus();
+            this.performSearch();
+        } else {
+            bar.classList.add('hidden');
+            this.searchResults = [];
+            this.currentSearchIndex = -1;
+            this.searchIndexIndicatorTarget.textContent = '0/0';
+        }
+    }
+
+    performSearch() {
+        const query = this.searchInputTarget.value;
+        this.searchResults = [];
+        this.currentSearchIndex = -1;
+
+        if (!query) {
+            this.searchIndexIndicatorTarget.textContent = '0/0';
+            return;
+        }
+
+        if (this.currentMode === 'wysiwyg' && this.editor) {
+            this.editor.state.doc.descendants((node, pos) => {
+                if (node.isText) {
+                    const text = node.text;
+                    let idx = 0;
+                    while ((idx = text.toLowerCase().indexOf(query.toLowerCase(), idx)) !== -1) {
+                        this.searchResults.push({
+                            from: pos + idx,
+                            to: pos + idx + query.length
+                        });
+                        idx += query.length;
+                    }
+                }
+            });
+        } else if (this.currentMode === 'latex' && this.codeMirror) {
+            const text = this.codeMirror.getValue();
+            let idx = 0;
+            while ((idx = text.toLowerCase().indexOf(query.toLowerCase(), idx)) !== -1) {
+                this.searchResults.push({
+                    from: idx,
+                    to: idx + query.length
+                });
+                idx += query.length;
+            }
+        }
+
+        const count = this.searchResults.length;
+        if (count > 0) {
+            this.currentSearchIndex = 0;
+            this.#highlightMatch();
+        } else {
+            this.searchIndexIndicatorTarget.textContent = '0/0';
+        }
+    }
+
+    nextMatch() {
+        if (this.searchResults.length === 0) return;
+        this.currentSearchIndex = (this.currentSearchIndex + 1) % this.searchResults.length;
+        this.#highlightMatch();
+    }
+
+    prevMatch() {
+        if (this.searchResults.length === 0) return;
+        this.currentSearchIndex = (this.currentSearchIndex - 1 + this.searchResults.length) % this.searchResults.length;
+        this.#highlightMatch();
+    }
+
+    #highlightMatch() {
+        if (this.currentSearchIndex < 0 || this.currentSearchIndex >= this.searchResults.length) return;
+
+        const match = this.searchResults[this.currentSearchIndex];
+        this.searchIndexIndicatorTarget.textContent = `${this.currentSearchIndex + 1}/${this.searchResults.length}`;
+
+        if (this.currentMode === 'wysiwyg' && this.editor) {
+            this.editor.commands.setTextSelection({ from: match.from, to: match.to });
+            this.editor.commands.scrollIntoView();
+        } else if (this.currentMode === 'latex' && this.codeMirror) {
+            const doc = this.codeMirror.getDoc();
+            const fromPos = doc.posFromIndex(match.from);
+            const toPos = doc.posFromIndex(match.to);
+            this.codeMirror.setSelection(fromPos, toPos);
+            this.codeMirror.scrollIntoView({ from: fromPos, to: toPos });
+            this.codeMirror.focus();
+        }
+    }
+
+    replaceMatch() {
+        if (this.currentSearchIndex < 0 || this.currentSearchIndex >= this.searchResults.length) return;
+
+        const replacement = this.replaceInputTarget.value;
+        const match = this.searchResults[this.currentSearchIndex];
+
+        if (this.currentMode === 'wysiwyg' && this.editor) {
+            this.editor.commands.insertContentAt({ from: match.from, to: match.to }, replacement);
+        } else if (this.currentMode === 'latex' && this.codeMirror) {
+            const doc = this.codeMirror.getDoc();
+            const fromPos = doc.posFromIndex(match.from);
+            const toPos = doc.posFromIndex(match.to);
+            doc.replaceRange(replacement, fromPos, toPos);
+        }
+
+        this.performSearch();
+    }
+
+    replaceAllMatches() {
+        if (this.searchResults.length === 0) return;
+
+        const replacement = this.replaceInputTarget.value;
+
+        if (this.currentMode === 'wysiwyg' && this.editor) {
+            for (let i = this.searchResults.length - 1; i >= 0; i--) {
+                const match = this.searchResults[i];
+                this.editor.commands.insertContentAt({ from: match.from, to: match.to }, replacement);
+            }
+        } else if (this.currentMode === 'latex' && this.codeMirror) {
+            const doc = this.codeMirror.getDoc();
+            for (let i = this.searchResults.length - 1; i >= 0; i--) {
+                const match = this.searchResults[i];
+                const fromPos = doc.posFromIndex(match.from);
+                const toPos = doc.posFromIndex(match.to);
+                doc.replaceRange(replacement, fromPos, toPos);
+            }
+        }
+
+        this.performSearch();
+    }
+
+    // =============================================
+    // MODE FOCUS / ZEN
+    // =============================================
+
+    toggleFocusMode() {
+        const root = this.element;
+        if (!this.hasFocusBtnTarget) return;
+        const focusBtn = this.focusBtnTarget;
+
+        if (root.classList.contains('djoliba-focus-mode')) {
+            root.classList.remove('djoliba-focus-mode');
+            root.style.position = '';
+            root.style.inset = '';
+            root.style.zIndex = '';
+            root.style.background = '';
+            root.style.padding = '';
+            root.style.height = '';
+            root.style.display = '';
+            root.style.flexDirection = '';
+
+            if (this.hasEditorContainerTarget) {
+                const editorEl = this.editorContainerTarget.querySelector('.tiptap');
+                if (editorEl) editorEl.style.minHeight = '480px';
+            }
+            if (this.codeMirror) {
+                this.codeMirror.getWrapperElement().style.height = '';
+            }
+
+            focusBtn.classList.remove('bg-slate-200', 'text-djoliba');
+        } else {
+            root.classList.add('djoliba-focus-mode');
+            root.style.position = 'fixed';
+            root.style.inset = '0';
+            root.style.zIndex = '40';
+            root.style.background = '#ffffff';
+            root.style.padding = '2rem';
+            root.style.height = '100vh';
+            root.style.display = 'flex';
+            root.style.flexDirection = 'column';
+
+            if (this.hasEditorContainerTarget) {
+                const editorEl = this.editorContainerTarget.querySelector('.tiptap');
+                if (editorEl) editorEl.style.minHeight = 'calc(100vh - 120px)';
+            }
+            if (this.codeMirror) {
+                this.codeMirror.getWrapperElement().style.height = 'calc(100vh - 120px)';
+            }
+
+            focusBtn.classList.add('bg-slate-200', 'text-djoliba');
+        }
+    }
+
+    // =============================================
+    // TABLE DES MATIÈRES / OUTLINE
+    // =============================================
+
+    toggleOutline() {
+        if (!this.hasOutlinePanelTarget || !this.hasOutlineBtnTarget) return;
+
+        const panel = this.outlinePanelTarget;
+        const btn = this.outlineBtnTarget;
+
+        if (panel.classList.contains('hidden')) {
+            panel.classList.remove('hidden');
+            btn.classList.add('bg-slate-200', 'text-djoliba');
+            this.updateOutline();
+        } else {
+            panel.classList.add('hidden');
+            btn.classList.remove('bg-slate-200', 'text-djoliba');
+        }
+    }
+
+    updateOutline() {
+        if (!this.hasOutlineContentTarget || !this.hasOutlinePanelTarget) return;
+
+        if (this.outlinePanelTarget.classList.contains('hidden')) return;
+
+        const outlineContainer = this.outlineContentTarget;
+        outlineContainer.innerHTML = '';
+
+        let headers = [];
+
+        if (this.currentMode === 'wysiwyg' && this.editor) {
+            this.editor.state.doc.descendants((node, pos) => {
+                if (node.type.name === 'heading') {
+                    headers.push({
+                        level: node.attrs.level,
+                        text: node.textContent,
+                        pos: pos
+                    });
+                }
+            });
+        } else if (this.currentMode === 'latex' && this.codeMirror) {
+            const text = this.codeMirror.getValue();
+            const regex = /\\(section|subsection|subsubsection)\*?\{([^}]+)\}/g;
+            let match;
+            while ((match = regex.exec(text)) !== -1) {
+                const type = match[1];
+                const title = match[2];
+                const level = type === 'section' ? 1 : (type === 'subsection' ? 2 : 3);
+                headers.push({
+                    level: level,
+                    text: title,
+                    index: match.index
+                });
+            }
+        }
+
+        if (headers.length === 0) {
+            outlineContainer.innerHTML = '<p class="text-[11px] text-slate-400 italic">Aucun titre structuré (H1, H2, H3) trouvé.</p>';
+            return;
+        }
+
+        headers.forEach(h => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'w-full text-left py-1 hover:text-djoliba transition-colors block truncate font-medium';
+
+            if (h.level === 1) {
+                btn.classList.add('pl-0', 'text-slate-700', 'font-bold');
+            } else if (h.level === 2) {
+                btn.classList.add('pl-3', 'text-slate-500', 'text-[11px]');
+            } else {
+                btn.classList.add('pl-6', 'text-slate-400', 'text-[10px]');
+            }
+
+            btn.textContent = h.text;
+
+            btn.addEventListener('click', () => {
+                if (this.currentMode === 'wysiwyg' && this.editor) {
+                    this.editor.commands.focus(h.pos);
+                    this.editor.commands.scrollIntoView();
+                } else if (this.currentMode === 'latex' && this.codeMirror) {
+                    const doc = this.codeMirror.getDoc();
+                    const pos = doc.posFromIndex(h.index);
+                    this.codeMirror.setCursor(pos);
+                    this.codeMirror.scrollIntoView(pos);
+                    this.codeMirror.focus();
+                }
+            });
+
+            outlineContainer.appendChild(btn);
+        });
     }
 }

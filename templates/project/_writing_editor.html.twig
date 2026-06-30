@@ -51,6 +51,26 @@
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6"/>
 				</svg>
 			</button>
+			{# Rechercher & Remplacer #}
+			<button type="button" data-action="click->writing-editor#toggleSearchReplace" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Rechercher et remplacer (Ctrl+F)">
+				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+				</svg>
+			</button>
+
+			{# Mode Focus #}
+			<button type="button" data-action="click->writing-editor#toggleFocusMode" data-writing-editor-target="focusBtn" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Mode Focus / Zen (Plein écran)">
+				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/>
+				</svg>
+			</button>
+
+			{# Plan du document #}
+			<button type="button" data-action="click->writing-editor#toggleOutline" data-writing-editor-target="outlineBtn" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Plan du document (Table des matières)">
+				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/>
+				</svg>
+			</button>
 			<span class="w-[1px] h-4 bg-slate-200 mx-1"></span>
 
 			<button type="button" data-action="click->writing-editor#toggleBold" class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Gras (Ctrl+B)">
@@ -152,9 +172,55 @@
 		</div>
 	</div>
 
+	{# BANDEAU RECHERCHER & REMPLACER #}
+	<div data-writing-editor-target="searchReplaceBar" class="hidden bg-slate-50 border-b border-x border-slate-100 rounded-b-2xl p-3 shadow-sm flex items-center justify-between gap-4 transition-all duration-150">
+		<div class="flex items-center gap-3 flex-grow">
+			<div class="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-inner">
+				<span class="text-xs text-slate-400">🔍</span>
+				<input type="text" data-writing-editor-target="searchInput" data-action="input->writing-editor#performSearch" placeholder="Rechercher..." class="w-40 text-xs text-djoliba font-semibold focus:outline-none bg-transparent">
+			</div>
+			<div class="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-inner">
+				<span class="text-xs text-slate-400">✏️</span>
+				<input type="text" data-writing-editor-target="replaceInput" placeholder="Remplacer par..." class="w-40 text-xs text-djoliba font-semibold focus:outline-none bg-transparent">
+			</div>
+			<div class="flex items-center gap-1.5">
+				<button type="button" data-action="click->writing-editor#prevMatch" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Précédent">
+					↑
+				</button>
+				<button type="button" data-action="click->writing-editor#nextMatch" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Suivant">
+					↓
+				</button>
+				<span data-writing-editor-target="searchIndexIndicator" class="text-[10px] text-slate-400 font-bold px-1">0/0</span>
+			</div>
+			<span class="w-[1px] h-4 bg-slate-200 mx-1"></span>
+			<button type="button" data-action="click->writing-editor#replaceMatch" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-djoliba text-xs font-bold rounded-xl transition-all shadow-sm">
+				Remplacer
+			</button>
+			<button type="button" data-action="click->writing-editor#replaceAllMatches" class="px-3 py-1.5 bg-djoliba hover:opacity-90 text-white text-xs font-bold rounded-xl transition-all shadow-sm">
+				Remplacer tout
+			</button>
+		</div>
+		<button type="button" data-action="click->writing-editor#toggleSearchReplace" class="p-1.5 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+			<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+		</button>
+	</div>
+
 	{# 2. ZONE DE RÉDACTION HYBRIDE (SPLIT SCREEN AVEC PREVIEW) #}
 	<div
 		class="flex flex-row gap-6 items-stretch {% if is_thesis|default(false) %}flex-grow min-h-0 overflow-hidden{% endif %}">
+
+		{# Panneau Table des matières (Outline) #}
+		<div data-writing-editor-target="outlinePanel" class="hidden w-64 bg-slate-50 border border-slate-100 rounded-3xl p-5 overflow-y-auto flex flex-col gap-4 shadow-inner flex-shrink-0 transition-all duration-300">
+			<div class="flex items-center justify-between border-b border-slate-200 pb-2">
+				<h4 class="text-xs font-bold text-djoliba uppercase tracking-wider">Plan du document</h4>
+				<button type="button" data-action="click->writing-editor#toggleOutline" class="p-1 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-3.5 h-3.5" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<div data-writing-editor-target="outlineContent" class="space-y-2 text-xs">
+				{# Rempli dynamiquement en JS #}
+			</div>
+		</div>
 
 		{# Panneau d'Édition #}
 		<div
