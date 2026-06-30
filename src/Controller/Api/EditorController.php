@@ -19,7 +19,9 @@ class EditorController extends AbstractController
     public function __construct(
         private ProjectManager $projectManager,
         private LatexConverter $latexConverter,
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
+        private \App\Service\Editor\AIAssistantService $aiAssistantService,
+        private \App\Service\Editor\EditorHistoryManager $editorHistoryManager
     ) {
     }
 
@@ -163,6 +165,190 @@ class EditorController extends AbstractController
             'success' => true,
             'data' => [
                 'html' => $html
+            ]
+        ]);
+    }
+
+    /**
+     * POST /api/projects/{id}/editor-ai/execute
+     * Body JSON: { "action": "string", "text": "string", "options": {} }
+     */
+    #[Route('/projects/{id}/editor-ai/execute', name: 'api_editor_ai_execute', methods: ['POST'])]
+    public function executeAiAction(int $id, Request $request): JsonResponse
+    {
+        $project = $this->projectManager->getProject($id);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            return $this->json([
+                'success' => false,
+                'error' => ['code' => 404, 'message' => 'Projet non trouvé.']
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $action = $data['action'] ?? null;
+        $text = $data['text'] ?? null;
+        $options = $data['options'] ?? [];
+
+        if (!$action || $text === null) {
+            return $this->json([
+                'success' => false,
+                'error' => ['code' => 400, 'message' => 'Les champs "action" et "text" sont requis.']
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $res = $this->aiAssistantService->execute($action, $text, $project->getSubProject(), $this->getUser(), $options);
+            return $this->json([
+                'success' => true,
+                'data' => $res
+            ]);
+        } catch (\Exception $e) {
+            return $this->json([
+                'success' => false,
+                'error' => ['code' => 500, 'message' => $e->getMessage()]
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * POST /api/projects/{id}/editor-ai/stream
+     * Body JSON: { "action": "string", "text": "string", "options": {} }
+     *
+     * Retourne un flux SSE (Content-Type: text/event-stream).
+     */
+    #[Route('/projects/{id}/editor-ai/stream', name: 'api_editor_ai_stream', methods: ['POST'])]
+    public function streamAiAction(int $id, Request $request): Response
+    {
+        $project = $this->projectManager->getProject($id);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            return new Response('data: ' . json_encode(['error' => 'Projet non trouvé.']) . "\n\n", Response::HTTP_NOT_FOUND, [
+                'Content-Type' => 'text/event-stream'
+            ]);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $action = $data['action'] ?? null;
+        $text = $data['text'] ?? null;
+        $options = $data['options'] ?? [];
+
+        if (!$action || $text === null) {
+            return new Response('data: ' . json_encode(['error' => 'Champs manquants.']) . "\n\n", Response::HTTP_BAD_REQUEST, [
+                'Content-Type' => 'text/event-stream'
+            ]);
+        }
+
+        $subProject = $project->getSubProject();
+        $user = $this->getUser();
+
+        $response = new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($action, $text, $subProject, $user, $options) {
+            if (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+
+            try {
+                $interactionId = $this->aiAssistantService->stream(
+                    $action,
+                    $text,
+                    $subProject,
+                    $user,
+                    function (string $chunk) {
+                        echo "data: " . json_encode(['chunk' => $chunk]) . "\n\n";
+                        flush();
+                    },
+                    $options
+                );
+
+                echo "data: " . json_encode(['interaction_id' => $interactionId]) . "\n\n";
+            } catch (\Exception $e) {
+                echo "data: " . json_encode(['error' => $e->getMessage()]) . "\n\n";
+            }
+
+            echo "data: [DONE]\n\n";
+            flush();
+        }, Response::HTTP_OK, [
+            'Content-Type'      => 'text/event-stream',
+            'Cache-Control'     => 'no-cache, no-store',
+            'X-Accel-Buffering' => 'no',
+            'Connection'        => 'keep-alive',
+        ]);
+
+        return $response;
+    }
+
+    /**
+     * GET /api/projects/{id}/editor-ai/history
+     */
+    #[Route('/projects/{id}/editor-ai/history', name: 'api_editor_ai_history', methods: ['GET'])]
+    public function getAiHistory(int $id): JsonResponse
+    {
+        $project = $this->projectManager->getProject($id);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            return $this->json([
+                'success' => false,
+                'error' => ['code' => 404, 'message' => 'Projet non trouvé.']
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $subProject = $project->getSubProject();
+        if (!$subProject) {
+            return $this->json([
+                'success' => true,
+                'data' => []
+            ]);
+        }
+
+        $history = $this->editorHistoryManager->getHistory($subProject);
+
+        $formatted = array_map(function (\App\Entity\EditorInteraction $item) {
+            return [
+                'id' => $item->getId(),
+                'action' => $item->getAction(),
+                'selectedText' => $item->getSelectedText(),
+                'suggestion' => $item->getSuggestion(),
+                'accepted' => $item->isAccepted(),
+                'createdAt' => $item->getCreatedAt()->format('c'),
+            ];
+        }, $history);
+
+        return $this->json([
+            'success' => true,
+            'data' => $formatted
+        ]);
+    }
+
+    /**
+     * POST /api/editor-ai/interaction/{interactionId}/status
+     */
+    #[Route('/editor-ai/interaction/{interactionId}/status', name: 'api_editor_ai_status', methods: ['POST'])]
+    public function updateAiStatus(int $interactionId, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $accepted = $data['accepted'] ?? null;
+
+        if ($accepted === null) {
+            return $this->json([
+                'success' => false,
+                'error' => ['code' => 400, 'message' => 'Le champ "accepted" est requis.']
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        $interaction = $this->editorHistoryManager->updateStatus($interactionId, (bool) $accepted);
+
+        if (!$interaction) {
+            return $this->json([
+                'success' => false,
+                'error' => ['code' => 404, 'message' => 'Interaction non trouvée.']
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        return $this->json([
+            'success' => true,
+            'data' => [
+                'id' => $interaction->getId(),
+                'accepted' => $interaction->isAccepted()
             ]
         ]);
     }
