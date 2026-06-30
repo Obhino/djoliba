@@ -230,7 +230,7 @@
 			type="hidden" data-writing-editor-target="wysiwygInput" value="{{ project.metadata.writing_content_wysiwyg|default(project.metadata.writing_content|default('')) }}">
 
 			{# Conteneur TipTap WYSIWYG #}
-			<div data-writing-editor-target="editorContainer" class="flex-grow bg-slate-50/30 overflow-y-auto custom-scrollbar {% if is_thesis|default(false) %}min-h-0{% else %}min-h-[480px]{% endif %}"></div>
+			<div data-writing-editor-target="editorContainer" class="flex-grow bg-slate-50/30 overflow-hidden {% if is_thesis|default(false) %}min-h-0{% else %}min-h-[480px]{% endif %}"></div>
 
 			{# Textarea pour LaTeX brut / Markdown #}
 			<textarea data-writing-editor-target="input" data-action="input->writing-editor#handleContentChange" class="hidden w-full flex-grow p-6 bg-slate-900 text-slate-100 font-mono text-xs focus:outline-none focus:ring-0 border-0 leading-relaxed resize-none custom-scrollbar {% if is_thesis|default(false) %}min-h-0{% else %}min-h-[480px]{% endif %}" placeholder="{{ placeholder }}">{{ project.metadata.writing_content_latex|default(project.metadata.writing_content|default('')) }}</textarea>
