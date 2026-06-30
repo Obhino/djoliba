@@ -682,18 +682,18 @@ export default class extends Controller {
     #updateToggleButtons() {
         if (this.hasModeWysiwygBtnTarget && this.hasModeLatexBtnTarget) {
             if (this.currentMode === 'wysiwyg') {
-                this.modeWysiwygBtnTarget.classList.add('bg-slate-200', 'text-djoliba');
+                this.modeWysiwygBtnTarget.classList.add('bg-white', 'shadow-sm', 'text-djoliba');
                 this.modeWysiwygBtnTarget.classList.remove('text-slate-500');
-                this.modeLatexBtnTarget.classList.remove('bg-slate-200', 'text-djoliba');
+                this.modeLatexBtnTarget.classList.remove('bg-white', 'shadow-sm', 'text-djoliba');
                 this.modeLatexBtnTarget.classList.add('text-slate-500');
 
                 // En mode visuel (WYSIWYG) : afficher "Prévisualiser", masquer "Aperçu Rendu"
                 if (this.hasPreviewBtnTarget) this.previewBtnTarget.classList.remove('hidden');
                 if (this.hasRenderBtnTarget) this.renderBtnTarget.classList.add('hidden');
             } else {
-                this.modeLatexBtnTarget.classList.add('bg-slate-200', 'text-djoliba');
+                this.modeLatexBtnTarget.classList.add('bg-white', 'shadow-sm', 'text-djoliba');
                 this.modeLatexBtnTarget.classList.remove('text-slate-500');
-                this.modeWysiwygBtnTarget.classList.remove('bg-slate-200', 'text-djoliba');
+                this.modeWysiwygBtnTarget.classList.remove('bg-white', 'shadow-sm', 'text-djoliba');
                 this.modeWysiwygBtnTarget.classList.add('text-slate-500');
 
                 // En mode LaTeX brut : masquer "Prévisualiser", afficher "Aperçu Rendu"

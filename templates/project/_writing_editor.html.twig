@@ -23,14 +23,14 @@
 		class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
 
 		{# Groupe Gauche : Onglets / Bascule de Mode #}
-		<div class="flex items-center gap-2 bg-slate-50 border border-slate-100 p-1 rounded-xl shadow-inner w-full md:w-auto">
-			<button type="button" data-writing-editor-target="modeWysiwygBtn" data-action="click->writing-editor#setWysiwygMode" class="flex-1 md:flex-none px-4 py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all hover:bg-white hover:shadow-sm" title="Basculez sur l'éditeur visuel (WYSIWYG)">
+		<div class="flex items-center gap-2 bg-slate-100/80 border border-slate-200/50 p-1 rounded-2xl w-full md:w-auto">
+			<button type="button" data-writing-editor-target="modeWysiwygBtn" data-action="click->writing-editor#setWysiwygMode" class="flex-1 md:flex-none px-4 py-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-white hover:shadow-sm" title="Basculez sur l'éditeur visuel (WYSIWYG)">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
 				</svg>
 				Visuel (WYSIWYG)
 			</button>
-			<button type="button" data-writing-editor-target="modeLatexBtn" data-action="click->writing-editor#setLatexMode" class="flex-1 md:flex-none px-4 py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all hover:bg-white hover:shadow-sm" title="Basculez sur l'éditeur LaTeX brut / Markdown">
+			<button type="button" data-writing-editor-target="modeLatexBtn" data-action="click->writing-editor#setLatexMode" class="flex-1 md:flex-none px-4 py-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:bg-white hover:shadow-sm" title="Basculez sur l'éditeur LaTeX brut / Markdown">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
 				</svg>
@@ -39,60 +39,59 @@
 		</div>
 
 		{# Groupe Milieu : Actions de Formatage (Uniquement WYSIWYG) #}
-		<div class="flex items-center gap-1 bg-slate-50 border border-slate-100 p-1 rounded-xl shadow-inner overflow-x-auto w-full md:w-auto" data-writing-editor-target="wysiwygToolbar">
+		<div class="flex items-center gap-1 bg-slate-100/80 border border-slate-200/50 p-1 rounded-2xl overflow-x-auto w-full md:w-auto" data-writing-editor-target="wysiwygToolbar">
 
-			<button type="button" data-action="click->writing-editor#toggleBold" class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Gras (Ctrl+B)">
+			<button type="button" data-action="click->writing-editor#toggleBold" class="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-slate-600 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Gras (Ctrl+B)">
 				G
 			</button>
-			<button type="button" data-action="click->writing-editor#toggleItalic" class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-serif italic text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Italique (Ctrl+I)">
+			<button type="button" data-action="click->writing-editor#toggleItalic" class="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-serif italic text-slate-600 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Italique (Ctrl+I)">
 				I
 			</button>
-			<span class="w-[1px] h-4 bg-slate-200 mx-1"></span>
-			<button type="button" data-action="click->writing-editor#toggleHeading" data-level="1" class="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Titre principal">
+			<span class="w-[1px] h-5 bg-slate-200 mx-1.5 flex-shrink-0"></span>
+			<button type="button" data-action="click->writing-editor#toggleHeading" data-level="1" class="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-extrabold text-slate-600 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Titre principal">
 				H1
 			</button>
-			<button type="button" data-action="click->writing-editor#toggleHeading" data-level="2" class="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Sous-titre">
+			<button type="button" data-action="click->writing-editor#toggleHeading" data-level="2" class="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-slate-600 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Sous-titre">
 				H2
 			</button>
-			<button type="button" data-action="click->writing-editor#toggleHeading" data-level="3" class="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Titre 3">
+			<button type="button" data-action="click->writing-editor#toggleHeading" data-level="3" class="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-slate-600 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Titre 3">
 				H3
 			</button>
-			<span class="w-[1px] h-4 bg-slate-200 mx-1"></span>
-			<button type="button" data-action="click->writing-editor#toggleBulletList" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Liste à puces">
+			<span class="w-[1px] h-5 bg-slate-200 mx-1.5 flex-shrink-0"></span>
+			<button type="button" data-action="click->writing-editor#toggleBulletList" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Liste à puces">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
 			</button>
-			<button type="button" data-action="click->writing-editor#toggleOrderedList" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Liste ordonnée">
+			<button type="button" data-action="click->writing-editor#toggleOrderedList" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Liste ordonnée">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
 			</button>
-			<button type="button" data-action="click->writing-editor#toggleCodeBlock" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Bloc de code">
+			<button type="button" data-action="click->writing-editor#toggleCodeBlock" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Bloc de code">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
 			</button>
-			<span class="w-[1px] h-4 bg-slate-200 mx-1"></span>
-			<button type="button" data-action="click->writing-editor#insertTableModal" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Insérer un tableau">
+			<span class="w-[1px] h-5 bg-slate-200 mx-1.5 flex-shrink-0"></span>
+			<button type="button" data-action="click->writing-editor#insertTableModal" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Insérer un tableau">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
 			</button>
-			<button type="button" data-action="click->writing-editor#insertFigureModal" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Insérer une figure légendée">
+			<button type="button" data-action="click->writing-editor#insertFigureModal" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Insérer une figure légendée">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
 			</button>
-			<button type="button" data-action="click->writing-editor#insertFootnoteModal" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all flex-shrink-0" title="Insérer une note de bas de page">
+			<button type="button" data-action="click->writing-editor#insertFootnoteModal" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all flex-shrink-0" title="Insérer une note de bas de page">
 				<span class="text-xs font-bold leading-none">N<sup>1</sup></span>
 			</button>
-			<button type="button" data-action="click->writing-editor#insertReferenceModal" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Insérer une référence croisée">
+			<button type="button" data-action="click->writing-editor#insertReferenceModal" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all flex-shrink-0" title="Insérer une référence croisée">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
 			</button>
-			<button type="button" data-writing-editor-target="toolbarDeleteTableBtn" data-action="click->writing-editor#deleteTableUnderCursor" class="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-100 hover:shadow-sm transition-all hidden" title="Supprimer le tableau sous le curseur">
+			<button type="button" data-writing-editor-target="toolbarDeleteTableBtn" data-action="click->writing-editor#deleteTableUnderCursor" class="w-9 h-9 rounded-xl flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-100 hover:shadow-sm transition-all hidden flex-shrink-0" title="Supprimer le tableau sous le curseur">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
 			</button>
-			<button type="button" data-writing-editor-target="toolbarDeleteFigureBtn" data-action="click->writing-editor#deleteFigureUnderCursor" class="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-100 hover:shadow-sm transition-all hidden" title="Supprimer la figure sous le curseur">
+			<button type="button" data-writing-editor-target="toolbarDeleteFigureBtn" data-action="click->writing-editor#deleteFigureUnderCursor" class="w-9 h-9 rounded-xl flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-100 hover:shadow-sm transition-all hidden flex-shrink-0" title="Supprimer la figure sous le curseur">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
 			</button>
 		</div>
 
 		{# Groupe Droite : Outils de Publication & Document #}
-		<div
-			class="flex items-center gap-2 w-full md:w-auto justify-end">
+		<div class="flex items-center gap-1 bg-slate-100/80 border border-slate-200/50 p-1 rounded-2xl w-full md:w-auto justify-end">
 			{# Aperçu en direct (Split screen) #}
-			<button type="button" data-writing-editor-target="previewBtn" data-action="click->writing-editor#togglePreview" class="w-9 h-9 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-djoliba rounded-xl flex items-center justify-center transition-all shadow-sm" title="Prévisualiser KaTeX (Aperçu en direct split-screen)">
+			<button type="button" data-writing-editor-target="previewBtn" data-action="click->writing-editor#togglePreview" class="w-9 h-9 text-djoliba rounded-xl flex items-center justify-center hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100 transition-all" title="Prévisualiser KaTeX (Aperçu en direct split-screen)">
 				<svg class="w-4 h-4 text-djoliba" fill="none" viewbox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -100,21 +99,21 @@
 			</button>
 
 			{# Historique IA #}
-			<button type="button" data-action="click->editor-ai#openHistoryModal" class="w-9 h-9 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-djoliba rounded-xl flex items-center justify-center transition-all shadow-sm" title="Historique IA (Revoir et réutiliser vos requêtes)">
+			<button type="button" data-action="click->editor-ai#openHistoryModal" class="w-9 h-9 text-djoliba rounded-xl flex items-center justify-center hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100 transition-all" title="Historique IA (Revoir et réutiliser vos requêtes)">
 				<svg class="w-4 h-4 text-djoliba" fill="none" viewbox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
 				</svg>
 			</button>
 
 			{# Aperçu de Rendu LaTeX Interprété (Modal) #}
-			<button type="button" data-writing-editor-target="renderBtn" data-action="click->writing-editor#showLatexPreview" class="w-9 h-9 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100/70 text-emerald-600 rounded-xl flex items-center justify-center transition-all shadow-sm hidden" title="Aperçu du Rendu final LaTeX (Modal)">
+			<button type="button" data-writing-editor-target="renderBtn" data-action="click->writing-editor#showLatexPreview" class="w-9 h-9 text-emerald-600 rounded-xl flex items-center justify-center hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100 transition-all hidden" title="Aperçu du Rendu final LaTeX (Modal)">
 				<svg class="w-4 h-4 text-emerald-600 animate-pulse" fill="none" viewbox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
 				</svg>
 			</button>
 
 			{# Importer #}
-			<button type="button" data-action="click->writing-editor#triggerFileInput" data-writing-editor-target="importBtn" class="w-9 h-9 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-djoliba rounded-xl flex items-center justify-center transition-all shadow-sm" title="Importer un fichier (DOCX ou LaTeX)">
+			<button type="button" data-action="click->writing-editor#triggerFileInput" data-writing-editor-target="importBtn" class="w-9 h-9 text-djoliba rounded-xl flex items-center justify-center hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100 transition-all" title="Importer un fichier (DOCX ou LaTeX)">
 				<svg class="w-4 h-4 text-djoliba" fill="none" viewbox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
 				</svg>
@@ -122,14 +121,16 @@
 			<input type="file" accept=".docx,.tex" data-writing-editor-target="fileInput" data-action="change->writing-editor#handleFileSelect" class="hidden">
 
 			{# Exporter en LaTeX #}
-			<button type="button" data-action="click->writing-editor#exportLatex" class="w-9 h-9 bg-gold_prestige/10 border border-gold_prestige/20 hover:bg-gold_prestige/20 text-gold_prestige rounded-xl flex items-center justify-center transition-all shadow-sm" title="Exporter le document au format LaTeX (.tex)">
-				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+			<button type="button" data-action="click->writing-editor#exportLatex" class="w-9 h-9 text-gold_prestige rounded-xl flex items-center justify-center hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100 transition-all" title="Exporter le document au format LaTeX (.tex)">
+				<svg class="w-4 h-4 text-gold_prestige" fill="none" viewbox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
 				</svg>
 			</button>
 
+			<span class="w-[1px] h-5 bg-slate-200 mx-1.5 flex-shrink-0"></span>
+
 			{# Aide / Guide d'utilisation #}
-			<button type="button" data-action="click->writing-editor#openHelpModal" class="w-9 h-9 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-djoliba text-xs font-bold rounded-xl flex items-center justify-center transition-all shadow-sm" title="Guide d'utilisation de l'éditeur scientifique">
+			<button type="button" data-action="click->writing-editor#openHelpModal" class="w-9 h-9 text-slate-500 hover:text-djoliba rounded-xl flex items-center justify-center hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100 transition-all" title="Guide d'utilisation de l'éditeur scientifique">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
 				</svg>
