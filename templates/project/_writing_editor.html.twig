@@ -92,44 +92,44 @@
 		<div
 			class="flex items-center gap-2 w-full md:w-auto justify-end">
 			{# Aperçu en direct (Split screen) #}
-			<button type="button" data-writing-editor-target="previewBtn" data-action="click->writing-editor#togglePreview" class="w-9 h-9 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-djoliba rounded-xl flex items-center justify-center transition-all shadow-sm" title="Prévisualiser KaTeX (Aperçu en direct split-screen)">
-				<svg class="w-4 h-4 text-djoliba" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+			<button type="button" data-writing-editor-target="previewBtn" data-action="click->writing-editor#togglePreview" class="w-9 h-9 text-djoliba rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all" title="Prévisualiser KaTeX (Aperçu en direct split-screen)">
+				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
 				</svg>
 			</button>
 
 			{# Historique IA #}
-			<button type="button" data-action="click->editor-ai#openHistoryModal" class="w-9 h-9 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-djoliba rounded-xl flex items-center justify-center transition-all shadow-sm" title="Historique IA (Revoir et réutiliser vos requêtes)">
-				<svg class="w-4 h-4 text-djoliba" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+			<button type="button" data-action="click->editor-ai#openHistoryModal" class="w-9 h-9 text-djoliba rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all" title="Historique IA (Revoir et réutiliser vos requêtes)">
+				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
 				</svg>
 			</button>
 
 			{# Aperçu de Rendu LaTeX Interprété (Modal) #}
-			<button type="button" data-writing-editor-target="renderBtn" data-action="click->writing-editor#showLatexPreview" class="w-9 h-9 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100/70 text-emerald-600 rounded-xl flex items-center justify-center transition-all shadow-sm hidden" title="Aperçu du Rendu final LaTeX (Modal)">
-				<svg class="w-4 h-4 text-emerald-600 animate-pulse" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+			<button type="button" data-writing-editor-target="renderBtn" data-action="click->writing-editor#showLatexPreview" class="w-9 h-9 text-emerald-600 rounded-xl flex items-center justify-center hover:bg-emerald-50 transition-all hidden" title="Aperçu du Rendu final LaTeX (Modal)">
+				<svg class="w-4 h-4 animate-pulse" fill="none" viewbox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
 				</svg>
 			</button>
 
 			{# Importer #}
-			<button type="button" data-action="click->writing-editor#triggerFileInput" data-writing-editor-target="importBtn" class="w-9 h-9 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-djoliba rounded-xl flex items-center justify-center transition-all shadow-sm" title="Importer un fichier (DOCX ou LaTeX)">
-				<svg class="w-4 h-4 text-djoliba" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+			<button type="button" data-action="click->writing-editor#triggerFileInput" data-writing-editor-target="importBtn" class="w-9 h-9 text-djoliba rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all" title="Importer un fichier (DOCX ou LaTeX)">
+				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
 				</svg>
 			</button>
 			<input type="file" accept=".docx,.tex" data-writing-editor-target="fileInput" data-action="change->writing-editor#handleFileSelect" class="hidden">
 
 			{# Exporter en LaTeX #}
-			<button type="button" data-action="click->writing-editor#exportLatex" class="w-9 h-9 bg-gold_prestige/10 border border-gold_prestige/20 hover:bg-gold_prestige/20 text-gold_prestige rounded-xl flex items-center justify-center transition-all shadow-sm" title="Exporter le document au format LaTeX (.tex)">
+			<button type="button" data-action="click->writing-editor#exportLatex" class="w-9 h-9 text-gold_prestige rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all" title="Exporter le document au format LaTeX (.tex)">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
 				</svg>
 			</button>
 
 			{# Aide / Guide d'utilisation #}
-			<button type="button" data-action="click->writing-editor#openHelpModal" class="w-9 h-9 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-djoliba text-xs font-bold rounded-xl flex items-center justify-center transition-all shadow-sm" title="Guide d'utilisation de l'éditeur scientifique">
+			<button type="button" data-action="click->writing-editor#openHelpModal" class="w-9 h-9 text-slate-500 hover:text-djoliba rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all" title="Guide d'utilisation de l'éditeur scientifique">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
 				</svg>
