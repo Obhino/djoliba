@@ -233,7 +233,7 @@ export default class extends Controller {
         `;
 
         // Actions supportant le streaming SSE
-        const streamingActions = ['reformulate', 'expand', 'ask', 'code', 'peer_review', 'translate', 'tone'];
+        const streamingActions = ['expand', 'ask', 'code', 'peer_review', 'translate', 'tone'];
 
         if (streamingActions.includes(action)) {
             this.runStreamingAction(action, options);
@@ -403,6 +403,51 @@ export default class extends Controller {
             }
         }
 
+        if (action === 'reformulate') {
+            try {
+                const cleaned = this.#cleanJson(text);
+                const data = JSON.parse(cleaned);
+                const options = data.options || [];
+
+                if (options.length > 0) {
+                    // Sélectionner la première option par défaut
+                    this.currentSuggestionText = options[0].text;
+
+                    let html = '<div class="space-y-4 text-xs font-serif leading-relaxed text-slate-700">';
+                    html += '<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Choisissez la reformulation préférée :</label>';
+                    
+                    options.forEach((opt, idx) => {
+                        const isSelected = idx === 0;
+                        const cardClass = isSelected 
+                            ? 'border-djoliba bg-djoliba/5 ring-2 ring-djoliba/20' 
+                            : 'border-slate-100 bg-slate-50/30';
+                        const checkedAttr = isSelected ? 'checked' : '';
+                        
+                        // Sécuriser le texte de la reformulation pour l'attribut HTML et le paramètre d'action
+                        const escapedText = this.#escapeHtml(opt.text);
+
+                        html += `
+                            <div class="reformulation-option-card p-4 border rounded-2xl cursor-pointer transition-all duration-200 flex items-start gap-3 hover:border-djoliba/50 ${cardClass}"
+                                 data-action="click->editor-ai#selectOption"
+                                 data-editor-ai-text-param="${escapedText}">
+                                <input type="radio" name="reformulation_choice" class="mt-1 accent-djoliba cursor-pointer" ${checkedAttr}>
+                                <div class="flex-grow min-w-0">
+                                    <h4 class="text-[10px] font-bold text-djoliba mb-1">${this.#escapeHtml(opt.label)}</h4>
+                                    <p class="text-xs text-slate-700 leading-relaxed font-sans">${escapedText.replace(/\n/g, '<br>')}</p>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    this.modalContentTarget.innerHTML = html;
+                    return;
+                }
+            } catch (e) {
+                // Fallback sur rendu texte simple
+            }
+        }
+
         // Rendu texte simple (LaTeX ou Markdown) avec remplacement des retours à la ligne
         this.currentSuggestionText = text;
         const formatted = this.#escapeHtml(text)
@@ -455,6 +500,26 @@ export default class extends Controller {
         // Insère après la sélection
         editor.chain().focus().collapseToEnd().insertContent("\n" + this.currentSuggestionText).run();
         this.acceptInteraction();
+    }
+
+    selectOption(event) {
+        const text = event.params.text;
+        this.currentSuggestionText = text;
+
+        // Mettre en surbrillance la carte sélectionnée
+        const cards = this.modalContentTarget.querySelectorAll('.reformulation-option-card');
+        cards.forEach(card => {
+            card.classList.remove('border-djoliba', 'bg-djoliba/5', 'ring-2', 'ring-djoliba/20');
+            card.classList.add('border-slate-100', 'bg-slate-50/30');
+            const radio = card.querySelector('input[type="radio"]');
+            if (radio) radio.checked = false;
+        });
+
+        const selectedCard = event.currentTarget;
+        selectedCard.classList.remove('border-slate-100', 'bg-slate-50/30');
+        selectedCard.classList.add('border-djoliba', 'bg-djoliba/5', 'ring-2', 'ring-djoliba/20');
+        const selectedRadio = selectedCard.querySelector('input[type="radio"]');
+        if (selectedRadio) selectedRadio.checked = true;
     }
 
     /**

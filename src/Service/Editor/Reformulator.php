@@ -13,11 +13,28 @@ class Reformulator
     private function getPrompt(string $text): string
     {
         return sprintf(
-            "Propose 3 variations de reformulation académique pour le texte suivant.\n" .
+            "Tu es un relecteur scientifique expert. Propose 3 reformulations académiques différentes pour le texte suivant.\n" .
             "Assure-toi de :\n" .
             "- Conserver strictement le sens scientifique initial.\n" .
-            "- Améliorer l'élégance du style, la clarté et la concision.\n" .
-            "- Fournir des propositions allant de la plus formelle à la plus directe.\n\n" .
+            "- Améliorer le style, la clarté et la concision.\n" .
+            "- Fournir exactement 3 variations.\n\n" .
+            "Tu dois impérativement répondre au format JSON brut suivant (sans aucun autre texte avant ou après) :\n" .
+            "{\n" .
+            "  \"options\": [\n" .
+            "    {\n" .
+            "      \"label\": \"Variation 1 (Formelle & Standard)\",\n" .
+            "      \"text\": \"<Texte de la reformulation 1>\"\n" .
+            "    },\n" .
+            "    {\n" .
+            "      \"label\": \"Variation 2 (Directe & Active)\",\n" .
+            "      \"text\": \"<Texte de la reformulation 2>\"\n" .
+            "    },\n" .
+            "    {\n" .
+            "      \"label\": \"Variation 3 (Concise & Synthétique)\",\n" .
+            "      \"text\": \"<Texte de la reformulation 3>\"\n" .
+            "    }\n" .
+            "  ]\n" .
+            "}\n\n" .
             "Texte à reformuler : \"%s\"",
             $text
         );

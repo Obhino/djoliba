@@ -108,6 +108,25 @@ class EditorAIControllerTest extends WebTestCase
                 ];
             }
 
+            if ($action === 'reformulate') {
+                $reformulateResult = json_encode([
+                    'options' => [
+                        ['label' => 'Variation 1', 'text' => 'Mocked reformulation 1'],
+                        ['label' => 'Variation 2', 'text' => 'Mocked reformulation 2'],
+                        ['label' => 'Variation 3', 'text' => 'Mocked reformulation 3']
+                    ]
+                ]);
+                $interaction->setSuggestion($reformulateResult);
+                $this->em->persist($interaction);
+                $this->em->flush();
+
+                return [
+                    'interaction_id' => $interaction->getId(),
+                    'result' => $reformulateResult,
+                    'meta' => []
+                ];
+            }
+
             $interaction->setSuggestion('Mocked AI response');
             $this->em->persist($interaction);
             $this->em->flush();
@@ -204,6 +223,38 @@ class EditorAIControllerTest extends WebTestCase
         $this->assertStringContainsString('Mocked reasoning analysis', $interaction->getSuggestion());
     }
 
+    public function testExecuteReformulateAction(): void
+    {
+        $this->client->loginUser($this->user);
+        $this->mockAIService();
+
+        $url = sprintf('/api/projects/%d/editor-ai/execute', $this->project->getId());
+
+        $this->client->request('POST', $url, [], [], [
+            'CONTENT_TYPE' => 'application/json'
+        ], json_encode([
+            'action' => 'reformulate',
+            'text' => 'Texte original à reformuler'
+        ]));
+
+        $this->assertResponseIsSuccessful();
+        $res = json_decode($this->client->getResponse()->getContent(), true);
+        
+        $this->assertTrue($res['success']);
+        $this->assertNotNull($res['data']['interaction_id']);
+        
+        $result = json_decode($res['data']['result'], true);
+        $this->assertCount(3, $result['options']);
+        $this->assertEquals('Variation 1', $result['options'][0]['label']);
+        $this->assertEquals('Mocked reformulation 1', $result['options'][0]['text']);
+
+        // Vérifier l'historique enregistré en base
+        $interaction = $this->em->getRepository(EditorInteraction::class)->find($res['data']['interaction_id']);
+        $this->assertNotNull($interaction);
+        $this->assertEquals('reformulate', $interaction->getAction());
+        $this->assertEquals('Texte original à reformuler', $interaction->getSelectedText());
+    }
+
     public function testStreamAiAction(): void
     {
         $this->client->loginUser($this->user);
@@ -244,7 +295,7 @@ class EditorAIControllerTest extends WebTestCase
             $this->client->request('POST', $url, [], [], [
                 'CONTENT_TYPE' => 'application/json'
             ], json_encode([
-                'action' => 'reformulate',
+                'action' => 'expand',
                 'text' => 'Texte à reformuler'
             ]));
         } finally {
