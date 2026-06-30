@@ -15,7 +15,8 @@ export default class extends Controller {
         'floatingToolbar', 'aiModal', 'modalTitle', 'modalContent',
         'replaceBtn', 'insertAfterBtn', 'acceptBtn', 'rejectBtn',
         'historyList', 'historyContainer', 'askInput', 'askFormContainer',
-        'translateContainer', 'translateSelect', 'toneContainer', 'toneSelect'
+        'translateContainer', 'translateSelect', 'toneContainer', 'toneSelect',
+        'toggleHistoryBtn'
     ];
 
     connect() {
@@ -496,6 +497,21 @@ export default class extends Controller {
             case 'tone': return "Ajustement ton";
             case 'explain': return "Glossaire";
             default: return action;
+        }
+    }
+
+    toggleHistory() {
+        if (!this.hasHistoryListTarget || !this.hasToggleHistoryBtnTarget) return;
+
+        const list = this.historyListTarget;
+        const btn = this.toggleHistoryBtnTarget;
+
+        if (list.classList.contains('hidden')) {
+            list.classList.remove('hidden');
+            btn.textContent = 'Masquer';
+        } else {
+            list.classList.add('hidden');
+            btn.textContent = 'Afficher';
         }
     }
 

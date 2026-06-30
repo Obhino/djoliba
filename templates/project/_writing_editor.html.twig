@@ -761,8 +761,11 @@
 			<h4 class="text-xs font-bold text-djoliba flex items-center gap-1.5">
 				📜 Historique des suggestions IA
 			</h4>
+			<button type="button" data-editor-ai-target="toggleHistoryBtn" data-action="click->editor-ai#toggleHistory" class="px-3 py-1.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-djoliba text-[10px] font-bold rounded-lg transition-all">
+				Afficher
+			</button>
 		</div>
-		<ul data-editor-ai-target="historyList" class="space-y-3 max-h-[240px] overflow-y-auto custom-scrollbar">
+		<ul data-editor-ai-target="historyList" class="hidden space-y-3 max-h-[240px] overflow-y-auto custom-scrollbar">
 		</ul>
 	</div>
 
