@@ -29,7 +29,8 @@ export default class extends Controller {
         'mathModal', 'mathFormulaInput', 'mathDisplaySelect',
         'searchReplaceBar', 'searchInput', 'replaceInput', 'searchIndexIndicator',
         'focusBtn',
-        'outlineBtn', 'outlinePanel', 'outlineContent'
+        'outlineBtn', 'outlinePanel', 'outlineContent',
+        'snapshotModal', 'snapshotNameInput', 'snapshotList', 'snapshotEmptyMsg'
     ];
 
     static values = {
@@ -2591,5 +2592,202 @@ export default class extends Controller {
 
             outlineContainer.appendChild(btn);
         });
+    }
+
+    // =============================================
+    // VERSIONS & INSTANTANÉS (SNAPSHOTS)
+    // =============================================
+
+    openSnapshotModal() {
+        if (!this.hasSnapshotModalTarget) return;
+        const modal = this.snapshotModalTarget;
+        this.snapshotNameInputTarget.value = '';
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            const card = modal.querySelector('.modal-card');
+            if (card) card.classList.remove('scale-95', 'opacity-0');
+            if (card) card.classList.add('scale-100', 'opacity-100');
+        }, 50);
+
+        this.loadSnapshots();
+    }
+
+    closeSnapshotModal() {
+        if (!this.hasSnapshotModalTarget) return;
+        const modal = this.snapshotModalTarget;
+        const card = modal.querySelector('.modal-card');
+        if (card) card.classList.remove('scale-100', 'opacity-100');
+        if (card) card.classList.add('scale-95', 'opacity-0');
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
+    }
+
+    async loadSnapshots() {
+        if (!this.hasSnapshotListTarget) return;
+
+        const list = this.snapshotListTarget;
+        list.innerHTML = '<div class="text-center py-4 text-xs text-slate-400">Chargement des versions...</div>';
+
+        try {
+            const response = await fetch(`/api/projects/${this.projectIdValue}/snapshots`);
+            const result = await response.json();
+
+            if (result.success) {
+                const snapshots = result.data;
+                list.innerHTML = '';
+
+                if (snapshots.length === 0) {
+                    if (this.hasSnapshotEmptyMsgTarget) this.snapshotEmptyMsgTarget.classList.remove('hidden');
+                    return;
+                }
+
+                if (this.hasSnapshotEmptyMsgTarget) this.snapshotEmptyMsgTarget.classList.add('hidden');
+
+                snapshots.forEach(item => {
+                    const dateFormatted = new Date(item.created_at).toLocaleString('fr-FR', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    const card = document.createElement('div');
+                    card.className = 'flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl hover:border-slate-200 shadow-sm transition-all';
+
+                    const infoCol = document.createElement('div');
+                    infoCol.className = 'space-y-1 min-w-0 pr-4';
+
+                    const name = document.createElement('h5');
+                    name.className = 'text-xs font-bold text-slate-700 truncate';
+                    name.textContent = item.name;
+
+                    const metaRow = document.createElement('div');
+                    metaRow.className = 'flex items-center gap-2 text-[10px] text-slate-400 font-semibold';
+
+                    const dateSpan = document.createElement('span');
+                    dateSpan.textContent = dateFormatted;
+
+                    const badge = document.createElement('span');
+                    badge.className = item.mode === 'wysiwyg'
+                        ? 'px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[8px] font-bold uppercase'
+                        : 'px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 text-[8px] font-bold uppercase';
+                    badge.textContent = item.mode === 'wysiwyg' ? 'Visuel' : 'LaTeX';
+
+                    metaRow.appendChild(dateSpan);
+                    metaRow.appendChild(badge);
+                    infoCol.appendChild(name);
+                    infoCol.appendChild(metaRow);
+
+                    const actions = document.createElement('div');
+                    actions.className = 'flex items-center gap-2 flex-shrink-0';
+
+                    const restoreBtn = document.createElement('button');
+                    restoreBtn.type = 'button';
+                    restoreBtn.className = 'px-3 py-1.5 border border-djoliba text-djoliba hover:bg-djoliba/5 text-[10px] font-bold rounded-lg transition-all';
+                    restoreBtn.textContent = 'Restaurer';
+                    restoreBtn.addEventListener('click', () => this.restoreSnapshot(item));
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = 'button';
+                    deleteBtn.className = 'p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all';
+                    deleteBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
+                    deleteBtn.addEventListener('click', () => this.deleteSnapshot(item.id));
+
+                    actions.appendChild(restoreBtn);
+                    actions.appendChild(deleteBtn);
+                    card.appendChild(infoCol);
+                    card.appendChild(actions);
+
+                    list.appendChild(card);
+                });
+            } else {
+                list.innerHTML = '<div class="text-center py-4 text-xs text-red-500">Erreur lors de la récupération des versions.</div>';
+            }
+        } catch (err) {
+            console.error(err);
+            list.innerHTML = '<div class="text-center py-4 text-xs text-red-500">Erreur réseau.</div>';
+        }
+    }
+
+    async createSnapshot() {
+        const name = this.snapshotNameInputTarget.value.trim();
+        const contentWysiwyg = this.editor ? this.turndownService.turndown(this.editor.getHTML()) : '';
+        const contentLatex = this.codeMirror ? this.codeMirror.getValue() : (this.hasInputTarget ? this.inputTarget.value : '');
+        const mode = this.currentMode;
+
+        this.#setStatus("Création de l'instantané...");
+
+        try {
+            const response = await fetch(`/api/projects/${this.projectIdValue}/snapshots`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    content_wysiwyg: contentWysiwyg,
+                    content_latex: contentLatex,
+                    mode: mode
+                })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                this.snapshotNameInputTarget.value = '';
+                this.#setStatus("Instantané créé !");
+                this.loadSnapshots();
+            } else {
+                this.#setStatus("Erreur lors de la création.", true);
+            }
+        } catch (err) {
+            console.error(err);
+            this.#setStatus("Erreur réseau.", true);
+        }
+    }
+
+    async restoreSnapshot(snapshot) {
+        if (!confirm(`Voulez-vous vraiment restaurer la version "${snapshot.name}" ? Votre travail non enregistré sera perdu.`)) {
+            return;
+        }
+
+        try {
+            this.setEditorContent(snapshot.content_wysiwyg, snapshot.content_latex, snapshot.mode);
+            this.closeSnapshotModal();
+            this.#setStatus("Version restaurée !");
+            this.autosave();
+        } catch (err) {
+            console.error(err);
+            this.#setStatus("Erreur lors de la restauration.", true);
+        }
+    }
+
+    async deleteSnapshot(snapshotId) {
+        if (!confirm("Voulez-vous supprimer définitivement cet instantané ?")) {
+            return;
+        }
+
+        this.#setStatus("Suppression...");
+
+        try {
+            const response = await fetch(`/api/projects/${this.projectIdValue}/snapshots/${snapshotId}`, {
+                method: 'DELETE'
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                this.#setStatus("Instantané supprimé !");
+                this.loadSnapshots();
+            } else {
+                this.#setStatus("Erreur de suppression.", true);
+            }
+        } catch (err) {
+            console.error(err);
+            this.#setStatus("Erreur réseau.", true);
+        }
     }
 }

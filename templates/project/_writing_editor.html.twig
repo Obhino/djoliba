@@ -136,8 +136,15 @@
 
 			{# Historique IA #}
 			<button type="button" data-action="click->editor-ai#openHistoryModal" class="w-9 h-9 text-djoliba rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all" title="Historique IA (Revoir et réutiliser vos requêtes)">
-				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+				<svg class="w-4 h-4 text-djoliba" fill="none" viewbox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+				</svg>
+			</button>
+
+			{# Versions (Snapshots) #}
+			<button type="button" data-action="click->writing-editor#openSnapshotModal" class="w-9 h-9 text-djoliba rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all" title="Versions du document (Sauvegarder et restaurer)">
+				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 5.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/>
 				</svg>
 			</button>
 
@@ -903,6 +910,56 @@
 			<div class="px-8 py-4 border-t border-slate-50 flex justify-end gap-3 bg-slate-50/20">
 				<button type="button" data-action="click->writing-editor#closeMathModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">Annuler</button>
 				<button type="button" data-action="click->writing-editor#confirmInsertMath" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Insérer</button>
+			</div>
+		</div>
+	</div>
+
+	{# MODALE DE GESTION DES VERSIONS / SNAPSHOTS #}
+	<div data-writing-editor-target="snapshotModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col max-h-[85vh]">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba text-base">
+						📸
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-djoliba">Versions & Instantanés</h3>
+						<p class="text-[10px] text-slate-400">Sauvegardez et restaurez des brouillons nommés</p>
+					</div>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeSnapshotModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+
+			<div class="p-8 space-y-6 flex-grow overflow-y-auto custom-scrollbar">
+				{# Section 1 : Créer une version #}
+				<div class="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-3">
+					<h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Créer une nouvelle version</h4>
+					<div class="flex gap-2">
+						<input type="text" data-writing-editor-target="snapshotNameInput" placeholder="Ex: Version finale avant soumission..." class="flex-grow px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold bg-white">
+						<button type="button" data-action="click->writing-editor#createSnapshot" class="px-5 py-2.5 bg-djoliba hover:opacity-90 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-djoliba/10 whitespace-nowrap">
+							Sauvegarder
+						</button>
+					</div>
+				</div>
+
+				{# Section 2 : Liste des versions #}
+				<div class="space-y-3">
+					<h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Versions sauvegardées</h4>
+					<div data-writing-editor-target="snapshotList" class="space-y-3">
+						{# Rempli dynamiquement en JS #}
+					</div>
+					<div data-writing-editor-target="snapshotEmptyMsg" class="hidden text-center py-8 text-slate-400 italic text-xs">
+						Aucun instantané enregistré pour ce projet.
+					</div>
+				</div>
+			</div>
+
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeSnapshotModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">
+					Fermer
+				</button>
 			</div>
 		</div>
 	</div>

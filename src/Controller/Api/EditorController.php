@@ -352,4 +352,110 @@ class EditorController extends AbstractController
             ]
         ]);
     }
+
+    /**
+     * POST /api/projects/{id}/snapshots
+     * Body JSON: { "name": "string", "content_wysiwyg": "string", "content_latex": "string", "mode": "string" }
+     */
+    #[Route('/projects/{id}/snapshots', name: 'api_project_save_snapshot', methods: ['POST'])]
+    public function saveSnapshot(int $id, Request $request): JsonResponse
+    {
+        $project = $this->projectManager->getProject($id);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            return $this->json([
+                'success' => false,
+                'error' => ['code' => 404, 'message' => 'Projet non trouvé.']
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $name = trim($data['name'] ?? '');
+        $contentWysiwyg = $data['content_wysiwyg'] ?? '';
+        $contentLatex = $data['content_latex'] ?? '';
+        $mode = $data['mode'] ?? 'wysiwyg';
+
+        $metadata = $project->getMetadata() ?? [];
+        $snapshots = $metadata['editor_snapshots'] ?? [];
+
+        $newSnapshot = [
+            'id' => bin2hex(random_bytes(8)),
+            'name' => $name ?: 'Version du ' . (new \DateTime())->format('d/m/Y H:i'),
+            'content_wysiwyg' => $contentWysiwyg,
+            'content_latex' => $contentLatex,
+            'mode' => $mode,
+            'created_at' => (new \DateTime())->format('c')
+        ];
+
+        $snapshots[] = $newSnapshot;
+        $metadata['editor_snapshots'] = $snapshots;
+        $project->setMetadata($metadata);
+
+        $this->entityManager->flush();
+
+        return $this->json([
+            'success' => true,
+            'data' => $newSnapshot
+        ]);
+    }
+
+    /**
+     * GET /api/projects/{id}/snapshots
+     */
+    #[Route('/projects/{id}/snapshots', name: 'api_project_get_snapshots', methods: ['GET'])]
+    public function getSnapshots(int $id): JsonResponse
+    {
+        $project = $this->projectManager->getProject($id);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            return $this->json([
+                'success' => false,
+                'error' => ['code' => 404, 'message' => 'Projet non trouvé.']
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $metadata = $project->getMetadata() ?? [];
+        $snapshots = $metadata['editor_snapshots'] ?? [];
+
+        usort($snapshots, function ($a, $b) {
+            return strcmp($b['created_at'], $a['created_at']);
+        });
+
+        return $this->json([
+            'success' => true,
+            'data' => $snapshots
+        ]);
+    }
+
+    /**
+     * DELETE /api/projects/{id}/snapshots/{snapshotId}
+     */
+    #[Route('/projects/{id}/snapshots/{snapshotId}', name: 'api_project_delete_snapshot', methods: ['DELETE'])]
+    public function deleteSnapshot(int $id, string $snapshotId): JsonResponse
+    {
+        $project = $this->projectManager->getProject($id);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            return $this->json([
+                'success' => false,
+                'error' => ['code' => 404, 'message' => 'Projet non trouvé.']
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $metadata = $project->getMetadata() ?? [];
+        $snapshots = $metadata['editor_snapshots'] ?? [];
+
+        $filteredSnapshots = array_filter($snapshots, function ($item) use ($snapshotId) {
+            return $item['id'] !== $snapshotId;
+        });
+
+        $metadata['editor_snapshots'] = array_values($filteredSnapshots);
+        $project->setMetadata($metadata);
+
+        $this->entityManager->flush();
+
+        return $this->json([
+            'success' => true
+        ]);
+    }
 }

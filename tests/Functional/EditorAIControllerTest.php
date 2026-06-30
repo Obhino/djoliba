@@ -357,4 +357,49 @@ class EditorAIControllerTest extends WebTestCase
         $updatedInteraction = $this->em->getRepository(EditorInteraction::class)->find($interactionId);
         $this->assertTrue($updatedInteraction->isAccepted());
     }
+
+    public function testSnapshotOperations(): void
+    {
+        $this->client->loginUser($this->user);
+
+        // 1. Sauvegarder un instantané
+        $saveUrl = sprintf('/api/projects/%d/snapshots', $this->project->getId());
+        $this->client->request('POST', $saveUrl, [], [], [
+            'CONTENT_TYPE' => 'application/json'
+        ], json_encode([
+            'name' => 'Version Test Snapshot',
+            'content_wysiwyg' => 'HTML content wysiwyg',
+            'content_latex' => 'LaTeX content raw',
+            'mode' => 'wysiwyg'
+        ]));
+
+        $this->assertResponseIsSuccessful();
+        $res = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertTrue($res['success']);
+        $this->assertEquals('Version Test Snapshot', $res['data']['name']);
+        $snapshotId = $res['data']['id'];
+        $this->assertNotEmpty($snapshotId);
+
+        // 2. Récupérer la liste des instantanés
+        $getUrl = sprintf('/api/projects/%d/snapshots', $this->project->getId());
+        $this->client->request('GET', $getUrl);
+        $this->assertResponseIsSuccessful();
+        $listRes = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertTrue($listRes['success']);
+        $this->assertCount(1, $listRes['data']);
+        $this->assertEquals($snapshotId, $listRes['data'][0]['id']);
+
+        // 3. Supprimer l'instantané
+        $deleteUrl = sprintf('/api/projects/%d/snapshots/%s', $this->project->getId(), $snapshotId);
+        $this->client->request('DELETE', $deleteUrl);
+        $this->assertResponseIsSuccessful();
+        $delRes = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertTrue($delRes['success']);
+
+        // 4. Vérifier que la liste est vide à présent
+        $this->client->request('GET', $getUrl);
+        $this->assertResponseIsSuccessful();
+        $emptyRes = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertCount(0, $emptyRes['data']);
+    }
 }
