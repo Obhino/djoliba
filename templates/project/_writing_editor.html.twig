@@ -100,6 +100,14 @@
 				Prévisualiser
 			</button>
 
+			{# Historique IA #}
+			<button type="button" data-action="click->editor-ai#openHistoryModal" class="px-3.5 py-2 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-djoliba text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-sm" title="Consulter l'historique des requêtes et suggestions IA">
+				<svg class="w-4 h-4 text-djoliba" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+				</svg>
+				Historique IA
+			</button>
+
 			{# Aperçu de Rendu LaTeX Interprété (Modal) #}
 			<button type="button" data-writing-editor-target="renderBtn" data-action="click->writing-editor#showLatexPreview" class="px-3.5 py-2 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100/70 text-emerald-600 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-sm hidden" title="Afficher un aperçu interprété de votre LaTeX en modal">
 				<svg class="w-4 h-4 text-emerald-600 animate-pulse" fill="none" viewbox="0 0 24 24" stroke="currentColor">
@@ -754,6 +762,42 @@
 			</div>
 		</div>
 	</div>
+
+	{# MODALE D'HISTORIQUE DE L'ASSISTANT IA #}
+	<div data-editor-ai-target="historyModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col" style="height: 600px; max-height: 80vh; max-width: 42rem; width: 100%;">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba text-base">
+						📜
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-djoliba">Historique des suggestions IA</h3>
+						<p class="text-[10px] text-slate-400">Revoir et réutiliser vos échanges précédents</p>
+					</div>
+				</div>
+				<button type="button" data-action="click->editor-ai#closeHistoryModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+
+			<div class="p-8 overflow-y-auto custom-scrollbar flex-grow min-h-0" style="overflow-y: auto; flex-grow: 1; min-height: 0;">
+				<ul data-editor-ai-target="historyList" class="space-y-4">
+					{# Rempli dynamiquement en JS #}
+				</ul>
+				<div data-editor-ai-target="historyEmptyMsg" class="hidden text-center py-12 text-slate-400 italic text-xs">
+					Aucun échange précédent enregistré.
+				</div>
+			</div>
+
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end bg-slate-50/20">
+				<button type="button" data-action="click->editor-ai#closeHistoryModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">
+					Fermer
+				</button>
+			</div>
+		</div>
+	</div>
+
 </div>
 
 

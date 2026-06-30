@@ -14,9 +14,8 @@ export default class extends Controller {
     static targets = [
         'floatingToolbar', 'aiModal', 'modalTitle', 'modalContent',
         'replaceBtn', 'insertAfterBtn', 'acceptBtn', 'rejectBtn',
-        'historyList', 'historyContainer', 'askInput', 'askFormContainer',
-        'translateContainer', 'translateSelect', 'toneContainer', 'toneSelect',
-        'toggleHistoryBtn'
+        'historyList', 'historyEmptyMsg', 'historyModal', 'askInput', 'askFormContainer',
+        'translateContainer', 'translateSelect', 'toneContainer', 'toneSelect'
     ];
 
     connect() {
@@ -567,13 +566,14 @@ export default class extends Controller {
 
             if (response.ok && res.success) {
                 const history = res.data;
+                this.historyListTarget.innerHTML = '';
+
                 if (history.length === 0) {
-                    this.historyContainerTarget.classList.add('hidden');
+                    if (this.hasHistoryEmptyMsgTarget) this.historyEmptyMsgTarget.classList.remove('hidden');
                     return;
                 }
 
-                this.historyContainerTarget.classList.remove('hidden');
-                this.historyListTarget.innerHTML = '';
+                if (this.hasHistoryEmptyMsgTarget) this.historyEmptyMsgTarget.classList.add('hidden');
 
                 history.forEach(item => {
                     const date = new Date(item.createdAt).toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' });
@@ -581,14 +581,21 @@ export default class extends Controller {
                     const statusClass = item.accepted === true ? 'text-emerald-600 bg-emerald-50' : (item.accepted === false ? 'text-red-500 bg-red-50' : 'text-slate-400 bg-slate-50');
 
                     const li = document.createElement('li');
-                    li.className = 'py-3.5 px-4 bg-slate-50/50 rounded-2xl border border-slate-100 flex items-start justify-between gap-4 text-xs';
+                    li.className = 'p-4 bg-slate-50/50 rounded-2xl border border-slate-100 hover:border-djoliba/50 hover:bg-slate-50 cursor-pointer transition-all duration-200 flex items-start justify-between gap-4 text-xs';
+                    
+                    // Clic pour restaurer l'ancienne suggestion
+                    li.addEventListener('click', () => {
+                        this.restoreInteraction(item);
+                    });
+
                     li.innerHTML = `
                         <div class="flex-grow min-w-0">
                             <div class="flex items-center gap-2">
                                 <span class="font-bold text-djoliba capitalize">${this.translateActionName(item.action)}</span>
                                 <span class="text-[10px] text-slate-400">${date}</span>
                             </div>
-                            <p class="text-[11px] text-slate-500 truncate mt-1">Sél : "${item.selectedText || ''}"</p>
+                            <p class="text-[11px] text-slate-600 font-medium truncate mt-1">Sél : "${this.#escapeHtml(item.selectedText || '')}"</p>
+                            <p class="text-[10px] text-slate-400 truncate mt-0.5">Sugg : "${this.#escapeHtml(item.suggestion || '')}"</p>
                         </div>
                         <span class="px-2 py-0.5 rounded-lg font-bold text-[9px] ${statusClass} flex-shrink-0 align-self-start">${statusText}</span>
                     `;
@@ -598,6 +605,31 @@ export default class extends Controller {
         } catch (err) {
             console.error("Erreur de chargement de l'historique :", err);
         }
+    }
+
+    restoreInteraction(item) {
+        this.closeHistoryModal();
+
+        let title = "Assistant IA";
+        switch (item.action) {
+            case 'reasoning': title = "Vérification du Raisonnement"; break;
+            case 'reformulate': title = "Reformulations proposées"; break;
+            case 'equation': title = "Correction d'Équation LaTeX"; break;
+            case 'expand': title = "Développement d'Idées"; break;
+            case 'ask': title = "Réponse de l'Assistant"; break;
+            case 'redundancy': title = "Détection de Redondances"; break;
+            case 'code': title = "Génération de Code"; break;
+            case 'peer_review': title = "Rapport de Peer Review"; break;
+            case 'translate': title = "Traduction Académique"; break;
+            case 'tone': title = "Ajustement du Registre"; break;
+            case 'explain': title = "Glossaire & Concepts"; break;
+        }
+
+        this.currentInteractionId = item.id;
+        
+        // Ouvrir la modale IA standard et ré-afficher la suggestion historique
+        this.openModal(title, "");
+        this.renderResponse(item.suggestion, item.action);
     }
 
     translateActionName(action) {
@@ -614,21 +646,6 @@ export default class extends Controller {
             case 'tone': return "Ajustement ton";
             case 'explain': return "Glossaire";
             default: return action;
-        }
-    }
-
-    toggleHistory() {
-        if (!this.hasHistoryListTarget || !this.hasToggleHistoryBtnTarget) return;
-
-        const list = this.historyListTarget;
-        const btn = this.toggleHistoryBtnTarget;
-
-        if (list.classList.contains('hidden')) {
-            list.classList.remove('hidden');
-            btn.textContent = 'Masquer';
-        } else {
-            list.classList.add('hidden');
-            btn.textContent = 'Afficher';
         }
     }
 
@@ -665,6 +682,46 @@ export default class extends Controller {
         if (!this.hasAiModalTarget) return;
 
         const modal = this.aiModalTarget;
+        const card = modal.querySelector('.modal-card');
+        
+        if (card) {
+            card.classList.remove('scale-100', 'opacity-100');
+            card.classList.add('scale-95', 'opacity-0');
+        }
+
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0');
+
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
+    }
+
+    openHistoryModal() {
+        if (!this.hasHistoryModalTarget) return;
+
+        this.loadHistory();
+
+        const modal = this.historyModalTarget;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            const card = modal.querySelector('.modal-card');
+            if (card) {
+                card.classList.remove('scale-95', 'opacity-0');
+                card.classList.add('scale-100', 'opacity-100');
+            }
+        }, 50);
+    }
+
+    closeHistoryModal() {
+        if (!this.hasHistoryModalTarget) return;
+
+        const modal = this.historyModalTarget;
         const card = modal.querySelector('.modal-card');
         
         if (card) {
