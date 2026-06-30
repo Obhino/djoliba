@@ -1,0 +1,9 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: true
+
+    # Déclare les services de l'assistant IA comme publics pour pouvoir les mocker dans les tests fonctionnels
+    App\Service\Editor\AIAssistantService:
+        public: true

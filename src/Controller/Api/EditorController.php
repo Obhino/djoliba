@@ -261,7 +261,7 @@ class EditorController extends AbstractController
                 );
 
                 echo "data: " . json_encode(['interaction_id' => $interactionId]) . "\n\n";
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 echo "data: " . json_encode(['error' => $e->getMessage()]) . "\n\n";
             }
 
