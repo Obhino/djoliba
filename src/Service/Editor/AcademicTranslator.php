@@ -10,13 +10,27 @@ class AcademicTranslator
     {
     }
 
+    private function getPrompt(string $text, string $targetLanguage): string
+    {
+        return sprintf(
+            "Traduis le texte scientifique suivant en %s.\n" .
+            "Consignes impératives :\n" .
+            "- Conserve le ton académique formel et rigoureux.\n" .
+            "- Utilise la terminologie exacte de la discipline.\n" .
+            "- Préserve intacts les blocs de code et les expressions mathématiques LaTeX (ex: $...$, $$...$$).\n\n" .
+            "Texte : \"%s\"",
+            $targetLanguage,
+            $text
+        );
+    }
+
     public function translate(string $text, string $targetLanguage): string
     {
-        return "Academic Translation draft";
+        return $this->deepSeekService->call($this->getPrompt($text, $targetLanguage));
     }
 
     public function streamTranslate(string $text, string $targetLanguage, callable $callback): void
     {
-        $callback("Academic Translation draft");
+        $this->deepSeekService->stream($this->getPrompt($text, $targetLanguage), $callback);
     }
 }
