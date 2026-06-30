@@ -30,7 +30,9 @@ export default class extends Controller {
         'searchReplaceBar', 'searchInput', 'replaceInput', 'searchIndexIndicator',
         'focusBtn',
         'outlineBtn', 'outlinePanel', 'outlineContent',
-        'snapshotModal', 'snapshotNameInput', 'snapshotList', 'snapshotEmptyMsg'
+        'snapshotModal', 'snapshotNameInput', 'snapshotList', 'snapshotEmptyMsg',
+        'annotationBtn', 'annotationPanel', 'annotationList', 'annotationEmptyMsg',
+        'annotationModal', 'annotationSelectedText', 'annotationCommentInput'
     ];
 
     static values = {
@@ -39,7 +41,8 @@ export default class extends Controller {
         exportUrl: String,
         placeholder: String,
         storageKey: String,
-        initialMode: String
+        initialMode: String,
+        userName: String
     };
 
     async connect() {
@@ -95,7 +98,7 @@ export default class extends Controller {
         try {
             // Importation asynchrone parallélisée de tous les moteurs côté client
             const [
-                { Editor, Node, Extension },
+                { Editor, Node, Extension, Mark },
                 StarterKitModule,
                 PlaceholderModule,
                 LinkModule,
@@ -127,6 +130,7 @@ export default class extends Controller {
             this.EditorClass = Editor;
             this.NodeClass = Node;
             this.ExtensionClass = Extension;
+            this.MarkClass = Mark;
             this.StarterKit = StarterKitModule.default || StarterKitModule;
             this.Placeholder = PlaceholderModule.default || PlaceholderModule;
             this.Link = LinkModule.default || LinkModule;
@@ -155,7 +159,7 @@ export default class extends Controller {
             });
 
             // Préserver les balises HTML scientifiques pour éviter de perdre les tableaux, figures et notes de bas de page lors du round-trip HTML <-> Markdown
-            this.turndownService.keep(['table', 'thead', 'tbody', 'tr', 'th', 'td', 'figure', 'figcaption', 'img', 'sup']);
+            this.turndownService.keep(['table', 'thead', 'tbody', 'tr', 'th', 'td', 'figure', 'figcaption', 'img', 'sup', 'span']);
 
             // Charger CodeMirror & Highlight.js
             await Promise.all([
@@ -290,6 +294,38 @@ export default class extends Controller {
             }
         });
 
+        const Annotation = this.MarkClass.create({
+            name: 'annotation',
+            addAttributes() {
+                return {
+                    id: { default: null },
+                    comment: { default: '' },
+                    author: { default: '' },
+                    createdAt: { default: '' }
+                };
+            },
+            parseHTML() {
+                return [{
+                    tag: 'span[data-annotation-id]',
+                    getAttrs: dom => ({
+                        id: dom.getAttribute('data-annotation-id'),
+                        comment: dom.getAttribute('data-comment') || '',
+                        author: dom.getAttribute('data-author') || '',
+                        createdAt: dom.getAttribute('data-created-at') || ''
+                    })
+                }];
+            },
+            renderHTML({ HTMLAttributes }) {
+                return ['span', {
+                    'data-annotation-id': HTMLAttributes.id,
+                    'data-comment': HTMLAttributes.comment,
+                    'data-author': HTMLAttributes.author,
+                    'data-created-at': HTMLAttributes.createdAt,
+                    class: 'djoliba-annotation bg-amber-100 border-b border-amber-300 cursor-pointer hover:bg-amber-200/80 transition-colors'
+                }, 0];
+            }
+        });
+
         this.editor = new this.EditorClass({
             element: this.editorContainerTarget,
             extensions: [
@@ -317,12 +353,22 @@ export default class extends Controller {
                     HTMLAttributes: { class: 'border border-slate-200 p-2 bg-slate-50 text-djoliba font-bold' }
                 }),
                 Figure,
-                Figcaption
+                Figcaption,
+                Annotation
             ],
             content: initialHtml,
             editorProps: {
                 attributes: {
                     class: 'focus:outline-none min-h-[480px] h-full p-6 text-xs text-slate-800 leading-relaxed font-sans prose prose-slate max-w-none focus:ring-0 focus:border-transparent custom-scrollbar overflow-y-auto'
+                },
+                handleClick: (view, pos, event) => {
+                    const annEl = event.target.closest('span[data-annotation-id]');
+                    if (annEl) {
+                        const annId = annEl.getAttribute('data-annotation-id');
+                        this.highlightAnnotationInPanel(annId);
+                        return true;
+                    }
+                    return false;
                 },
                 handleDoubleClick: (view, pos, event) => {
                     const tableEl = event.target.closest('table');
@@ -468,6 +514,7 @@ export default class extends Controller {
         this.#updateCounters();
         this.#updatePreview();
         this.updateOutline();
+        this.updateAnnotationsList();
         this.#triggerAutosave();
     }
 
@@ -2788,6 +2835,242 @@ export default class extends Controller {
         } catch (err) {
             console.error(err);
             this.#setStatus("Erreur réseau.", true);
+        }
+    }
+
+    // =============================================
+    // COMMENTAIRES & ANNOTATIONS
+    // =============================================
+
+    toggleAnnotationsPanel() {
+        if (!this.hasAnnotationPanelTarget) return;
+
+        const panel = this.annotationPanelTarget;
+        const btn = this.hasAnnotationBtnTarget ? this.annotationBtnTarget : null;
+
+        const isHidden = panel.classList.contains('hidden');
+
+        if (isHidden) {
+            panel.classList.remove('hidden');
+            if (btn) {
+                btn.classList.add('bg-slate-100', 'text-djoliba');
+                btn.classList.remove('text-slate-500');
+            }
+            // Fermer l'outline pour éviter la surcharge d'informations si ouvert
+            if (this.hasOutlinePanelTarget && !this.outlinePanelTarget.classList.contains('hidden')) {
+                this.toggleOutline();
+            }
+            this.updateAnnotationsList();
+        } else {
+            panel.classList.add('hidden');
+            if (btn) {
+                btn.classList.remove('bg-slate-100', 'text-djoliba');
+                btn.classList.add('text-slate-500');
+            }
+        }
+    }
+
+    openAnnotationPrompt(selectedText) {
+        if (!this.hasAnnotationModalTarget) return;
+
+        this.annotationSelectedTextTarget.textContent = selectedText;
+        this.annotationCommentInputTarget.value = '';
+
+        const modal = this.annotationModalTarget;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            const card = modal.querySelector('.modal-card');
+            if (card) card.classList.remove('scale-95', 'opacity-0');
+            if (card) card.classList.add('scale-100', 'opacity-100');
+            this.annotationCommentInputTarget.focus();
+        }, 50);
+    }
+
+    closeAnnotationModal() {
+        if (!this.hasAnnotationModalTarget) return;
+
+        const modal = this.annotationModalTarget;
+        const card = modal.querySelector('.modal-card');
+        if (card) card.classList.remove('scale-100', 'opacity-100');
+        if (card) card.classList.add('scale-95', 'opacity-0');
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
+    }
+
+    confirmInsertAnnotation() {
+        const commentText = this.annotationCommentInputTarget.value.trim();
+        if (!commentText) {
+            alert("Veuillez saisir un commentaire.");
+            return;
+        }
+
+        if (this.currentMode !== 'wysiwyg' || !this.editor) {
+            alert("L'ajout de commentaires n'est actuellement possible que dans l'éditeur visuel.");
+            this.closeAnnotationModal();
+            return;
+        }
+
+        const annotationId = 'ann_' + Date.now();
+        const author = this.hasUserNameValue ? this.userNameValue : 'Chercheur';
+        const createdAt = new Date().toISOString();
+
+        // Appliquer la marque d'annotation
+        this.editor.chain().focus().setMark('annotation', {
+            id: annotationId,
+            comment: commentText,
+            author: author,
+            createdAt: createdAt
+        }).run();
+
+        this.closeAnnotationModal();
+        this.#handleContentChange();
+
+        // Ouvrir automatiquement le panneau pour montrer le commentaire ajouté
+        if (this.hasAnnotationPanelTarget && this.annotationPanelTarget.classList.contains('hidden')) {
+            this.toggleAnnotationsPanel();
+        } else {
+            this.updateAnnotationsList();
+        }
+    }
+
+    updateAnnotationsList() {
+        if (!this.hasAnnotationListTarget || !this.hasAnnotationPanelTarget) return;
+        if (this.annotationPanelTarget.classList.contains('hidden')) return;
+
+        const listContainer = this.annotationListTarget;
+        listContainer.innerHTML = '';
+
+        const annotations = [];
+        const seenIds = new Set();
+
+        if (this.currentMode === 'wysiwyg' && this.editor) {
+            this.editor.state.doc.descendants((node, pos) => {
+                node.marks.forEach(mark => {
+                    if (mark.type.name === 'annotation') {
+                        const attrs = mark.attrs;
+                        if (attrs.id && !seenIds.has(attrs.id)) {
+                            seenIds.add(attrs.id);
+                            annotations.push({
+                                id: attrs.id,
+                                comment: attrs.comment,
+                                author: attrs.author,
+                                createdAt: attrs.createdAt,
+                                text: node.text || '',
+                                pos: pos
+                            });
+                        }
+                    }
+                });
+            });
+        }
+
+        if (annotations.length === 0) {
+            if (this.hasAnnotationEmptyMsgTarget) this.annotationEmptyMsgTarget.classList.remove('hidden');
+            return;
+        }
+
+        if (this.hasAnnotationEmptyMsgTarget) this.annotationEmptyMsgTarget.classList.add('hidden');
+
+        annotations.forEach(ann => {
+            const card = document.createElement('div');
+            card.setAttribute('data-annotation-card-id', ann.id);
+            card.className = 'p-3 bg-white border border-slate-100 rounded-xl hover:border-slate-200 shadow-sm transition-all text-xs flex flex-col gap-2 relative group';
+
+            const header = document.createElement('div');
+            header.className = 'flex items-center justify-between text-[10px] text-slate-400 font-semibold';
+
+            const authorSpan = document.createElement('span');
+            authorSpan.className = 'text-djoliba font-bold';
+            authorSpan.textContent = ann.author;
+
+            const dateSpan = document.createElement('span');
+            dateSpan.textContent = ann.createdAt ? new Date(ann.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
+
+            header.appendChild(authorSpan);
+            header.appendChild(dateSpan);
+
+            const quote = document.createElement('div');
+            quote.className = 'text-[11px] text-slate-500 italic border-l-2 border-slate-200 pl-2 pr-1 line-clamp-2 cursor-pointer hover:text-djoliba';
+            quote.textContent = `« ${ann.text} »`;
+            quote.addEventListener('click', () => {
+                this.editor.commands.focus(ann.pos);
+                this.editor.commands.scrollIntoView();
+            });
+
+            const comment = document.createElement('p');
+            comment.className = 'text-slate-700 font-medium leading-relaxed';
+            comment.textContent = ann.comment;
+
+            const footer = document.createElement('div');
+            footer.className = 'flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity mt-1';
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'p-1 hover:bg-red-50 text-red-500 hover:text-red-700 rounded-lg transition-all text-[10px] font-bold flex items-center gap-1';
+            deleteBtn.textContent = 'Supprimer';
+            deleteBtn.addEventListener('click', () => {
+                if (confirm("Supprimer ce commentaire ?")) {
+                    this.removeAnnotation(ann.id);
+                }
+            });
+
+            footer.appendChild(deleteBtn);
+            card.appendChild(header);
+            card.appendChild(quote);
+            card.appendChild(comment);
+            card.appendChild(footer);
+
+            listContainer.appendChild(card);
+        });
+    }
+
+    highlightAnnotationInPanel(annId) {
+        if (!this.hasAnnotationPanelTarget) return;
+
+        const panel = this.annotationPanelTarget;
+        if (panel.classList.contains('hidden')) {
+            this.toggleAnnotationsPanel();
+        }
+
+        // Retirer la surbrillance active précédente
+        this.annotationListTarget.querySelectorAll('[data-annotation-card-id]').forEach(card => {
+            card.classList.remove('ring-2', 'ring-djoliba', 'border-djoliba');
+        });
+
+        // Trouver la carte correspondante
+        const activeCard = this.annotationListTarget.querySelector(`[data-annotation-card-id="${annId}"]`);
+        if (activeCard) {
+            activeCard.classList.add('ring-2', 'ring-djoliba', 'border-djoliba');
+            activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    removeAnnotation(id) {
+        if (!this.editor) return;
+
+        let transaction = this.editor.state.tr;
+        let found = false;
+
+        this.editor.state.doc.descendants((node, pos) => {
+            node.marks.forEach(mark => {
+                if (mark.type.name === 'annotation' && mark.attrs.id === id) {
+                    transaction = transaction.removeMark(pos, pos + node.nodeSize, mark.type);
+                    found = true;
+                }
+            });
+        });
+
+        if (found) {
+            this.editor.view.dispatch(transaction);
+            this.editor.view.focus();
+            this.#handleContentChange();
         }
     }
 }

@@ -154,6 +154,19 @@ export default class extends Controller {
     runPeerReview() { this.triggerAction('peer_review'); }
     runExplain() { this.triggerAction('explain'); }
 
+    addAnnotationPrompt() {
+        const selection = window.getSelection().toString().trim();
+        if (!selection) {
+            alert("Veuillez d'abord sélectionner du texte dans l'éditeur.");
+            return;
+        }
+
+        const writingEditor = this.application.getControllerForElementAndIdentifier(this.element, 'writing-editor');
+        if (writingEditor) {
+            writingEditor.openAnnotationPrompt(selection);
+        }
+    }
+
     triggerAskPrompt() {
         this.openModal("Demander à l'IA", "Rédigez votre question ou instruction pour le texte sélectionné :");
         this.askFormContainerTarget.classList.remove('hidden');
