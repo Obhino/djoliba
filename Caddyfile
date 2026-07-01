@@ -3,10 +3,6 @@
 }
 
 {$SERVER_NAME} {
-    tls {
-        issuer zerossl
-    }
-
     root * public/
     encode zstd gzip
 
