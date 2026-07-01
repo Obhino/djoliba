@@ -1,8 +1,13 @@
 {
     frankenphp
+    email contact@djolibasearch.com
 }
 
 {$SERVER_NAME} {
+    tls {
+        issuer acme https://acme.zerossl.com/v2/DV90
+    }
+
     root * public/
     encode zstd gzip
 
