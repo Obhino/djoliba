@@ -177,6 +177,14 @@
 				</svg>
 			</button>
 
+			{# Exporter en PDF #}
+			<button type="button" data-action="click->writing-editor#exportPdf" class="w-9 h-9 text-rose-600 rounded-xl flex items-center justify-center hover:bg-rose-50 transition-all" title="Exporter le document au format PDF (.pdf)">
+				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 15h6"/>
+				</svg>
+			</button>
+
 			{# Aide / Guide d'utilisation #}
 			<button type="button" data-action="click->writing-editor#openHelpModal" class="w-9 h-9 text-slate-500 hover:text-djoliba rounded-xl flex items-center justify-center hover:bg-slate-100 transition-all" title="Guide d'utilisation de l'éditeur scientifique">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">

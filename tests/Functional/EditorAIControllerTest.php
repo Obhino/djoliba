@@ -402,4 +402,37 @@ class EditorAIControllerTest extends WebTestCase
         $emptyRes = json_decode($this->client->getResponse()->getContent(), true);
         $this->assertCount(0, $emptyRes['data']);
     }
+
+    public function testExportEndpoints(): void
+    {
+        $this->client->loginUser($this->user);
+
+        // 1. Tester l'export LaTeX
+        $latexUrl = sprintf('/api/projects/%d/export/latex', $this->project->getId());
+        $this->client->request('POST', $latexUrl, [], [], [
+            'CONTENT_TYPE' => 'application/json'
+        ], json_encode([
+            'html' => '<p>Ceci est un texte scientifique <strong>très important</strong>.</p>',
+            'filename' => 'mon_test_export.tex'
+        ]));
+
+        $this->assertResponseIsSuccessful();
+        $this->assertEquals('application/x-tex', $this->client->getResponse()->headers->get('Content-Type'));
+        $this->assertStringContainsString('attachment; filename="mon_test_export.tex"', $this->client->getResponse()->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('très important', $this->client->getResponse()->getContent());
+
+        // 2. Tester l'export PDF
+        $pdfUrl = sprintf('/api/projects/%d/export/pdf', $this->project->getId());
+        $this->client->request('POST', $pdfUrl, [], [], [
+            'CONTENT_TYPE' => 'application/json'
+        ], json_encode([
+            'html' => '<p>Ceci est un texte scientifique <strong>très important</strong>.</p>',
+            'filename' => 'mon_test_export.pdf'
+        ]));
+
+        $this->assertResponseIsSuccessful();
+        $this->assertEquals('application/pdf', $this->client->getResponse()->headers->get('Content-Type'));
+        $this->assertStringContainsString('attachment; filename="mon_test_export.pdf"', $this->client->getResponse()->headers->get('Content-Disposition'));
+        $this->assertStringStartsWith('%PDF', $this->client->getResponse()->getContent());
+    }
 }

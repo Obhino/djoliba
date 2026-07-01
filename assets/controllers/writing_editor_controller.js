@@ -984,6 +984,68 @@ export default class extends Controller {
     }
 
     // ─────────────────────────────────────────────
+    // Exportation PDF (.pdf)
+    // ─────────────────────────────────────────────
+
+    async exportPdf() {
+        const filename = `djoliba_export_${this.projectIdValue || 'document'}.pdf`;
+        let html = '';
+
+        if (this.currentMode === 'wysiwyg') {
+            if (!this.editor) {
+                this.#setStatus("Éditeur non initialisé.", true);
+                return;
+            }
+            html = this.editor.getHTML();
+            if (!html || this.editor.isEmpty) {
+                this.#setStatus("L'éditeur est vide. Rien à exporter.", true);
+                return;
+            }
+        } else {
+            const rawLatex = this.codeMirror ? this.codeMirror.getValue() : (this.hasInputTarget ? this.inputTarget.value : '');
+            if (!rawLatex.trim()) {
+                this.#setStatus("L'éditeur est vide. Rien à exporter.", true);
+                return;
+            }
+            html = this.marked.parse(rawLatex);
+        }
+
+        this.#setStatus("Génération du fichier PDF...");
+
+        try {
+            const response = await fetch(`/api/projects/${this.projectIdValue}/export/pdf`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    html: html,
+                    filename: filename
+                })
+            });
+
+            if (!response.ok) throw new Error("Échec de la génération du PDF.");
+
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            window.URL.revokeObjectURL(blobUrl);
+            this.#setStatus("Exportation PDF réussie");
+            setTimeout(() => this.#setStatus(''), 2000);
+        } catch (err) {
+            console.error("Export PDF error:", err);
+            this.#setStatus("Erreur lors du téléchargement du PDF", true);
+        }
+    }
+
+    // ─────────────────────────────────────────────
     // Importation de Fichiers (DOCX & LaTeX)
     // ─────────────────────────────────────────────
 
