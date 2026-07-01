@@ -72,6 +72,7 @@ ENV OPENSERP_API_KEY=dummy_build_key_for_openserp
 ENV DB_PASSWORD=dummy_build_password_for_db
 
 # Compilation des assets (Tailwind CSS et AssetMapper)
+RUN php bin/console importmap:install --no-interaction
 RUN php bin/console tailwind:build --minify --no-interaction
 RUN php bin/console asset-map:compile --no-interaction
 
