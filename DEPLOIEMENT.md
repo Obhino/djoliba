@@ -86,7 +86,7 @@ Grâce au Dockerfile multi-stage, la compilation des assets (Tailwind CSS, Asset
 
 Lancez la construction et le démarrage des conteneurs en arrière-plan :
 ```bash
-docker compose -f compose.prod.yaml up -d --build
+docker compose --env-file .env.prod -f compose.prod.yaml up -d --build
 ```
 > ⏳ Cette étape peut prendre quelques minutes lors du premier déploiement car elle télécharge les images de base, installe les dépendances PHP (Composer) et compile les assets frontend.
 
@@ -98,17 +98,17 @@ Une fois les conteneurs démarrés, vous devez créer le schéma de base de donn
 
 1. Assurez-vous que la base de données est prête (healthy) :
 ```bash
-docker compose -f compose.prod.yaml ps
+docker compose --env-file .env.prod -f compose.prod.yaml ps
 ```
 
 2. Exécutez les migrations Doctrine pour créer les tables :
 ```bash
-docker compose -f compose.prod.yaml exec app php bin/console doctrine:migrations:migrate --no-interaction
+docker compose --env-file .env.prod -f compose.prod.yaml exec app php bin/console doctrine:migrations:migrate --no-interaction
 ```
 
 3. (Optionnel) Validation de l'intégrité des secrets :
 ```bash
-docker compose -f compose.prod.yaml exec app php bin/console app:check-secrets
+docker compose --env-file .env.prod -f compose.prod.yaml exec app php bin/console app:check-secrets
 ```
 
 🎉 **Félicitations, Djoliba est maintenant en ligne !** Vous pouvez y accéder via `https://votre-domaine.com`.
@@ -120,13 +120,13 @@ docker compose -f compose.prod.yaml exec app php bin/console app:check-secrets
 ### Voir les logs de l'application
 Si vous rencontrez une erreur (erreur 500), regardez les logs du conteneur `app` :
 ```bash
-docker compose -f compose.prod.yaml logs -f app
+docker compose --env-file .env.prod -f compose.prod.yaml logs -f app
 ```
 
 ### Vérifier le Worker Messenger
 Le worker s'occupe des tâches asynchrones (exports lourds, etc.). Pour vérifier son état :
 ```bash
-docker compose -f compose.prod.yaml logs -f messenger_worker
+docker compose --env-file .env.prod -f compose.prod.yaml logs -f messenger_worker
 ```
 
 ### Mise à jour de l'application (Déploiement d'une nouvelle version)
@@ -136,13 +136,13 @@ Lorsque vous poussez du nouveau code sur la branche principale :
 git pull origin main
 
 # 2. Reconstruire l'image (pour intégrer les nouvelles dépendances ou assets)
-docker compose -f compose.prod.yaml build app messenger_worker
+docker compose --env-file .env.prod -f compose.prod.yaml build app messenger_worker
 
 # 3. Redémarrer les conteneurs affectés
-docker compose -f compose.prod.yaml up -d
+docker compose --env-file .env.prod -f compose.prod.yaml up -d
 
 # 4. Jouer les éventuelles nouvelles migrations
-docker compose -f compose.prod.yaml exec app php bin/console doctrine:migrations:migrate --no-interaction
+docker compose --env-file .env.prod -f compose.prod.yaml exec app php bin/console doctrine:migrations:migrate --no-interaction
 ```
 
 ### Configuration des Tâches Planifiées (Cron)
