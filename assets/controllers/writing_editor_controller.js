@@ -1037,6 +1037,42 @@ export default class extends Controller {
         this.#setStatus("Préparation de l'impression PDF...");
 
         try {
+            // Créer un div temporaire pour le rendu intermédiaire (KaTeX, légendes de tableaux, syntax highlighting)
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+
+            // Rendu des titres de tableaux
+            tempDiv.querySelectorAll('table[data-caption]').forEach(table => {
+                const caption = table.getAttribute('data-caption');
+                const label = table.getAttribute('data-label') || '';
+                const captionEl = document.createElement('div');
+                captionEl.className = 'text-center text-xs text-slate-500 italic mb-2 mt-4 font-semibold';
+                captionEl.textContent = `Tableau : ${caption} ${label ? `(${label})` : ''}`;
+                table.parentNode.insertBefore(captionEl, table);
+            });
+
+            // Rendu mathématique automatique KaTeX côté client
+            if (window.renderMathInElement) {
+                window.renderMathInElement(tempDiv, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false },
+                        { left: '\\(', right: '\\)', display: false },
+                        { left: '\\[', right: '\\]', display: true }
+                    ],
+                    throwOnError: false
+                });
+            }
+
+            // Coloration syntaxique des blocs de code
+            if (window.hljs) {
+                tempDiv.querySelectorAll('pre code').forEach((block) => {
+                    window.hljs.highlightElement(block);
+                });
+            }
+
+            const renderedHtml = tempDiv.innerHTML;
+
             // Créer un iframe temporaire masqué pour imprimer
             const iframe = document.createElement('iframe');
             iframe.style.position = 'absolute';
@@ -1157,7 +1193,7 @@ export default class extends Controller {
             `);
 
             // Contenu
-            doc.write('<div class="content">' + html + '</div>');
+            doc.write('<div class="content">' + renderedHtml + '</div>');
             doc.write('</body></html>');
             doc.close();
 
