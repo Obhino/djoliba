@@ -45,6 +45,24 @@
         </div>
     </div>
 
+    <!-- Synthèse & Plan de Réalisation -->
+    {% if research_project.synthesis %}
+    <div class="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm space-y-4" data-controller="project-synthesis" data-project-synthesis-content-value="{{ research_project.synthesis }}">
+        <div class="flex items-center justify-between cursor-pointer" data-action="click->project-synthesis#toggle">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">📋</span>
+                <h2 class="text-xl font-display font-bold text-djoliba">Synthèse & Plan de Réalisation du Projet</h2>
+            </div>
+            <button class="p-2 text-slate-400 hover:text-djoliba rounded-lg hover:bg-slate-50 transition-colors font-bold text-xs" data-project-synthesis-target="toggleBtn">
+                ▼ Afficher
+            </button>
+        </div>
+        <div class="transition-all duration-300 hidden border-t border-slate-100 pt-6 prose prose-slate max-w-none text-slate-600 text-sm leading-relaxed" data-project-synthesis-target="container">
+            <!-- Contenu rendu par le contrôleur Stimulus -->
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Statistiques (Grid) -->
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">

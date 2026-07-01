@@ -53,6 +53,11 @@ class ResearchProjectControllerTest extends WebTestCase
         $rpId = $res['data']['id'];
         $this->assertEquals('Projet de Recherche Web', $res['data']['name']);
 
+        // Vérifier que la synthèse initiale et le plan de réalisation ont été générés
+        $rp = $em->getRepository(ResearchProject::class)->find($rpId);
+        $this->assertNotNull($rp->getSynthesis());
+        $this->assertStringContainsString('Plan de réalisation', $rp->getSynthesis());
+
         // 2. Vérification que la session contient l'ID actif
         $session = $this->client->getRequest()->getSession();
         $this->assertEquals($rpId, $session->get('active_research_project_id'));

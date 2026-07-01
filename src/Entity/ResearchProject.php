@@ -42,6 +42,10 @@ class ResearchProject
     #[Groups(['project:read', 'research_project:read'])]
     private ?string $status = 'active';
 
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['project:read', 'research_project:read'])]
+    private ?string $synthesis = null;
+
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     #[Groups(['project:read', 'research_project:read'])]
     private ?\DateTimeInterface $createdAt = null;
@@ -222,6 +226,17 @@ class ResearchProject
                 $project->setResearchProject(null);
             }
         }
+        return $this;
+    }
+
+    public function getSynthesis(): ?string
+    {
+        return $this->synthesis;
+    }
+
+    public function setSynthesis(?string $synthesis): static
+    {
+        $this->synthesis = $synthesis;
         return $this;
     }
 }

@@ -5,6 +5,7 @@ namespace App\Service\Project;
 use App\Entity\ResearchProject;
 use App\Entity\User;
 use App\Repository\ResearchProjectRepository;
+use App\Service\IA\DeepSeekService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
@@ -13,6 +14,7 @@ class ResearchProjectManager
     public function __construct(
         private EntityManagerInterface $entityManager,
         private ResearchProjectRepository $rpRepository,
+        private ?DeepSeekService $deepSeekService = null,
         private ?RequestStack $requestStack = null
     ) {}
 
@@ -28,6 +30,29 @@ class ResearchProjectManager
         $rp->setStatus('active');
         $rp->setIsTemplate($isTemplate);
         $rp->setCreatedAt(new \DateTime());
+
+        // Génération automatique d'une synthèse et d'un plan de réalisation du projet via l'IA
+        if ($this->deepSeekService) {
+            try {
+                if ($this->deepSeekService->isApiKeyPlaceholder()) {
+                    // Fallback de test
+                    $synthesis = "### Synthèse du Projet : " . $title . "\nCe projet a pour objectif d'étudier le sujet proposé.\n\n### Plan de réalisation proposé :\n1. **Phase 1 : Cadrage et revue bibliographique** (Mois 1)\n2. **Phase 2 : Méthodologie et collecte de données** (Mois 2-3)\n3. **Phase 3 : Analyse des résultats et rédaction** (Mois 4-6)";
+                } else {
+                    $prompt = sprintf(
+                        "Tu es un expert en méthodologie de recherche scientifique.\nL'utilisateur vient de créer un nouveau projet de recherche intitulé \"%s\".\nVoici sa description :\n\"%s\"\n\nRédige une synthèse claire, structurée et rigoureuse de la problématique de ce projet, puis propose un plan de réalisation détaillé, étape par étape (phases, jalons clés, livrables attendus, tâches clés). Formatte ta réponse en Markdown de haute qualité.",
+                        $title,
+                        $description ?? '(Aucune description fournie)'
+                    );
+                    $synthesis = $this->deepSeekService->call($prompt, [
+                        'system_prompt' => 'Tu es un assistant IA spécialisé dans l\'accompagnement et la méthodologie de recherche scientifique. Rédige une synthèse de projet et un plan de réalisation en Markdown.',
+                        'temperature' => 0.6
+                    ]);
+                }
+                $rp->setSynthesis($synthesis);
+            } catch (\Exception $e) {
+                $rp->setSynthesis("### Synthèse du projet\nErreur lors de la génération automatique : " . $e->getMessage());
+            }
+        }
 
         $this->entityManager->persist($rp);
         $this->entityManager->flush();

@@ -26,6 +26,7 @@ class DeepSeekService
         private string $apiKey,
         #[Autowire('%env(DEEPSEEK_API_URL)%')]
         private string $apiUrl,
+        private ?\App\Service\Project\ProjectSwitcher $projectSwitcher = null,
     ) {
     }
 
@@ -396,12 +397,10 @@ class DeepSeekService
     {
         $messages = [];
         
-        if (isset($options['system_prompt'])) {
-            $messages[] = ['role' => 'system', 'content' => $options['system_prompt']];
-        } else {
-            // Par défaut, fournir un contexte strict pour que DeepSeek se comporte bien
-            $messages[] = ['role' => 'system', 'content' => 'Tu es un assistant IA spécialisé dans la recherche académique, scientifique et technique pour la plateforme Djoliba. Réponds toujours de manière structurée, précise et rigoureuse. Utilise un formatage Markdown riche, clair et très lisible. Si l\'on te demande du JSON, ne renvoie STRICTEMENT QUE le code JSON valide, sans balises markdown ni texte d\'introduction ou de conclusion.'];
-        }
+        $systemPrompt = $options['system_prompt'] ?? 'Tu es un assistant IA spécialisé dans la recherche académique, scientifique et technique pour la plateforme Djoliba. Réponds toujours de manière structurée, précise et rigoureuse. Utilise un formatage Markdown riche, clair et très lisible. Si l\'on te demande du JSON, ne renvoie STRICTEMENT QUE le code JSON valide, sans balises markdown ni texte d\'introduction ou de conclusion.';
+        $systemPrompt .= $this->getActiveProjectContext();
+
+        $messages[] = ['role' => 'system', 'content' => $systemPrompt];
 
         $messages[] = ['role' => 'user', 'content' => $prompt];
 
@@ -431,11 +430,9 @@ class DeepSeekService
         }
         
         if (!$hasSystem) {
-            if (isset($options['system_prompt'])) {
-                $payloadMessages[] = ['role' => 'system', 'content' => $options['system_prompt']];
-            } else {
-                $payloadMessages[] = ['role' => 'system', 'content' => 'Tu es un assistant IA spécialisé dans la recherche académique, scientifique et technique pour la plateforme Djoliba. Réponds toujours de manière structurée, précise et rigoureuse. Utilise un formatage Markdown riche, clair et très lisible. Si l\'on te demande du JSON, ne renvoie STRICTEMENT QUE le code JSON valide, sans balises markdown ni texte d\'introduction ou de conclusion.'];
-            }
+            $systemPrompt = $options['system_prompt'] ?? 'Tu es un assistant IA spécialisé dans la recherche académique, scientifique et technique pour la plateforme Djoliba. Réponds toujours de manière structurée, précise et rigoureuse. Utilise un formatage Markdown riche, clair et très lisible. Si l\'on te demande du JSON, ne renvoie STRICTEMENT QUE le code JSON valide, sans balises markdown ni texte d\'introduction ou de conclusion.';
+            $systemPrompt .= $this->getActiveProjectContext();
+            $payloadMessages[] = ['role' => 'system', 'content' => $systemPrompt];
         }
 
         foreach ($messages as $message) {
@@ -473,5 +470,20 @@ class DeepSeekService
     public function isApiKeyPlaceholder(): bool
     {
         return $this->apiKey === 'test_key' || empty($this->apiKey);
+    }
+
+    private function getActiveProjectContext(): string
+    {
+        if ($this->projectSwitcher) {
+            $activeProject = $this->projectSwitcher->getActiveProject();
+            if ($activeProject) {
+                return sprintf(
+                    "\n\nIMPORTANT : Tu es dans le contexte du projet de recherche suivant de l'utilisateur :\n- Titre : %s\n- Description : %s\nOriente tes réponses, ton vocabulaire, tes suggestions, ta reformulation et ton analyse pour être pertinents vis-à-vis de ce sujet de recherche.",
+                    $activeProject->getTitle(),
+                    $activeProject->getDescription() ?? 'Non renseignée'
+                );
+            }
+        }
+        return '';
     }
 }
