@@ -67,9 +67,9 @@ COPY . .
 
 # Variables fictives pour passer la validation de boot/compilation
 ENV DATABASE_URL=sqlite:///:memory:
-ENV DEEPSEEK_API_KEY=sk_prod_placeholder
-ENV OPENSERP_API_KEY=os_prod_placeholder
-ENV DB_PASSWORD=place_your_db_password_here
+ENV DEEPSEEK_API_KEY=dummy_build_key_for_deepseek
+ENV OPENSERP_API_KEY=dummy_build_key_for_openserp
+ENV DB_PASSWORD=dummy_build_password_for_db
 
 # Compilation des assets (Tailwind CSS et AssetMapper)
 RUN php bin/console tailwind:build --minify --no-interaction
