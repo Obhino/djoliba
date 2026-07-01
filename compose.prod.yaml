@@ -101,6 +101,8 @@ services:
       OPENSERP_URL: http://openserp:7000
       MAILER_DSN: ${MAILER_DSN}
       MAILER_FROM: ${MAILER_FROM:-contact@djolibasearch.com}
+    healthcheck:
+      disable: true
     volumes:
       - uploads_prod_data:/var/www/html/var/uploads:rw
 
