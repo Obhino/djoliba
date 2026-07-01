@@ -426,7 +426,7 @@ class EditorAIControllerTest extends WebTestCase
         $this->client->request('POST', $pdfUrl, [], [], [
             'CONTENT_TYPE' => 'application/json'
         ], json_encode([
-            'html' => '<p>Ceci est un texte scientifique <strong>très important</strong>.</p>',
+            'html' => '<p>Ceci est un texte scientifique avec formule en ligne $E = mc^2$ et formule bloc $$x^2 + y^2 = z^2$$ <strong>très important</strong>.</p>',
             'filename' => 'mon_test_export.pdf'
         ]));
 

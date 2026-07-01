@@ -82,6 +82,27 @@ class ExportController extends AbstractController
             $filename .= '.pdf';
         }
 
+        // Remplacer les formules mathématiques LaTeX ($...$ et $$...$$) par des images CodeCogs pour Dompdf
+        // 1. Double dollars $$ (blocs centrés)
+        $html = preg_replace_callback('/\$\$(.*?)\$\$/s', function($matches) {
+            $formula = trim($matches[1]);
+            $url = 'https://latex.codecogs.com/png.image?\dpi{130}\bg{white}' . rawurlencode($formula);
+            if (!extension_loaded('gd')) {
+                return '<div style="text-align: center; margin: 15px 0; font-family: monospace; font-size: 10pt; color: #555;">[Équation : ' . htmlspecialchars($formula) . ']</div>';
+            }
+            return '<div style="text-align: center; margin: 15px 0;"><img src="' . $url . '" alt="' . htmlspecialchars($formula) . '" style="max-height: 80px; display: inline-block;" /></div>';
+        }, $html);
+
+        // 2. Simple dollar $ (en ligne)
+        $html = preg_replace_callback('/\$([^\$]+)\$/s', function($matches) {
+            $formula = trim($matches[1]);
+            $url = 'https://latex.codecogs.com/png.image?\dpi{110}\bg{white}' . rawurlencode($formula);
+            if (!extension_loaded('gd')) {
+                return '<span style="font-family: monospace; font-size: 9pt; color: #555;">[' . htmlspecialchars($formula) . ']</span>';
+            }
+            return '<img src="' . $url . '" alt="' . htmlspecialchars($formula) . '" style="vertical-align: middle; max-height: 18px; display: inline-block; margin: 0 2px;" />';
+        }, $html);
+
         // Configuration Dompdf
         $options = new Options();
         $options->set('defaultFont', 'DejaVu Sans');
