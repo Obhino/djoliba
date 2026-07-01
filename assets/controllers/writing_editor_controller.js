@@ -1034,38 +1034,149 @@ export default class extends Controller {
             html = this.marked.parse(rawLatex);
         }
 
-        this.#setStatus("Génération du fichier PDF...");
+        this.#setStatus("Préparation de l'impression PDF...");
 
         try {
-            const response = await fetch(`/api/projects/${this.projectIdValue}/export/pdf`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    html: html,
-                    filename: filename
-                })
+            // Créer un iframe temporaire masqué pour imprimer
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'absolute';
+            iframe.style.width = '0px';
+            iframe.style.height = '0px';
+            iframe.style.border = 'none';
+            document.body.appendChild(iframe);
+
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write('<html><head><title>' + filename + '</title>');
+
+            // Copier toutes les feuilles de styles de la page principale pour le rendu de KaTeX, etc.
+            document.querySelectorAll('link[rel="stylesheet"], style').forEach(style => {
+                doc.write(style.outerHTML);
             });
 
-            if (!response.ok) throw new Error("Échec de la génération du PDF.");
+            // Ajouter les règles CSS spécifiques pour l'impression A4 académique
+            doc.write(`
+                <style>
+                    @page {
+                        size: A4;
+                        margin: 2.5cm 2.0cm;
+                    }
+                    body {
+                        font-family: 'DejaVu Sans', 'Helvetica Neue', Arial, sans-serif;
+                        color: #0B2545;
+                        line-height: 1.6;
+                        font-size: 11pt;
+                        background: white;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    h1, h2, h3, h4 {
+                        color: #0B2545;
+                        font-weight: bold;
+                        page-break-after: avoid;
+                        margin-top: 1.2cm;
+                        margin-bottom: 0.4cm;
+                    }
+                    h1 { font-size: 18pt; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+                    h2 { font-size: 14pt; }
+                    h3 { font-size: 12pt; }
+                    p { margin-bottom: 15px; text-align: justify; }
+                    pre, code {
+                        font-family: monospace;
+                        background-color: #f5f5f5;
+                        font-size: 9pt;
+                    }
+                    pre {
+                        padding: 10px;
+                        border-left: 3px solid #ccc;
+                        display: block;
+                        margin: 15px 0;
+                        white-space: pre-wrap;
+                    }
+                    code {
+                        padding: 2px 4px;
+                    }
+                    blockquote {
+                        margin: 15px 0;
+                        padding-left: 15px;
+                        border-left: 4px solid #ccc;
+                        color: #555;
+                        font-style: italic;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 20px 0;
+                        font-size: 9.5pt;
+                    }
+                    th, td {
+                        border: 1px solid #ddd;
+                        padding: 8px;
+                        text-align: left;
+                    }
+                    th {
+                        background-color: #f9f9f9;
+                        font-weight: bold;
+                    }
+                    img {
+                        max-width: 100%;
+                        height: auto;
+                        margin: 15px 0;
+                        display: block;
+                    }
+                    .title-block {
+                        text-align: center;
+                        margin-bottom: 2cm;
+                    }
+                    .title-block .title {
+                        font-size: 24pt;
+                        font-weight: bold;
+                        color: #0B2545;
+                        margin-bottom: 10px;
+                    }
+                    .title-block .metadata {
+                        font-size: 10pt;
+                        color: #666;
+                        border-top: 1px solid #eee;
+                        border-bottom: 1px solid #eee;
+                        padding: 8px 0;
+                        margin-top: 15px;
+                    }
+                </style>
+            `);
+            doc.write('</head><body>');
 
-            const blob = await response.blob();
-            const blobUrl = window.URL.createObjectURL(blob);
-            
-            const link = document.createElement('a');
-            link.href = blobUrl;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            window.URL.revokeObjectURL(blobUrl);
-            this.#setStatus("Exportation PDF réussie");
-            setTimeout(() => this.#setStatus(''), 2000);
+            // Bloc de titre
+            doc.write(`
+                <div class="title-block">
+                    <div class="title">${this.projectIdValue ? 'Djoliba Search - Document de recherche' : 'Document de recherche'}</div>
+                    <div class="metadata">
+                        Date d'export : ${new Date().toLocaleDateString('fr-FR')} | ${new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}
+                    </div>
+                </div>
+            `);
+
+            // Contenu
+            doc.write('<div class="content">' + html + '</div>');
+            doc.write('</body></html>');
+            doc.close();
+
+            // Attendre un court instant que le contenu de l'iframe se charge, puis imprimer
+            setTimeout(() => {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+                
+                // Retirer l'iframe après l'impression
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                    this.#setStatus("Exportation PDF réussie");
+                    setTimeout(() => this.#setStatus(''), 2000);
+                }, 1000);
+            }, 600);
+
         } catch (err) {
             console.error("Export PDF error:", err);
-            this.#setStatus("Erreur lors du téléchargement du PDF", true);
+            this.#setStatus("Erreur lors de la génération du PDF", true);
         }
     }
 
