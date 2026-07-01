@@ -32,7 +32,9 @@ export default class extends Controller {
         'outlineBtn', 'outlinePanel', 'outlineContent',
         'snapshotModal', 'snapshotNameInput', 'snapshotList', 'snapshotEmptyMsg',
         'annotationBtn', 'annotationPanel', 'annotationList', 'annotationEmptyMsg',
-        'annotationModal', 'annotationSelectedText', 'annotationCommentInput'
+        'annotationModal', 'annotationSelectedText', 'annotationCommentInput',
+        'readabilityBadge', 'readabilityModal', 'readabilityFleschScore', 'readabilityFleschAppreciation',
+        'readabilityWordsPerSentence', 'readabilityPassivePercent', 'readabilityRecommendations'
     ];
 
     static values = {
@@ -68,6 +70,7 @@ export default class extends Controller {
             this.#initCodeMirror();
             this.#updateCounters();
             this.#updatePreview();
+            this.#updateReadabilityStats();
         } catch (err) {
             console.error("Échec d'initialisation de l'éditeur :", err);
         }
@@ -515,6 +518,7 @@ export default class extends Controller {
         this.#updatePreview();
         this.updateOutline();
         this.updateAnnotationsList();
+        this.#updateReadabilityStats();
         this.#triggerAutosave();
     }
 
@@ -3134,5 +3138,255 @@ export default class extends Controller {
             this.editor.view.focus();
             this.#handleContentChange();
         }
+    }
+
+    // =============================================
+    // LISIBILITÉ & ANALYSE DE STYLE
+    // =============================================
+
+    openReadabilityModal() {
+        if (!this.hasReadabilityModalTarget) return;
+
+        const modal = this.readabilityModalTarget;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            const card = modal.querySelector('.modal-card');
+            if (card) card.classList.remove('scale-95', 'opacity-0');
+            if (card) card.classList.add('scale-100', 'opacity-100');
+        }, 50);
+
+        this.#updateReadabilityStats();
+    }
+
+    closeReadabilityModal() {
+        if (!this.hasReadabilityModalTarget) return;
+
+        const modal = this.readabilityModalTarget;
+        const card = modal.querySelector('.modal-card');
+        if (card) card.classList.remove('scale-100', 'opacity-100');
+        if (card) card.classList.add('scale-95', 'opacity-0');
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
+    }
+
+    #updateReadabilityStats() {
+        if (!this.hasReadabilityBadgeTarget) return;
+
+        // 1. Extraire le texte brut du mode actif
+        let text = '';
+        if (this.currentMode === 'wysiwyg' && this.editor) {
+            text = this.editor.getText();
+        } else {
+            const raw = this.codeMirror ? this.codeMirror.getValue() : (this.hasInputTarget ? this.inputTarget.value : '');
+            // Nettoyage sommaire des balises LaTeX
+            text = raw
+                .replace(/\\(section|subsection|subsubsection|chapter|paragraph|textbf|textit|emph|cite|ref){([^}]+)}/g, '$2')
+                .replace(/\\[a-zA-Z]+/g, '')
+                .replace(/[\{\}\$]/g, '');
+        }
+
+        // Nettoyer les espaces multiples
+        text = text.replace(/\s+/g, ' ').trim();
+
+        if (!text || text.length < 10) {
+            this.readabilityBadgeTarget.textContent = 'Vide';
+            this.readabilityBadgeTarget.className = 'px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 font-bold text-[9px] uppercase tracking-wider';
+            
+            if (this.hasReadabilityFleschScoreTarget) {
+                this.readabilityFleschScoreTarget.textContent = '-';
+                this.readabilityFleschAppreciationTarget.textContent = 'En attente de texte';
+                this.readabilityWordsPerSentenceTarget.textContent = '0';
+                this.readabilityPassivePercentTarget.textContent = '0';
+                this.readabilityRecommendationsTarget.innerHTML = '<p class="text-xs text-slate-400 italic">Rédigez quelques phrases pour obtenir des suggestions de style.</p>';
+            }
+            return;
+        }
+
+        // 2. Découper en mots et en phrases
+        const words = text.match(/\b[a-zA-Z0-9àâäéèêëîïôöùûüÿœæç-]+\b/gi) || [];
+        const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 3);
+
+        const wordCount = words.length;
+        const sentenceCount = Math.max(1, sentences.length);
+
+        // 3. Compter les syllabes et mots complexes (> 3 syllabes)
+        let totalSyllables = 0;
+        let complexWordCount = 0;
+        words.forEach(w => {
+            const syl = this.#countSyllables(w);
+            totalSyllables += syl;
+            if (syl >= 3) {
+                complexWordCount++;
+            }
+        });
+
+        // 4. Calcul de l'indice de Flesch (Version française)
+        // Score = 206.84 - (1.015 * (mots / phrases)) - (84.6 * (syllabes / mots))
+        const avgWordsPerSentence = wordCount / sentenceCount;
+        const avgSyllablesPerWord = totalSyllables / Math.max(1, wordCount);
+        
+        const Flesch = 206.84 - (1.015 * avgWordsPerSentence) - (84.6 * avgSyllablesPerWord);
+        const score = Math.max(0, Math.min(100, Math.round(Flesch)));
+
+        // 5. Détecter la voix passive
+        let passiveCount = 0;
+        sentences.forEach(s => {
+            if (this.#detectPassiveSentence(s)) {
+                passiveCount++;
+            }
+        });
+        const passivePercent = (passiveCount / sentenceCount) * 100;
+
+        // 6. Définir l'appréciation globale et le style
+        let appreciation = '';
+        let badgeClass = '';
+        let badgeText = '';
+        if (score >= 70) {
+            appreciation = 'Très facile à lire';
+            badgeClass = 'px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 font-bold text-[9px] uppercase tracking-wider';
+            badgeText = 'Aisé 🟢';
+        } else if (score >= 50) {
+            appreciation = 'Standard / Accessible';
+            badgeClass = 'px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 font-bold text-[9px] uppercase tracking-wider';
+            badgeText = 'Aisé 🟢';
+        } else if (score >= 30) {
+            appreciation = 'Académique / Soutenu';
+            badgeClass = 'px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-bold text-[9px] uppercase tracking-wider';
+            badgeText = 'Moyen 🟡';
+        } else {
+            appreciation = 'Très complexe / Technique';
+            badgeClass = 'px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 font-bold text-[9px] uppercase tracking-wider';
+            badgeText = 'Complexe 🔴';
+        }
+
+        // Mettre à jour le badge du footer
+        this.readabilityBadgeTarget.textContent = badgeText;
+        this.readabilityBadgeTarget.className = badgeClass;
+
+        // Mettre à jour la modale
+        if (this.hasReadabilityFleschScoreTarget) {
+            this.readabilityFleschScoreTarget.textContent = score;
+            this.readabilityFleschAppreciationTarget.textContent = appreciation;
+            this.readabilityWordsPerSentenceTarget.textContent = avgWordsPerSentence.toFixed(1);
+            this.readabilityPassivePercentTarget.textContent = passivePercent.toFixed(1);
+
+            // Générer des recommandations dynamiques
+            const recContainer = this.readabilityRecommendationsTarget;
+            recContainer.innerHTML = '';
+
+            const recommendations = [];
+
+            if (score < 40) {
+                recommendations.push({
+                    type: 'warning',
+                    title: 'Vocabulaire technique soutenu',
+                    text: `Votre score Flesch (${score}) indique une lecture très académique. Si votre cible n'est pas uniquement scientifique, simplifiez vos phrases.`
+                });
+            }
+
+            if (avgWordsPerSentence > 22) {
+                recommendations.push({
+                    type: 'danger',
+                    title: 'Phrases très longues',
+                    text: `Vos phrases font en moyenne ${avgWordsPerSentence.toFixed(0)} mots. Les phrases de plus de 25 mots fatiguent le lecteur. Essayez de les couper.`
+                });
+            }
+
+            if (passivePercent > 20) {
+                recommendations.push({
+                    type: 'info',
+                    title: 'Voix passive fréquente',
+                    text: `Vous utilisez la voix passive dans ${passivePercent.toFixed(0)}% de vos phrases. Privilégiez la voix active pour dynamiser votre argumentation.`
+                });
+            }
+
+            const complexWordPercent = (complexWordCount / Math.max(1, wordCount)) * 100;
+            if (complexWordPercent > 18) {
+                recommendations.push({
+                    type: 'info',
+                    title: 'Mots longs',
+                    text: `${complexWordPercent.toFixed(0)}% de vos mots font 3 syllabes ou plus. Équilibrez-les avec des synonymes courts pour aérer.`
+                });
+            }
+
+            if (recommendations.length === 0) {
+                recContainer.innerHTML = `
+                    <div class="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-xs text-emerald-700 font-semibold">
+                        ✨ Excellent ! Votre écriture est fluide, dynamique et parfaitement équilibrée.
+                    </div>
+                `;
+            } else {
+                recommendations.forEach(rec => {
+                    const box = document.createElement('div');
+                    box.className = rec.type === 'danger'
+                        ? 'p-3 bg-red-50 border border-red-100 rounded-xl text-xs space-y-1'
+                        : (rec.type === 'warning' ? 'p-3 bg-amber-50 border border-amber-100 rounded-xl text-xs space-y-1' : 'p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs space-y-1');
+                    
+                    const title = document.createElement('strong');
+                    title.className = rec.type === 'danger'
+                        ? 'text-red-700 font-bold block'
+                        : (rec.type === 'warning' ? 'text-amber-700 font-bold block' : 'text-blue-700 font-bold block');
+                    title.textContent = rec.title;
+
+                    const desc = document.createElement('p');
+                    desc.className = 'text-slate-600 font-medium leading-relaxed';
+                    desc.textContent = rec.text;
+
+                    box.appendChild(title);
+                    box.appendChild(desc);
+                    recContainer.appendChild(box);
+                });
+            }
+        }
+    }
+
+    #countSyllables(word) {
+        word = word.toLowerCase().trim();
+        if (word.length <= 3) return 1;
+        word = word.replace(/[^a-zàâäéèêëîïôöùûüÿœæç]/g, '');
+        if (!word) return 0;
+
+        const vowels = /[aeiouyàâäéèêëîïôöùûüÿœæ]+/g;
+        const matches = word.match(vowels);
+        let count = matches ? matches.length : 0;
+
+        if (word.endsWith('e') && count > 1) {
+            count--;
+        }
+        return Math.max(1, count);
+    }
+
+    #detectPassiveSentence(sentence) {
+        const auxiliaries = /\b(suis|es|est|sommes|êtes|sont|étais|était|étions|étiez|étaient|serai|seras|sera|serons|serez|seront|sois|soit|soyons|soyez|soient|été|être)\b/i;
+        const participles = /\b\w+(é|és|ée|ées|u|us|ue|ues|i|is|ie|ies|t|ts|te|tes)\b/i;
+
+        if (auxiliaries.test(sentence) && participles.test(sentence)) {
+            const words = sentence.split(/\s+/);
+            let auxIdx = -1;
+            for (let i = 0; i < words.length; i++) {
+                if (auxiliaries.test(words[i])) {
+                    auxIdx = i;
+                    break;
+                }
+            }
+
+            if (auxIdx !== -1) {
+                for (let j = auxIdx + 1; j <= Math.min(auxIdx + 4, words.length - 1); j++) {
+                    if (participles.test(words[j])) {
+                        if (!/\b(un|une|le|la|les|des|du|de|pour|dans|sur|avec|par)\b/i.test(words[j])) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
     }
 }

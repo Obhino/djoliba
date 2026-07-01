@@ -319,6 +319,11 @@
 					<span data-writing-editor-target="pageCount" class="text-djoliba font-bold">1</span>
 					<span class="text-[10px] text-slate-400 font-medium">pages</span>
 				</div>
+				<span class="w-[1px] h-3 bg-slate-200"></span>
+				<button type="button" data-action="click->writing-editor#openReadabilityModal" class="flex items-center gap-1.5 hover:text-djoliba text-[11px] text-slate-500 font-bold transition-all" title="Statistiques de lisibilité et style">
+					<span>Lisibilité :</span>
+					<span data-writing-editor-target="readabilityBadge" class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 font-bold text-[9px] uppercase tracking-wider">Calcul...</span>
+				</button>
 			</div>
 		</div>
 	</div>
@@ -1024,6 +1029,69 @@
 			<div class="px-8 py-4 border-t border-slate-50 flex justify-end gap-3 bg-slate-50/20">
 				<button type="button" data-action="click->writing-editor#closeAnnotationModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">Annuler</button>
 				<button type="button" data-action="click->writing-editor#confirmInsertAnnotation" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Enregistrer</button>
+			</div>
+		</div>
+	</div>
+
+	{# MODALE DE LISIBILITÉ #}
+	<div data-writing-editor-target="readabilityModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba text-base">
+						📊
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-djoliba">Analyse de Lisibilité</h3>
+						<p class="text-[10px] text-slate-400">Statistiques de lisibilité et suggestions de style</p>
+					</div>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeReadabilityModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+
+			<div class="p-8 space-y-6">
+				{# Score Flesch #}
+				<div class="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+					<div>
+						<span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Score Flesch (Français)</span>
+						<span data-writing-editor-target="readabilityFleschAppreciation" class="text-xs font-bold text-slate-600">Calcul...</span>
+					</div>
+					<div data-writing-editor-target="readabilityFleschScore" class="text-2xl font-black text-djoliba">-</div>
+				</div>
+
+				{# Détails #}
+				<div class="grid grid-cols-2 gap-4">
+					<div class="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-1">
+						<span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Mots par phrase</span>
+						<div class="flex items-baseline gap-1">
+							<span data-writing-editor-target="readabilityWordsPerSentence" class="text-base font-bold text-slate-700">0</span>
+							<span class="text-[10px] text-slate-400 font-semibold">mots</span>
+						</div>
+					</div>
+					<div class="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-1">
+						<span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Phrases passives</span>
+						<div class="flex items-baseline gap-1">
+							<span data-writing-editor-target="readabilityPassivePercent" class="text-base font-bold text-slate-700">0</span>
+							<span class="text-[10px] text-slate-400 font-semibold">%</span>
+						</div>
+					</div>
+				</div>
+
+				{# Recommandations #}
+				<div class="space-y-3">
+					<h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Recommandations de style</h4>
+					<div data-writing-editor-target="readabilityRecommendations" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+						{# Rempli dynamiquement en JS #}
+					</div>
+				</div>
+			</div>
+
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeReadabilityModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">
+					Fermer
+				</button>
 			</div>
 		</div>
 	</div>
