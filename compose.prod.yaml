@@ -1,0 +1,117 @@
+services:
+
+  # ─────────────────────────────────────────────
+  # Base de données PostgreSQL (Production)
+  # ─────────────────────────────────────────────
+  database:
+    image: postgres:${POSTGRES_VERSION:-16}-alpine
+    container_name: djoliba_prod_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-djolibadb}
+      POSTGRES_USER:     ${POSTGRES_USER:-djoliba}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-djolibadb}", "-U", "${POSTGRES_USER:-djoliba}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - database_prod_data:/var/lib/postgresql/data:rw
+    # Pas d'exposition de port externe pour maximiser la sécurité en production
+
+  # ─────────────────────────────────────────────
+  # Cache Redis (Sessions + Cache IA + Messenger)
+  # ─────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: djoliba_prod_redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_prod_data:/data
+    # Pas d'exposition de port externe pour maximiser la sécurité en production
+
+  # ─────────────────────────────────────────────
+  # Application Symfony (FrankenPHP en Production)
+  # ─────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
+    container_name: djoliba_prod_app
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: prod
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-djoliba}:${DB_PASSWORD}@database:5432/${POSTGRES_DB:-djolibadb}?serverVersion=16&charset=utf8
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      OPENSERP_API_KEY: ${OPENSERP_API_KEY}
+      OPENSERP_URL: http://openserp:7000
+      # Nom de domaine de production pour la génération de certificats HTTPS par Caddy (ex: djoliba.science)
+      SERVER_NAME: ${SERVER_NAME:-:80}
+    volumes:
+      - uploads_prod_data:/var/www/html/var/uploads:rw
+      - public_uploads_prod_data:/var/www/html/public/uploads:rw
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+
+  # ─────────────────────────────────────────────
+  # Worker Messenger (Traitement asynchrone)
+  # ─────────────────────────────────────────────
+  messenger_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
+    container_name: djoliba_prod_worker
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: php bin/console messenger:consume async --time-limit=3600 -vv
+    environment:
+      APP_ENV: prod
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-djoliba}:${DB_PASSWORD}@database:5432/${POSTGRES_DB:-djolibadb}?serverVersion=16&charset=utf8
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      OPENSERP_API_KEY: ${OPENSERP_API_KEY}
+      OPENSERP_URL: http://openserp:7000
+    volumes:
+      - uploads_prod_data:/var/www/html/var/uploads:rw
+
+  # ─────────────────────────────────────────────
+  # OpenSERP (Moteur de recherche privé)
+  # ─────────────────────────────────────────────
+  openserp:
+    image: karust/openserp:latest
+    container_name: djoliba_prod_openserp
+    restart: unless-stopped
+    command: serve -a 0.0.0.0 -p 7000
+    # Pas d'exposition externe, accessible uniquement en réseau interne Docker
+
+volumes:
+  database_prod_data:
+  redis_prod_data:
+  uploads_prod_data:
+  public_uploads_prod_data:
