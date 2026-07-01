@@ -34,7 +34,8 @@ export default class extends Controller {
         'annotationBtn', 'annotationPanel', 'annotationList', 'annotationEmptyMsg',
         'annotationModal', 'annotationSelectedText', 'annotationCommentInput',
         'readabilityBadge', 'readabilityModal', 'readabilityFleschScore', 'readabilityFleschAppreciation',
-        'readabilityWordsPerSentence', 'readabilityPassivePercent', 'readabilityRecommendations'
+        'readabilityWordsPerSentence', 'readabilityPassivePercent', 'readabilityRecommendations',
+        'citationModal', 'citationSelect'
     ];
 
     static values = {
@@ -3388,5 +3389,86 @@ export default class extends Controller {
             }
         }
         return false;
+    }
+
+    // =============================================
+    // CITATIONS BIBTEX
+    // =============================================
+
+    async insertCitationModal() {
+        if (!this.editor) return;
+
+        const select = this.citationSelectTarget;
+        select.innerHTML = '<option value="">-- Chargement des sources... --</option>';
+
+        this.openCitationModal();
+
+        try {
+            const response = await fetch(`/api/projects/${this.projectIdValue}/citations`);
+            if (!response.ok) throw new Error("Échec du chargement des citations");
+            const res = await response.json();
+
+            if (res.success && res.data.length > 0) {
+                select.innerHTML = '';
+                res.data.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.key;
+                    opt.textContent = `[${item.key}] ${item.filename} (${item.created_at || 'N/A'})`;
+                    select.appendChild(opt);
+                });
+            } else {
+                select.innerHTML = '<option value="">-- Aucune source trouvée --</option>';
+            }
+        } catch (err) {
+            console.error("Citations load error:", err);
+            select.innerHTML = '<option value="">-- Erreur de chargement --</option>';
+        }
+    }
+
+    openCitationModal() {
+        if (!this.hasCitationModalTarget) return;
+        const modal = this.citationModalTarget;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            const card = modal.querySelector('.modal-card');
+            if (card) card.classList.remove('scale-95', 'opacity-0');
+            if (card) card.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    closeCitationModal() {
+        if (!this.hasCitationModalTarget) return;
+        const modal = this.citationModalTarget;
+        const card = modal.querySelector('.modal-card');
+        if (card) card.classList.remove('scale-100', 'opacity-100');
+        if (card) card.classList.add('scale-95', 'opacity-0');
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
+    }
+
+    confirmInsertCitation() {
+        const key = this.citationSelectTarget.value;
+        if (!key) return;
+
+        const citeString = `\\cite{${key}}`;
+
+        if (this.currentMode === 'wysiwyg' && this.editor) {
+            this.editor.chain().focus().insertContent(citeString).run();
+        } else if (this.currentMode === 'latex' && this.codeMirror) {
+            const doc = this.codeMirror.getDoc();
+            const cursor = doc.getCursor();
+            doc.replaceRange(citeString, cursor);
+            this.codeMirror.focus();
+        }
+
+        this.closeCitationModal();
+        this.#handleContentChange();
     }
 }

@@ -435,4 +435,31 @@ class EditorAIControllerTest extends WebTestCase
         $this->assertStringContainsString('attachment; filename="mon_test_export.pdf"', $this->client->getResponse()->headers->get('Content-Disposition'));
         $this->assertStringStartsWith('%PDF', $this->client->getResponse()->getContent());
     }
+
+    public function testCitationsEndpoint(): void
+    {
+        $this->client->loginUser($this->user);
+
+        // Créer un document fictif lié au projet pour vérifier qu'il est retourné
+        $em = static::getContainer()->get('doctrine')->getManager();
+        $doc = new \App\Entity\Document();
+        $doc->setFilename('article_test.pdf');
+        $doc->setStoredPath('/tmp/article_test.pdf');
+        $doc->setMimeType('application/pdf');
+        $doc->setSizeBytes(1024);
+        $doc->setProject($this->project);
+        $doc->setUser($this->user);
+        $em->persist($doc);
+        $em->flush();
+
+        $citationsUrl = sprintf('/api/projects/%d/citations', $this->project->getId());
+        $this->client->request('GET', $citationsUrl);
+
+        $this->assertResponseIsSuccessful();
+        $res = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertTrue($res['success']);
+        $this->assertCount(1, $res['data']);
+        $this->assertEquals('ref_' . $doc->getId(), $res['data'][0]['key']);
+        $this->assertEquals('article_test.pdf', $res['data'][0]['filename']);
+    }
 }

@@ -458,4 +458,38 @@ class EditorController extends AbstractController
             'success' => true
         ]);
     }
+
+    /**
+     * GET /api/projects/{id}/citations
+     */
+    #[Route('/projects/{id}/citations', name: 'api_project_get_citations', methods: ['GET'])]
+    public function getCitations(int $id): JsonResponse
+    {
+        $project = $this->projectManager->getProject($id);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            return $this->json([
+                'success' => false,
+                'error' => ['code' => 404, 'message' => 'Projet non trouvé.']
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $documents = $this->entityManager->getRepository(\App\Entity\Document::class)->findBy(['project' => $project]);
+
+        $data = [];
+        foreach ($documents as $doc) {
+            $data[] = [
+                'id' => $doc->getId(),
+                'key' => 'ref_' . $doc->getId(),
+                'filename' => $doc->getFilename(),
+                'title' => $doc->getFilename(),
+                'created_at' => $doc->getCreatedAt()?->format('Y')
+            ];
+        }
+
+        return $this->json([
+            'success' => true,
+            'data' => $data
+        ]);
+    }
 }

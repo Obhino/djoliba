@@ -119,6 +119,13 @@
 			<button type="button" data-action="click->writing-editor#insertReferenceModal" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Insérer une référence croisée">
 				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
 			</button>
+
+			{# Citation BibTeX #}
+			<button type="button" data-action="click->writing-editor#insertCitationModal" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Insérer une citation bibliographique BibTeX (\cite{key})">
+				<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+				</svg>
+			</button>
 			<button type="button" data-action="click->writing-editor#insertMathModal" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all flex-shrink-0" title="Insérer une équation mathématique LaTeX (∑)">
 				<span class="text-xs font-bold leading-none">∑</span>
 			</button>
@@ -1092,6 +1099,34 @@
 				<button type="button" data-action="click->writing-editor#closeReadabilityModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">
 					Fermer
 				</button>
+			</div>
+	</div>
+
+	{# MODALE D'INSERTION DE CITATION BIBTEX #}
+	<div data-writing-editor-target="citationModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba text-base">
+						📚
+					</div>
+					<h3 class="text-sm font-bold text-djoliba">Citation BibTeX</h3>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeCitationModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<div class="p-8 space-y-4">
+				<div>
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Choisir une référence de votre projet</label>
+					<select data-writing-editor-target="citationSelect" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold bg-white cursor-pointer">
+						<option value="">-- Chargement des sources... --</option>
+					</select>
+				</div>
+			</div>
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end gap-3 bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeCitationModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">Annuler</button>
+				<button type="button" data-action="click->writing-editor#confirmInsertCitation" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Insérer la citation</button>
 			</div>
 		</div>
 	</div>
