@@ -61,6 +61,8 @@ services:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       OPENSERP_API_KEY: ${OPENSERP_API_KEY}
       OPENSERP_URL: http://openserp:7000
+      MAILER_DSN: ${MAILER_DSN}
+      MAILER_FROM: ${MAILER_FROM:-contact@djolibasearch.com}
       # Nom de domaine de production pour la génération de certificats HTTPS par Caddy (ex: djoliba.science)
       SERVER_NAME: ${SERVER_NAME:-:80}
     volumes:
@@ -97,6 +99,8 @@ services:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       OPENSERP_API_KEY: ${OPENSERP_API_KEY}
       OPENSERP_URL: http://openserp:7000
+      MAILER_DSN: ${MAILER_DSN}
+      MAILER_FROM: ${MAILER_FROM:-contact@djolibasearch.com}
     volumes:
       - uploads_prod_data:/var/www/html/var/uploads:rw
 
