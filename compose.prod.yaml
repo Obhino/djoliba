@@ -68,6 +68,8 @@ services:
     volumes:
       - uploads_prod_data:/var/www/html/var/uploads:rw
       - public_uploads_prod_data:/var/www/html/public/uploads:rw
+      - caddy_data:/data
+      - caddy_config:/config
     ports:
       - "80:80"
       - "443:443"
@@ -121,3 +123,5 @@ volumes:
   redis_prod_data:
   uploads_prod_data:
   public_uploads_prod_data:
+  caddy_data:
+  caddy_config:
