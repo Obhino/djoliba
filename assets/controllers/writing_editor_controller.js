@@ -661,7 +661,15 @@ export default class extends Controller {
         if (!this.tipTapLoaded || mode === this.currentMode) return;
 
         if (mode === 'wysiwyg') {
-            // LaTeX/Markdown brut ➔ WYSIWYG (pas de transfert automatique de texte)
+            // LaTeX/Markdown brut ➔ WYSIWYG (transfert automatique de texte)
+            if (!this.isSettingContent) {
+                const rawLatex = this.codeMirror ? this.codeMirror.getValue() : (this.hasInputTarget ? this.inputTarget.value : '');
+                if (this.editor) {
+                    const html = this.#convertLatexToHtml(rawLatex);
+                    this.editor.commands.setContent(html);
+                }
+            }
+
             if (this.hasEditorContainerTarget) {
                 this.editorContainerTarget.classList.remove('hidden');
             }
@@ -672,7 +680,18 @@ export default class extends Controller {
                 this.inputTarget.classList.add('hidden');
             }
         } else {
-            // WYSIWYG ➔ LaTeX/Markdown brut (pas de transfert automatique de texte)
+            // WYSIWYG ➔ LaTeX/Markdown brut (transfert automatique de texte)
+            if (!this.isSettingContent && this.editor) {
+                const html = this.editor.getHTML();
+                const latex = this.#convertHtmlToLatex(html);
+                if (this.codeMirror) {
+                    this.codeMirror.setValue(latex);
+                    this.codeMirror.refresh();
+                } else if (this.hasInputTarget) {
+                    this.inputTarget.value = latex;
+                }
+            }
+
             if (this.hasEditorContainerTarget) {
                 this.editorContainerTarget.classList.add('hidden');
             }
@@ -1640,6 +1659,8 @@ export default class extends Controller {
      * @param {string} mode Le mode d'édition à activer ('wysiwyg' ou 'latex')
      */
     setEditorContent(wysiwygContent, latexContent, mode = 'wysiwyg') {
+        this.isSettingContent = true;
+
         if (this.editor) {
             const initialHtml = wysiwygContent ? this.marked.parse(wysiwygContent) : '';
             this.editor.commands.setContent(initialHtml);
@@ -1656,6 +1677,8 @@ export default class extends Controller {
         // Forcer le mode pour mettre à jour l'affichage
         this.currentMode = (mode === 'wysiwyg') ? 'latex' : 'wysiwyg';
         this.setMode(mode);
+
+        this.isSettingContent = false;
 
         this.#updateCounters();
         this.#updatePreview();
@@ -3470,5 +3493,100 @@ export default class extends Controller {
 
         this.closeCitationModal();
         this.#handleContentChange();
+    }
+
+    #convertHtmlToLatex(html) {
+        if (!html) return '';
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        const walk = (node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                return node.textContent;
+            }
+
+            if (node.nodeType !== Node.ELEMENT_NODE) {
+                return '';
+            }
+
+            let childrenText = '';
+            node.childNodes.forEach(child => {
+                childrenText += walk(child);
+            });
+
+            const tagName = node.tagName.toLowerCase();
+
+            switch (tagName) {
+                case 'h1':
+                    return `\\section{${childrenText.trim()}}\n\n`;
+                case 'h2':
+                    return `\\subsection{${childrenText.trim()}}\n\n`;
+                case 'h3':
+                    return `\\subsubsection{${childrenText.trim()}}\n\n`;
+                case 'strong':
+                case 'b':
+                    return `\\textbf{${childrenText}}`;
+                case 'em':
+                case 'i':
+                    return `\\textit{${childrenText}}`;
+                case 'p':
+                    return `${childrenText.trim()}\n\n`;
+                case 'ul':
+                    return `\\begin{itemize}\n${childrenText}\\end{itemize}\n\n`;
+                case 'ol':
+                    return `\\begin{enumerate}\n${childrenText}\\end{enumerate}\n\n`;
+                case 'li':
+                    return `  \\item ${childrenText.trim()}\n`;
+                case 'br':
+                    return `\\\\\n`;
+                default:
+                    return childrenText;
+            }
+        };
+
+        let latex = '';
+        doc.body.childNodes.forEach(child => {
+            latex += walk(child);
+        });
+
+        return latex.replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    #convertLatexToHtml(latex) {
+        if (!latex) return '';
+
+        let html = latex;
+
+        // Convert lists first (itemize & enumerate)
+        html = html.replace(/\\begin{itemize}([\s\S]*?)\\end{itemize}/g, (match, content) => {
+            const items = content.split(/\\item/).map(item => item.trim()).filter(Boolean);
+            return '<ul>' + items.map(item => `<li>${item}</li>`).join('') + '</ul>';
+        });
+
+        html = html.replace(/\\begin{enumerate}([\s\S]*?)\\end{enumerate}/g, (match, content) => {
+            const items = content.split(/\\item/).map(item => item.trim()).filter(Boolean);
+            return '<ol>' + items.map(item => `<li>${item}</li>`).join('') + '</ol>';
+        });
+
+        // Convert inline styles
+        html = html.replace(/\\textbf{([^}]+)}/g, '<strong>$1</strong>');
+        html = html.replace(/\\(textit|emph){([^}]+)}/g, '<em>$2</em>');
+
+        // Convert headings
+        html = html.replace(/\\section{([^}]+)}/g, '<h1>$1</h1>');
+        html = html.replace(/\\subsection{([^}]+)}/g, '<h2>$1</h2>');
+        html = html.replace(/\\subsubsection{([^}]+)}/g, '<h3>$1</h3>');
+
+        // Convert double newlines to paragraphs
+        const paragraphs = html.split(/\n\n+/);
+        html = paragraphs.map(p => {
+            p = p.trim();
+            if (!p) return '';
+            if (/^<(ul|ol|h1|h2|h3)/i.test(p)) return p;
+            return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+        }).join('');
+
+        return html;
     }
 }
