@@ -34,11 +34,11 @@
 	data-controller="writing-editor editor-ai" data-writing-editor-project-id-value="{{ project.id }}" data-writing-editor-save-url-value="{{ save_url }}" data-writing-editor-export-url-value="{{ export_url }}" data-writing-editor-placeholder-value="{{ placeholder }}" data-writing-editor-storage-key-value="{{ storage_key }}" data-writing-editor-initial-mode-value="{{ project.metadata.writing_mode|default('wysiwyg') }}" data-writing-editor-user-name-value="{{ app.user.firstName|default('Chercheur') }}" class="w-full {% if is_thesis|default(false) %}flex-grow flex flex-col min-h-0 overflow-hidden space-y-2.5{% else %}space-y-6{% endif %}"> {# 1. BARRE D'OUTILS PRINCIPALE #}
 
 	{% if is_thesis|default(false) %}
-	<div class="border border-slate-100 rounded-3xl p-1 bg-white flex-grow flex flex-col min-h-0 overflow-hidden shadow-sm mx-8">
+	<div class="border border-slate-100 rounded-3xl p-1 bg-white flex-grow flex flex-col min-h-0 overflow-hidden shadow-sm">
 	{% endif %}
 
 	<div
-		class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between {% if is_thesis|default(false) %}mx-8{% endif %}">
+		class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
 
 		{# Groupe Gauche : Onglets / Bascule de Mode #}
 		<div class="flex items-center gap-2 bg-slate-50 border border-slate-100 p-1 rounded-xl shadow-inner w-full md:w-auto">
