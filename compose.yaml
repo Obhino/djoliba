@@ -68,8 +68,9 @@ services:
       - .:/var/www/html:rw
       - ./var/uploads:/var/www/html/var/uploads:rw
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-    ports:
-      - "8000:8000"
+    # ports:
+    #   - "8000:8000"
+
 
   # ─────────────────────────────────────────────
   # Worker Messenger — traitement asynchrone

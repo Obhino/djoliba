@@ -73,7 +73,12 @@ class OpenSerpSearchService
 
         // 2. Définir le moteur de recherche
         $allowedEngines = ['google', 'duck', 'mega'];
-        $cleanEngine = in_array(strtolower($engine), $allowedEngines, true) ? strtolower($engine) : 'google';
+        $cleanEngine = in_array(strtolower($engine), $allowedEngines, true) ? strtolower($engine) : 'duck';
+        
+        // Anti-Captcha OVH : On force DuckDuckGo car Google bloque les IP serveurs
+        if ($cleanEngine === 'google') {
+            $cleanEngine = 'duck';
+        }
 
         // 3. Calculer une clé de cache Redis unique
         $cacheKey = 'openserp_' . md5($finalQuery . '_' . $limit . '_' . $cleanEngine);

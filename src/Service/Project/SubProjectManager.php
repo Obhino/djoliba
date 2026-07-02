@@ -52,7 +52,7 @@ class SubProjectManager
         $legacyProject->setStatus('active');
         $legacyProject->setCreatedAt(new \DateTime());
         $legacyProject->setResearchProject($researchProject);
-        $legacyProject->setSubProject($subProject);
+        $subProject->addProject($legacyProject);
 
         $this->entityManager->persist($legacyProject);
         $this->entityManager->flush();

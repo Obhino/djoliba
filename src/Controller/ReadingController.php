@@ -3,8 +3,10 @@
 namespace App\Controller;
 
 use App\Repository\DocumentRepository;
+use App\Repository\SubProjectRepository;
 use App\Service\File\FileStorageService;
 use App\Service\Project\ProjectManager;
+use App\Service\Project\SubProjectManager;
 use App\Service\ReadingService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -23,6 +25,8 @@ class ReadingController extends AbstractController
         private FileStorageService $fileStorageService,
         private ProjectManager     $projectManager,
         private DocumentRepository $documentRepository,
+        private SubProjectManager  $subProjectManager,
+        private SubProjectRepository $subProjectRepository,
     ) {
     }
 
@@ -56,16 +60,60 @@ class ReadingController extends AbstractController
         }
 
         try {
-            $document = $this->fileStorageService->upload($file, $project, $this->getUser());
+            $originalFilename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $researchProject = $project->getResearchProject();
+
+            // Vérifier s'il existe déjà un sous-projet du même nom, de type "reading" et actif
+            $existingSubProject = $this->subProjectRepository->findOneBy([
+                'user'            => $this->getUser(),
+                'researchProject' => $researchProject,
+                'type'            => 'reading',
+                'name'            => $originalFilename,
+                'status'          => 'active',
+            ]);
+
+            if ($existingSubProject) {
+                $existingProject = $existingSubProject->getProjects()->first();
+                $redirectUrl = $existingProject
+                    ? $this->generateUrl('app_project_reading', ['id' => $existingProject->getId()])
+                    : null;
+
+                return $this->json([
+                    'success' => false,
+                    'error'   => [
+                        'code'         => 409,
+                        'message'      => 'Un document du même nom existe déjà.',
+                        'redirect_url' => $redirectUrl,
+                    ],
+                ], Response::HTTP_CONFLICT);
+            }
+
+            $subProject = $this->subProjectManager->createForUser(
+                $this->getUser(),
+                'reading',
+                $originalFilename,
+                $researchProject
+            );
+
+            // Récupérer le projet compagnon pour y lier le document
+            $newProject = $subProject->getProjects()->first();
+            if (!$newProject) {
+                throw new \RuntimeException("Le projet compagnon n'a pas pu être créé.");
+            }
+
+            $document = $this->fileStorageService->upload($file, $newProject, $this->getUser());
+
+            $redirectUrl = $this->generateUrl('app_project_reading', ['id' => $newProject->getId()]);
 
             return $this->json([
                 'success' => true,
                 'data'    => [
-                    'document_id' => $document->getId(),
-                    'filename'    => $document->getFilename(),
-                    'mime_type'   => $document->getMimeType(),
-                    'size_bytes'  => $document->getSizeBytes(),
-                    'message'     => 'Fichier uploadé. La synthèse est générée en arrière-plan.',
+                    'document_id'  => $document->getId(),
+                    'filename'     => $document->getFilename(),
+                    'mime_type'    => $document->getMimeType(),
+                    'size_bytes'   => $document->getSizeBytes(),
+                    'redirect_url' => $redirectUrl,
+                    'message'      => 'Nouveau sous-projet créé avec succès. Redirection...',
                 ],
             ], Response::HTTP_CREATED);
 

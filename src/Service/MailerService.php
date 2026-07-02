@@ -10,12 +10,13 @@ use Symfony\Component\Mime\Address;
 class MailerService
 {
     private MailerInterface $mailer;
-    private string $senderEmail = 'no-reply@djoliba.local';
+    private string $senderEmail;
     private string $senderName = 'Djoliba';
 
     public function __construct(MailerInterface $mailer)
     {
         $this->mailer = $mailer;
+        $this->senderEmail = $_ENV['MAILER_FROM'] ?? 'contact@djolibasearch.com';
     }
 
     /**

@@ -218,13 +218,32 @@ export default class extends Controller {
         xhr.onload = async () => {
             if (xhr.status === 201 || xhr.status === 200) {
                 const res = JSON.parse(xhr.responseText);
-                const docId = res.data.document_id;
-                this.documentIdValue = docId;
                 
-                this.showToast('Document uploadé. Génération de la synthèse...', 'success');
-                
-                // Lancer la synthèse
-                await this.fetchSynthesis(docId);
+                if (res.data.redirect_url) {
+                    this.showToast('Nouveau sous-projet créé. Redirection...', 'success');
+                    setTimeout(() => {
+                        window.location.href = res.data.redirect_url;
+                    }, 800);
+                } else {
+                    const docId = res.data.document_id;
+                    this.documentIdValue = docId;
+                    this.showToast('Document uploadé. Génération de la synthèse...', 'success');
+                    // Lancer la synthèse
+                    await this.fetchSynthesis(docId);
+                }
+            } else if (xhr.status === 409) {
+                this.#resetUploadProgress();
+                let redirectUrl = null;
+                let errorMsg = 'Un document avec le même nom existe déjà.';
+                try {
+                    const res = JSON.parse(xhr.responseText);
+                    redirectUrl = res.error?.redirect_url;
+                    errorMsg = res.error?.message || errorMsg;
+                } catch (e) {}
+
+                if (redirectUrl && confirm(`${errorMsg}\nSouhaitez-vous être redirigé vers sa synthèse ?`)) {
+                    window.location.href = redirectUrl;
+                }
             } else {
                 let errorMsg = 'Erreur lors du téléversement.';
                 try {

@@ -22,21 +22,10 @@ class TestModeController extends AbstractController
     }
 
     #[Route('/test-mode/enable', name: 'app_test_mode_enable')]
-    public function enable(
-        Request $request,
-        UserRepository $userRepository,
-        Security $security
-    ): Response {
+    public function enable(Request $request): Response 
+    {
         $session = $request->getSession();
         $session->set('is_test_mode', true);
-
-        // Se connecter avec l'utilisateur spécifié par l'utilisateur
-        $testEmail = 'francoisagre2@gmail.com';
-        $user = $userRepository->findOneBy(['email' => $testEmail]);
-        
-        if ($user) {
-            $security->login($user);
-        }
 
         return $this->redirectToRoute('app_hub');
     }
