@@ -12,15 +12,33 @@
   - storage_key : Clé LocalStorage de sauvegarde locale
 #}
 
+<style>
+	/* TipTap / ProseMirror Full Height Editable Area */
+	.tiptap.ProseMirror {
+		min-height: 100% !important;
+		height: 100% !important;
+		outline: none !important;
+		padding: 1.5rem !important;
+	}
+	.tiptap.ProseMirror:focus {
+		outline: none !important;
+	}
+</style>
+
 {% set save_url = save_url|default(path('api_project_save_content', {id: project.id})) %}
 {% set export_url = export_url|default(path('api_editor_export_latex')) %}
 {% set placeholder = placeholder|default('Rédigez votre article ou thèse ici. Le Markdown et le LaTeX sont supportés...') %}
 {% set storage_key = storage_key|default('djoliba_draft_' ~ project.id) %}
 
 	<div
-	data-controller="writing-editor editor-ai" data-writing-editor-project-id-value="{{ project.id }}" data-writing-editor-save-url-value="{{ save_url }}" data-writing-editor-export-url-value="{{ export_url }}" data-writing-editor-placeholder-value="{{ placeholder }}" data-writing-editor-storage-key-value="{{ storage_key }}" data-writing-editor-initial-mode-value="{{ project.metadata.writing_mode|default('wysiwyg') }}" data-writing-editor-user-name-value="{{ app.user.firstName|default('Chercheur') }}" class="{% if is_thesis|default(false) %}flex-grow flex flex-col min-h-0 overflow-hidden space-y-4{% else %}space-y-6{% endif %}"> {# 1. BARRE D'OUTILS PRINCIPALE #}
+	data-controller="writing-editor editor-ai" data-writing-editor-project-id-value="{{ project.id }}" data-writing-editor-save-url-value="{{ save_url }}" data-writing-editor-export-url-value="{{ export_url }}" data-writing-editor-placeholder-value="{{ placeholder }}" data-writing-editor-storage-key-value="{{ storage_key }}" data-writing-editor-initial-mode-value="{{ project.metadata.writing_mode|default('wysiwyg') }}" data-writing-editor-user-name-value="{{ app.user.firstName|default('Chercheur') }}" class="{% if is_thesis|default(false) %}flex-grow flex flex-col min-h-0 overflow-hidden space-y-2.5{% else %}space-y-6{% endif %}"> {# 1. BARRE D'OUTILS PRINCIPALE #}
+
+	{% if is_thesis|default(false) %}
+	<div class="border border-slate-100 rounded-3xl p-1 bg-white flex-grow flex flex-col min-h-0 overflow-hidden shadow-sm mx-8">
+	{% endif %}
+
 	<div
-		class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+		class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between {% if is_thesis|default(false) %}mx-8{% endif %}">
 
 		{# Groupe Gauche : Onglets / Bascule de Mode #}
 		<div class="flex items-center gap-2 bg-slate-50 border border-slate-100 p-1 rounded-xl shadow-inner w-full md:w-auto">
@@ -254,21 +272,21 @@
 
 		{# Panneau d'Édition #}
 		<div
-			class="flex-1 min-w-0 bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm flex flex-col transition-all {% if is_thesis|default(false) %}flex-grow min-h-0{% else %}min-h-[520px]{% endif %}">
+			class="flex-1 min-w-0 bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm flex flex-col transition-all {% if is_thesis|default(false) %}flex-grow min-h-0{% else %}min-h-[68vh]{% endif %}">
 			{# Champ caché contenant le brouillon WYSIWYG indépendant #}
 			<input
 			type="hidden" data-writing-editor-target="wysiwygInput" value="{{ project.metadata.writing_content_wysiwyg|default(project.metadata.writing_content|default('')) }}">
 
 			{# Conteneur TipTap WYSIWYG #}
-			<div data-writing-editor-target="editorContainer" class="flex-grow bg-slate-50/30 overflow-hidden {% if is_thesis|default(false) %}min-h-0{% else %}min-h-[480px]{% endif %}"></div>
+			<div data-writing-editor-target="editorContainer" class="flex-grow bg-slate-50/30 overflow-hidden {% if is_thesis|default(false) %}min-h-0{% else %}min-h-[62vh]{% endif %}"></div>
 
 			{# Textarea pour LaTeX brut / Markdown #}
-			<textarea data-writing-editor-target="input" data-action="input->writing-editor#handleContentChange" class="hidden w-full flex-grow p-6 bg-slate-900 text-slate-100 font-mono text-xs focus:outline-none focus:ring-0 border-0 leading-relaxed resize-none custom-scrollbar {% if is_thesis|default(false) %}min-h-0{% else %}min-h-[480px]{% endif %}" placeholder="{{ placeholder }}">{{ project.metadata.writing_content_latex|default(project.metadata.writing_content|default('')) }}</textarea>
+			<textarea data-writing-editor-target="input" data-action="input->writing-editor#handleContentChange" class="hidden w-full flex-grow p-6 bg-slate-900 text-slate-100 font-mono text-xs focus:outline-none focus:ring-0 border-0 leading-relaxed resize-none custom-scrollbar {% if is_thesis|default(false) %}min-h-0{% else %}min-h-[62vh]{% endif %}" placeholder="{{ placeholder }}">{{ project.metadata.writing_content_latex|default(project.metadata.writing_content|default('')) }}</textarea>
 		</div>
 
 		{# Panneau de Prévisualisation Scientifique (Masqué par défaut, géré en Split) #}
 		<div
-			data-writing-editor-target="previewContainer" class="hidden flex-1 min-w-0 bg-slate-50 rounded-3xl border border-slate-200 p-6 flex flex-col overflow-y-auto custom-scrollbar shadow-inner prose prose-slate max-w-none font-sans {% if is_thesis|default(false) %}flex-grow min-h-0 max-h-none{% else %}min-h-[520px] max-h-[560px]{% endif %}">{# Rempli dynamiquement en direct par Marked + KaTeX #}
+			data-writing-editor-target="previewContainer" class="hidden flex-1 min-w-0 bg-slate-50 rounded-3xl border border-slate-200 p-6 flex flex-col overflow-y-auto custom-scrollbar shadow-inner prose prose-slate max-w-none font-sans {% if is_thesis|default(false) %}flex-grow min-h-0 max-h-none{% else %}min-h-[68vh] max-h-[72vh]{% endif %}">{# Rempli dynamiquement en direct par Marked + KaTeX #}
 		</div>
 
 		{# Panneau Commentaires & Annotations #}
@@ -288,44 +306,47 @@
 		</div>
 	</div>
 
+	{% if is_thesis|default(false) %}
+	</div>
+	{% endif %}
+
 	{# 3. BARRE DE STATUT & COMPTEURS #}
 	<div
-		class="bg-white px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-4 flex-shrink-0 border border-slate-100 rounded-2xl shadow-sm">
+		class="bg-white/95 backdrop-blur-sm px-8 py-1.5 flex flex-row items-center justify-between gap-4 flex-shrink-0 z-30 sticky bottom-0 border-t border-slate-200/80 shadow-lg {% if is_thesis|default(false) %}{% else %}-mx-8 -mb-8{% endif %}">
 
 		{# Sauvegarde automatique #}
 		<div class="flex items-center gap-2">
-			<span data-writing-editor-target="status" class="text-[11px] text-slate-400 italic font-medium flex items-center gap-1.5"></span>
+			<span data-writing-editor-target="status" data-thesis-editor-target="status" class="text-[11px] text-slate-400 italic font-medium flex items-center gap-1.5"></span>
 		</div>
 
 		{# Font Sizer et Compteurs de mots #}
-		<div
-			class="flex items-center gap-6 justify-end w-full sm:w-auto">
+		<div class="flex items-center gap-6 justify-end w-full sm:w-auto">
 			{# Resizer #}
-			<div class="flex items-center gap-1 bg-slate-50 border border-slate-100 p-1 rounded-xl shadow-inner">
-				<button type="button" data-action="click->writing-editor#decreaseFontSize" class="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Diminuer la police (A-)">
+			<div class="flex items-center gap-1 bg-slate-50 border border-slate-100 p-0.5 rounded-lg shadow-inner">
+				<button type="button" data-action="click->writing-editor#decreaseFontSize" class="w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Diminuer la police (A-)">
 					A-
 				</button>
-				<span class="w-[1px] h-3 bg-slate-200"></span>
-				<button type="button" data-action="click->writing-editor#increaseFontSize" class="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Agrandir la police (A+)">
+				<span class="w-[1px] h-2.5 bg-slate-200"></span>
+				<button type="button" data-action="click->writing-editor#increaseFontSize" class="w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold text-slate-500 hover:text-djoliba hover:bg-white border border-transparent hover:border-slate-100 hover:shadow-sm transition-all" title="Agrandir la police (A+)">
 					A+
 				</button>
 			</div>
 
 			{# Compteurs #}
-			<div class="flex items-center gap-4 text-xs font-semibold text-slate-500">
+			<div class="flex items-center gap-4 text-[11px] font-semibold text-slate-500">
 				<div class="flex items-center gap-1">
 					<span data-writing-editor-target="wordCount" class="text-djoliba font-bold">0</span>
-					<span class="text-[10px] text-slate-400 font-medium">mots</span>
+					<span class="text-[9px] text-slate-400 font-medium">mots</span>
 				</div>
 				<span class="w-1 h-1 bg-slate-300 rounded-full"></span>
 				<div class="flex items-center gap-1">
 					<span data-writing-editor-target="charCount" class="text-djoliba font-bold">0</span>
-					<span class="text-[10px] text-slate-400 font-medium">caractères</span>
+					<span class="text-[9px] text-slate-400 font-medium">caractères</span>
 				</div>
 				<span class="w-1 h-1 bg-slate-300 rounded-full"></span>
 				<div class="flex items-center gap-1">
 					<span data-writing-editor-target="pageCount" class="text-djoliba font-bold">1</span>
-					<span class="text-[10px] text-slate-400 font-medium">pages</span>
+					<span class="text-[9px] text-slate-400 font-medium">pages</span>
 				</div>
 				<span class="w-[1px] h-3 bg-slate-200"></span>
 				<button type="button" data-action="click->writing-editor#openReadabilityModal" class="flex items-center gap-1.5 hover:text-djoliba text-[11px] text-slate-500 font-bold transition-all" title="Statistiques de lisibilité et style">
