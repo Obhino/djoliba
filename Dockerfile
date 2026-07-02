@@ -3,7 +3,9 @@ FROM dunglas/frankenphp:1.2-php8.2-alpine AS base
 
 # Configuration commune PHP
 RUN echo "memory_limit=256M" > /usr/local/etc/php/conf.d/docker-php-settings.ini \
-    && echo "max_execution_time=240" >> /usr/local/etc/php/conf.d/docker-php-settings.ini
+    && echo "max_execution_time=240" >> /usr/local/etc/php/conf.d/docker-php-settings.ini \
+    && echo "upload_max_filesize=30M" >> /usr/local/etc/php/conf.d/docker-php-settings.ini \
+    && echo "post_max_size=35M" >> /usr/local/etc/php/conf.d/docker-php-settings.ini
 
 # Installer les dépendances système communes
 RUN apk add --no-cache \
