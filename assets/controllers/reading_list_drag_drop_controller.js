@@ -85,12 +85,35 @@ export default class extends Controller {
             };
 
             xhr.onload = () => {
-                if (xhr.status === 201) {
+                if (xhr.status === 201 || xhr.status === 200) {
+                    const res = JSON.parse(xhr.responseText);
                     this.statusTextTarget.textContent = "Redirection...";
-                    window.location.href = `/project/${projectId}/reading`;
+                    if (res.data && res.data.redirect_url) {
+                        window.location.href = res.data.redirect_url;
+                    } else {
+                        window.location.href = `/project/${projectId}/reading`;
+                    }
+                } else if (xhr.status === 409) {
+                    this.resetUI("Doublon détecté.");
+                    let redirectUrl = null;
+                    let errorMsg = 'Un document avec le même nom existe déjà.';
+                    try {
+                        const res = JSON.parse(xhr.responseText);
+                        redirectUrl = res.error?.redirect_url;
+                        errorMsg = res.error?.message || errorMsg;
+                    } catch (e) {}
+
+                    if (redirectUrl && confirm(`${errorMsg}\nSouhaitez-vous être redirigé vers sa synthèse ?`)) {
+                        window.location.href = redirectUrl;
+                    }
                 } else {
+                    let errorMsg = "Erreur lors du téléversement de l'article.";
+                    try {
+                        const res = JSON.parse(xhr.responseText);
+                        errorMsg = res.error?.message || errorMsg;
+                    } catch (e) {}
                     this.resetUI("Erreur d'upload.");
-                    alert("Erreur lors du téléversement de l'article.");
+                    alert(errorMsg);
                 }
             };
 
