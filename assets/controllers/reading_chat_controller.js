@@ -203,6 +203,7 @@ export default class extends Controller {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('project_id', this.projectIdValue);
+        formData.append('new_subproject', '1');
 
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/api/reading/upload', true);

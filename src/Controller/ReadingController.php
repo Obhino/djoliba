@@ -59,51 +59,58 @@ class ReadingController extends AbstractController
             ], Response::HTTP_NOT_FOUND);
         }
 
+        $newSubprojectFlag = (bool) $request->request->get('new_subproject');
+
         try {
-            $originalFilename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-            $researchProject = $project->getResearchProject();
+            if ($newSubprojectFlag) {
+                $originalFilename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                $researchProject = $project->getResearchProject();
 
-            // Vérifier s'il existe déjà un sous-projet du même nom, de type "reading" et actif
-            $existingSubProject = $this->subProjectRepository->findOneBy([
-                'user'            => $this->getUser(),
-                'researchProject' => $researchProject,
-                'type'            => 'reading',
-                'name'            => $originalFilename,
-                'status'          => 'active',
-            ]);
+                // Vérifier s'il existe déjà un sous-projet du même nom, de type "reading" et actif
+                $existingSubProject = $this->subProjectRepository->findOneBy([
+                    'user'            => $this->getUser(),
+                    'researchProject' => $researchProject,
+                    'type'            => 'reading',
+                    'name'            => $originalFilename,
+                    'status'          => 'active',
+                ]);
 
-            if ($existingSubProject) {
-                $existingProject = $existingSubProject->getProjects()->first();
-                $redirectUrl = $existingProject
-                    ? $this->generateUrl('app_project_reading', ['id' => $existingProject->getId()])
-                    : null;
+                if ($existingSubProject) {
+                    $existingProject = $existingSubProject->getProjects()->first();
+                    $redirectUrl = $existingProject
+                        ? $this->generateUrl('app_project_reading', ['id' => $existingProject->getId()])
+                        : null;
 
-                return $this->json([
-                    'success' => false,
-                    'error'   => [
-                        'code'         => 409,
-                        'message'      => 'Un document du même nom existe déjà.',
-                        'redirect_url' => $redirectUrl,
-                    ],
-                ], Response::HTTP_CONFLICT);
+                    return $this->json([
+                        'success' => false,
+                        'error'   => [
+                            'code'         => 409,
+                            'message'      => 'Un document du même nom existe déjà.',
+                            'redirect_url' => $redirectUrl,
+                        ],
+                    ], Response::HTTP_CONFLICT);
+                }
+
+                $subProject = $this->subProjectManager->createForUser(
+                    $this->getUser(),
+                    'reading',
+                    $originalFilename,
+                    $researchProject
+                );
+
+                // Récupérer le projet compagnon pour y lier le document
+                $newProject = $subProject->getProjects()->first();
+                if (!$newProject) {
+                    throw new \RuntimeException("Le projet compagnon n'a pas pu être créé.");
+                }
+
+                $document = $this->fileStorageService->upload($file, $newProject, $this->getUser());
+                $redirectUrl = $this->generateUrl('app_project_reading', ['id' => $newProject->getId()]);
+            } else {
+                // Comportement standard : upload direct sur le projet fourni
+                $document = $this->fileStorageService->upload($file, $project, $this->getUser());
+                $redirectUrl = null;
             }
-
-            $subProject = $this->subProjectManager->createForUser(
-                $this->getUser(),
-                'reading',
-                $originalFilename,
-                $researchProject
-            );
-
-            // Récupérer le projet compagnon pour y lier le document
-            $newProject = $subProject->getProjects()->first();
-            if (!$newProject) {
-                throw new \RuntimeException("Le projet compagnon n'a pas pu être créé.");
-            }
-
-            $document = $this->fileStorageService->upload($file, $newProject, $this->getUser());
-
-            $redirectUrl = $this->generateUrl('app_project_reading', ['id' => $newProject->getId()]);
 
             return $this->json([
                 'success' => true,
@@ -113,7 +120,7 @@ class ReadingController extends AbstractController
                     'mime_type'    => $document->getMimeType(),
                     'size_bytes'   => $document->getSizeBytes(),
                     'redirect_url' => $redirectUrl,
-                    'message'      => 'Nouveau sous-projet créé avec succès. Redirection...',
+                    'message'      => $newSubprojectFlag ? 'Nouveau sous-projet créé avec succès. Redirection...' : 'Document importé avec succès.',
                 ],
             ], Response::HTTP_CREATED);
 

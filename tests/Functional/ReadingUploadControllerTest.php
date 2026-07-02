@@ -81,12 +81,12 @@ class ReadingUploadControllerTest extends WebTestCase
             true // mode test (ne lance pas de vérification de déplacement d'upload standard PHP)
         );
 
-        // Effectuer la requête POST vers /api/reading/upload
         $this->client->request(
             'POST',
             '/api/reading/upload',
             [
                 'project_id' => $this->project->getId(),
+                'new_subproject' => '1',
             ],
             [
                 'file' => $uploadedFile,
@@ -142,7 +142,10 @@ class ReadingUploadControllerTest extends WebTestCase
         $this->client->request(
             'POST',
             '/api/reading/upload',
-            ['project_id' => $this->project->getId()],
+            [
+                'project_id' => $this->project->getId(),
+                'new_subproject' => '1',
+            ],
             ['file' => $uploadedFile1]
         );
 
@@ -172,7 +175,10 @@ class ReadingUploadControllerTest extends WebTestCase
         $this->client->request(
             'POST',
             '/api/reading/upload',
-            ['project_id' => $this->project->getId()],
+            [
+                'project_id' => $this->project->getId(),
+                'new_subproject' => '1',
+            ],
             ['file' => $uploadedFile2]
         );
 
