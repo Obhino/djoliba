@@ -90,8 +90,12 @@ class ProjectExporterService
         $zip->addFromString('main.tex', $texContent);
 
         // 2. Fichier de bibliographie .bib
+        $subProject = $project->getSubProject();
+        $bibEntries = $subProject ? $subProject->getBibliographyEntries()->toArray() : [];
+
         $bibContent = $this->twig->render('export/references.bib.twig', [
             'documents' => $documents,
+            'bib_entries' => $bibEntries,
         ]);
         $zip->addFromString('references.bib', $bibContent);
 

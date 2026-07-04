@@ -121,6 +121,11 @@ export default class extends Controller {
                     if (writingEditor) {
                         writingEditor.setEditorContent(content, content, writingEditor.currentMode || 'wysiwyg');
                     }
+
+                    // Mettre à jour l'ID du sous-projet pour la bibliographie
+                    // (le chapitre correspond à un SubProject — id = chapter.subProjectId || id)
+                    const subProjectId = chapter.subProjectId || chapter.sub_project_id || id;
+                    editorEl.dataset.writingEditorSubProjectIdValue = subProjectId;
                 }
                 
                 // Afficher l'éditeur et masquer l'état vide

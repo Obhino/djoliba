@@ -89,6 +89,12 @@ class SubProject
     #[ORM\OneToMany(targetEntity: Chapter::class, mappedBy: 'subProject', cascade: ['persist', 'remove'])]
     private Collection $chapters;
 
+    /**
+     * @var Collection<int, BibliographyEntry>
+     */
+    #[ORM\OneToMany(targetEntity: BibliographyEntry::class, mappedBy: 'subProject', cascade: ['persist', 'remove'])]
+    private Collection $bibliographyEntries;
+
     private const VALID_TYPES = ['reading', 'literature', 'writing', 'thesis'];
     private const VALID_STATUSES = ['active', 'archived', 'deleted'];
 
@@ -99,6 +105,7 @@ class SubProject
         $this->interactions = new ArrayCollection();
         $this->documents = new ArrayCollection();
         $this->chapters = new ArrayCollection();
+        $this->bibliographyEntries = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -318,6 +325,33 @@ class SubProject
         if ($this->chapters->removeElement($chapter)) {
             if ($chapter->getSubProject() === $this) {
                 $chapter->setSubProject(null);
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, BibliographyEntry>
+     */
+    public function getBibliographyEntries(): Collection
+    {
+        return $this->bibliographyEntries;
+    }
+
+    public function addBibliographyEntry(BibliographyEntry $entry): static
+    {
+        if (!$this->bibliographyEntries->contains($entry)) {
+            $this->bibliographyEntries->add($entry);
+            $entry->setSubProject($this);
+        }
+        return $this;
+    }
+
+    public function removeBibliographyEntry(BibliographyEntry $entry): static
+    {
+        if ($this->bibliographyEntries->removeElement($entry)) {
+            if ($entry->getSubProject() === $this) {
+                $entry->setSubProject(null);
             }
         }
         return $this;

@@ -19,6 +19,9 @@ class LatexConverter
             return '';
         }
 
+        // 0. Conversion des citations bibliographiques <cite data-cite-key> → \cite{key}
+        $html = $this->convertCitations($html);
+
         // 1. Nettoyage initial et standardisation des sauts de ligne
         $latex = str_replace(["\r\n", "\r"], "\n", $html);
 
@@ -240,5 +243,107 @@ class LatexConverter
         }
 
         return trim($htmlOut);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // BIBLIOGRAPHIE — Support des citations \cite et du bloc bibliography
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Convertit les balises <cite data-cite-key="…"> insérées par CitationNode
+     * en commandes LaTeX \cite{citeKey}.
+     *
+     * Doit être appelée AVANT la conversion globale HTML→LaTeX pour que les
+     * balises <cite> soient traitées en priorité.
+     *
+     * @param string $html HTML brut de l'éditeur
+     * @return string HTML avec les <cite> remplacés par \cite{key}
+     */
+    public function convertCitations(string $html): string
+    {
+        return preg_replace_callback(
+            '/<cite\s+[^>]*data-cite-key="([^"]+)"[^>]*>[^<]*<\/cite>/i',
+            static function (array $matches): string {
+                $citeKey = trim($matches[1]);
+                // On retourne la commande LaTeX brute ; elle sera préservée
+                // par les étapes suivantes de la conversion.
+                return '\\cite{' . $citeKey . '}';
+            },
+            $html
+        ) ?? $html;
+    }
+
+    /**
+     * Génère le bloc LaTeX \begin{thebibliography}{99}…\end{thebibliography}
+     * à partir d'un tableau d'entités BibliographyEntry.
+     *
+     * @param \App\Entity\BibliographyEntry[] $entries
+     * @return string Code LaTeX du bloc bibliographique
+     */
+    public function generateBibliography(array $entries): string
+    {
+        if (empty($entries)) {
+            return '';
+        }
+
+        $lines = [];
+        $lines[] = '';
+        $lines[] = '% ─── Bibliographie générée automatiquement par Djoliba ───';
+        $lines[] = '\begin{thebibliography}{' . count($entries) . '}';
+        $lines[] = '';
+
+        foreach ($entries as $entry) {
+            $citeKey = $entry->getCiteKey();
+            $raw     = $entry->getRawData() ?? [];
+
+            // Reconstruction d'une entrée \bibitem condensée
+            $author   = $this->latexEscape($entry->getAuthors() ?? 'Anonyme');
+            $title    = $this->latexEscape($entry->getTitle() ?? '');
+            $year     = $this->latexEscape($entry->getYear() ?? '');
+            $journal  = $this->latexEscape($entry->getJournal() ?? '');
+            $volume   = $this->latexEscape($raw['volume'] ?? '');
+            $pages    = $raw['pages'] ?? '';
+            $doi      = $entry->getDoi() ?? '';
+
+            $lines[] = '\bibitem{' . $citeKey . '}';
+            $lines[] = $author . '.';
+
+            if ($title) {
+                $lines[] = '\textit{' . $title . '}.';
+            }
+
+            // Ligne journal/source
+            $source = [];
+            if ($journal) $source[] = $journal;
+            if ($volume)  $source[] = $volume;
+            if ($year)    $source[] = '(' . $year . ')';
+            if ($pages)   $source[] = str_replace('--', '--', $pages);
+
+            if ($source) {
+                $lines[] = implode(', ', $source) . '.';
+            }
+
+            if ($doi) {
+                $lines[] = 'DOI: \href{https://doi.org/' . $doi . '}{' . $doi . '}.';
+            }
+
+            $lines[] = '';
+        }
+
+        $lines[] = '\end{thebibliography}';
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Échappe les caractères spéciaux LaTeX dans une chaîne de texte brut.
+     */
+    public function latexEscape(string $text): string
+    {
+        // Ordre important : backslash en premier
+        $search  = ['\\', '{', '}', '$', '#', '%', '&', '^', '_', '~', '<', '>'];
+        $replace = ['\textbackslash{}', '\{', '\}', '\$', '\#', '\%', '\&', '\^{}', '\_', '\~{}', '\textless{}', '\textgreater{}'];
+
+        return str_replace($search, $replace, $text);
     }
 }

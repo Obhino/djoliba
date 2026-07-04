@@ -109,6 +109,7 @@ class ThesisController extends AbstractController
                     'content' => $chapter->getContent(),
                     'order' => $chapter->getOrder(),
                     'parent_id' => $chapter->getParent() ? $chapter->getParent()->getId() : null,
+                    'sub_project_id' => $chapter->getSubProject() ? $chapter->getSubProject()->getId() : null,
                 ]
             ]
         ]);

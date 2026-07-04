@@ -7,3 +7,18 @@
   note = {Fichier source : {{ doc.filename }}}
 }
 {% endfor %}
+
+{% for entry in bib_entries %}
+@{{ entry.entryType }}{{ '{' }}{{ entry.citeKey }},
+  author = { {{ entry.authors }} },
+  title = { {{ entry.title }} },
+  year = { {{ entry.year }} },
+  journal = { {{ entry.journal }} },
+  doi = { {{ entry.doi }} },
+{% for key, val in entry.rawData %}
+{% if key not in ['author', 'title', 'year', 'journal', 'doi'] %}
+  {{ key }} = { {{ val }} },
+{% endif %}
+{% endfor %}
+}
+{% endfor %}

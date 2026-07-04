@@ -35,11 +35,15 @@ export default class extends Controller {
         'annotationModal', 'annotationSelectedText', 'annotationCommentInput',
         'readabilityBadge', 'readabilityModal', 'readabilityFleschScore', 'readabilityFleschAppreciation',
         'readabilityWordsPerSentence', 'readabilityPassivePercent', 'readabilityRecommendations',
-        'citationModal', 'citationSelect'
+        'citationModal', 'citationSelect',
+        'bibTabLocal', 'bibTabZotero', 'bibLocalPanel', 'bibZoteroPanel',
+        'zoteroUserId', 'zoteroApiKey', 'zoteroConfigForm', 'zoteroConfigView',
+        'zoteroCollection', 'zoteroSearch', 'zoteroResults', 'zoteroSyncStatus', 'zoteroConfigStatus'
     ];
 
     static values = {
         projectId: Number,
+        subProjectId: Number,
         saveUrl: String,
         exportUrl: String,
         placeholder: String,
@@ -62,7 +66,14 @@ export default class extends Controller {
         }
 
         // Raccourcis clavier
-        this.handleShortcutsBound = this.handleShortcuts.bind(this);
+        this.handleShortcutsBound = (e) => {
+            if (e.ctrlKey && e.shiftKey) {
+                if (e.key === 'B' || e.key === 'b') {
+                    e.preventDefault();
+                    this.openCitationModal();
+                }
+            }
+        };
         document.addEventListener('keydown', this.handleShortcutsBound);
 
         try {
@@ -330,6 +341,43 @@ export default class extends Controller {
             }
         });
 
+        // ─── Extension TipTap : CitationNode ─────────────────────────────────
+        // Nœud inline non-éditable représentant une citation bibliographique.
+        // Structure HTML : <cite data-cite-key="smith2023" data-display="(Smith, 2023)">[smith2023]</cite>
+        const CitationNode = this.NodeClass.create({
+            name: 'citation',
+            group: 'inline',
+            inline: true,
+            atom: true,
+            addAttributes() {
+                return {
+                    citeKey:     { default: '' },
+                    displayText: { default: '' },
+                    style:       { default: 'apa' }
+                };
+            },
+            parseHTML() {
+                return [{
+                    tag: 'cite[data-cite-key]',
+                    getAttrs: dom => ({
+                        citeKey:     dom.getAttribute('data-cite-key') || '',
+                        displayText: dom.getAttribute('data-display') || dom.textContent || '',
+                        style:       dom.getAttribute('data-style') || 'apa'
+                    })
+                }];
+            },
+            renderHTML({ HTMLAttributes }) {
+                return ['cite', {
+                    'data-cite-key': HTMLAttributes.citeKey,
+                    'data-display':  HTMLAttributes.displayText,
+                    'data-style':    HTMLAttributes.style,
+                    class:           'djoliba-citation inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-[11px] rounded font-mono cursor-default select-none hover:bg-amber-100 transition-colors',
+                    title:           `Référence : ${HTMLAttributes.citeKey}`
+                }, HTMLAttributes.displayText || `[@${HTMLAttributes.citeKey}]`];
+            }
+        });
+        this.CitationNode = CitationNode;
+
         this.editor = new this.EditorClass({
             element: this.editorContainerTarget,
             extensions: [
@@ -358,7 +406,8 @@ export default class extends Controller {
                 }),
                 Figure,
                 Figcaption,
-                Annotation
+                Annotation,
+                CitationNode
             ],
             content: initialHtml,
             editorProps: {
@@ -3735,5 +3784,579 @@ export default class extends Controller {
         }).join('');
 
         return html;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // BIBLIOGRAPHIE — Gestion des citations et références BibTeX
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Ouvre le modal de gestion de bibliographie.
+     * Charge automatiquement la liste des références du sous-projet.
+     */
+    openCitationModal() {
+        if (!this.hasCitationModalTarget) return;
+        this.citationModalTarget.classList.remove('hidden');
+        this.#bibLoadEntries('');
+    }
+
+    /**
+     * Ferme le modal de bibliographie.
+     */
+    closeCitationModal() {
+        if (!this.hasCitationModalTarget) return;
+        this.citationModalTarget.classList.add('hidden');
+    }
+
+    /**
+     * Recherche dans la bibliographie (appelée sur input dans la barre de recherche).
+     */
+    searchBibEntries(event) {
+        const q = event?.target?.value || '';
+        this.#bibLoadEntries(q);
+    }
+
+    /**
+     * Charge les entrées bibliographiques depuis l'API.
+     * @param {string} query - Terme de recherche optionnel
+     */
+    async #bibLoadEntries(query = '') {
+        if (!this.hasCitationSelectTarget) return;
+
+        // Utilise la valeur Stimulus subProjectId (data-writing-editor-sub-project-id-value)
+        const subProjectId = this.hasSubProjectIdValue ? this.subProjectIdValue : null;
+
+        if (!subProjectId) {
+            this.citationSelectTarget.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Configurez l\'ID du sous-projet (sub-project-id-value).</p>';
+            return;
+        }
+
+        const url = query
+            ? `/api/sub-projects/${subProjectId}/bibliography/search?q=${encodeURIComponent(query)}`
+            : `/api/sub-projects/${subProjectId}/bibliography`;
+
+        this.citationSelectTarget.innerHTML = '<p class="text-xs text-slate-400 text-center py-4 animate-pulse">Chargement...</p>';
+
+        try {
+            const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            const json = await resp.json();
+
+            if (!json.success || !json.data.entries.length) {
+                this.citationSelectTarget.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Aucune référence trouvée.<br>Importez un fichier .bib pour commencer.</p>';
+                return;
+            }
+
+            this.#bibRenderEntries(json.data.entries);
+        } catch (err) {
+            this.citationSelectTarget.innerHTML = '<p class="text-xs text-red-400 text-center py-4">Erreur de chargement.</p>';
+        }
+    }
+
+    /**
+     * Affiche la liste des entrées dans le modal.
+     * @param {Array} entries - Entrées BibliographyEntry sérialisées
+     */
+    #bibRenderEntries(entries) {
+        if (!this.hasCitationSelectTarget) return;
+
+        this.citationSelectTarget.innerHTML = entries.map(entry => {
+            const authors = entry.authorsFormatted || entry.authors || 'Anonyme';
+            const year    = entry.year ? ` (${entry.year})` : '';
+            const journal = entry.journal ? `<span class="text-slate-400 text-[10px]">${entry.journal}</span>` : '';
+            const doi     = entry.doi     ? `<a href="https://doi.org/${entry.doi}" target="_blank" class="text-blue-400 text-[10px] hover:underline">DOI</a>` : '';
+
+            return `
+                <div class="bib-entry group flex items-start gap-2 p-2 rounded-lg hover:bg-amber-50 cursor-pointer border border-transparent hover:border-amber-100 transition-all"
+                     data-cite-key="${entry.citeKey}"
+                     data-display="(${authors.split(',')[0].trim()}${year})"
+                     data-entry-id="${entry.id}"
+                     data-action="click->writing-editor#selectBibEntry">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-1.5 mb-0.5">
+                            <span class="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-mono">${entry.entryType}</span>
+                            <code class="text-[10px] text-amber-600 font-mono">${entry.citeKey}</code>
+                        </div>
+                        <p class="text-xs text-slate-700 font-medium leading-snug truncate">${entry.title || '(sans titre)'}</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">${authors}${year} ${journal} ${doi}</p>
+                    </div>
+                    <button class="opacity-0 group-hover:opacity-100 transition-opacity text-red-300 hover:text-red-500 text-[10px] mt-1 flex-shrink-0"
+                            data-entry-id="${entry.id}"
+                            data-action="click->writing-editor#deleteBibEntry"
+                            title="Supprimer cette référence">
+                        ✕
+                    </button>
+                </div>`;
+        }).join('');
+    }
+
+    /**
+     * Sélectionne une entrée bib pour insertion (met en surbrillance la sélection).
+     */
+    selectBibEntry(event) {
+        // Clic sur le bouton suppression → ne pas sélectionner
+        if (event.target.closest('[data-action*="deleteBibEntry"]')) return;
+
+        const entryEl = event.currentTarget;
+        this.citationSelectTarget.querySelectorAll('.bib-entry').forEach(el => {
+            el.classList.remove('bg-amber-100', 'border-amber-200');
+        });
+        entryEl.classList.add('bg-amber-100', 'border-amber-200');
+        this._selectedBibEntry = {
+            citeKey: entryEl.dataset.citeKey,
+            display: entryEl.dataset.display
+        };
+    }
+
+    /**
+     * Insère la citation sélectionnée dans l'éditeur TipTap à la position du curseur.
+     */
+    insertSelectedCitation() {
+        if (!this._selectedBibEntry || !this.editor) return;
+
+        const { citeKey, display } = this._selectedBibEntry;
+        this.insertCitation(citeKey, display);
+        this.closeCitationModal();
+        this._selectedBibEntry = null;
+    }
+
+    /**
+     * Insère un nœud CitationNode dans l'éditeur à la position du curseur.
+     * @param {string} citeKey    - Clé BibTeX (ex: "smith2023")
+     * @param {string} displayText - Texte d'affichage inline (ex: "(Smith, 2023)")
+     */
+    insertCitation(citeKey, displayText = '') {
+        if (!this.editor) return;
+
+        const display = displayText || `[@${citeKey}]`;
+        this.editor.chain().focus().insertContent({
+            type: 'citation',
+            attrs: { citeKey, displayText: display, style: 'apa' }
+        }).run();
+
+        this.#handleContentChange();
+    }
+
+    /**
+     * Importe un fichier .bib sélectionné via input[type=file].
+     * @param {Event} event - Événement change du champ fichier
+     */
+    async importBibFile(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const subProjectId = this.hasSubProjectIdValue ? this.subProjectIdValue : null;
+        if (!subProjectId) return;
+
+        const statusEl = this.element.querySelector('[data-bib-import-status]');
+        if (statusEl) statusEl.textContent = 'Import en cours...';
+
+        const formData = new FormData();
+        formData.append('bib_file', file);
+
+        try {
+            const resp = await fetch(`/api/sub-projects/${subProjectId}/bibliography/import`, {
+                method: 'POST',
+                body: formData
+            });
+            const json = await resp.json();
+
+            if (json.success) {
+                if (statusEl) statusEl.textContent = json.data.message;
+                // Recharger la liste
+                await this.#bibLoadEntries('');
+            } else {
+                if (statusEl) statusEl.textContent = json.error?.message || 'Erreur import.';
+            }
+        } catch (err) {
+            if (statusEl) statusEl.textContent = 'Erreur réseau lors de l\'import.';
+        }
+
+        // Réinitialiser l'input fichier
+        event.target.value = '';
+    }
+
+    /**
+     * Supprime une référence bibliographique.
+     * @param {Event} event
+     */
+    async deleteBibEntry(event) {
+        event.stopPropagation();
+        const entryId = event.currentTarget.dataset.entryId;
+        const subProjectId = this.hasSubProjectIdValue ? this.subProjectIdValue : null;
+
+        if (!entryId || !subProjectId) return;
+
+        if (!confirm('Supprimer cette référence de la bibliographie ?')) return;
+
+        try {
+            const resp = await fetch(`/api/sub-projects/${subProjectId}/bibliography/${entryId}`, {
+                method: 'DELETE'
+            });
+            if (resp.ok) {
+                await this.#bibLoadEntries('');
+            }
+        } catch (err) {
+            console.error('Erreur suppression référence :', err);
+        }
+    }
+
+    /**
+     * Rend la section bibliographie complète en bas du preview.
+     * Lit les <cite data-cite-key> dans le contenu de l'éditeur et génère
+     * la liste bibliographique numérotée.
+     */
+    renderBibliographySection() {
+        if (!this.hasPreviewContainerTarget) return;
+
+        // Collecter toutes les citations du document
+        const cites = this.previewContainerTarget.querySelectorAll('cite[data-cite-key]');
+        if (!cites.length) return;
+
+        // Dédupliquer et numéroter
+        const seen  = new Map();
+        let   index = 1;
+        cites.forEach(cite => {
+            const key = cite.dataset.citeKey;
+            if (!seen.has(key)) {
+                seen.set(key, index++);
+            }
+        });
+
+        // Mettre à jour les labels inline [1], [2]…
+        cites.forEach(cite => {
+            const key = cite.dataset.citeKey;
+            const num = seen.get(key);
+            cite.textContent = `[${num}]`;
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // INTEGRATION ZOTERO — Navigation, configuration, recherche et import
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Bascule entre l'onglet BibTeX local et l'onglet Zotero dans la modale.
+     */
+    switchBibTab(event) {
+        const tab = event.currentTarget.dataset.tab;
+
+        // Gérer le style des boutons d'onglet
+        if (this.hasBibTabLocalTarget && this.hasBibTabZoteroTarget) {
+            if (tab === 'local') {
+                this.bibTabLocalTarget.classList.add('border-djoliba', 'text-djoliba');
+                this.bibTabLocalTarget.classList.remove('border-transparent');
+                this.bibTabZoteroTarget.classList.remove('border-djoliba', 'text-djoliba');
+                this.bibTabZoteroTarget.classList.add('border-transparent');
+
+                if (this.hasBibLocalPanelTarget) this.bibLocalPanelTarget.classList.remove('hidden');
+                if (this.hasBibZoteroPanelTarget) this.bibZoteroPanelTarget.classList.add('hidden');
+                
+                // Recharger les références locales
+                this.#bibLoadEntries('');
+            } else {
+                this.bibTabZoteroTarget.classList.add('border-djoliba', 'text-djoliba');
+                this.bibTabZoteroTarget.classList.remove('border-transparent');
+                this.bibTabLocalTarget.classList.remove('border-djoliba', 'text-djoliba');
+                this.bibTabLocalTarget.classList.add('border-transparent');
+
+                if (this.hasBibLocalPanelTarget) this.bibLocalPanelTarget.classList.add('hidden');
+                if (this.hasBibZoteroPanelTarget) this.bibZoteroPanelTarget.classList.remove('hidden');
+
+                // Charger la configuration Zotero
+                this.loadZoteroConfig();
+            }
+        }
+    }
+
+    /**
+     * Charge la configuration Zotero existante depuis l'API.
+     */
+    async loadZoteroConfig() {
+        const subProjectId = this.hasSubProjectIdValue ? this.subProjectIdValue : null;
+        if (!subProjectId) return;
+
+        try {
+            const resp = await fetch(`/api/sub-projects/${subProjectId}/zotero/config`);
+            const json = await resp.json();
+
+            if (json.success && json.data.configured) {
+                // Déjà configuré
+                if (this.hasZoteroConfigFormTarget) this.zoteroConfigFormTarget.classList.add('hidden');
+                if (this.hasZoteroConfigViewTarget) {
+                    this.zoteroConfigViewTarget.classList.remove('hidden');
+                    const infoEl = this.zoteroConfigViewTarget.querySelector('[data-zotero-info]');
+                    if (infoEl) infoEl.textContent = `Compte connecté (ID : ${json.data.zotero_user_id})`;
+                }
+                
+                // Charger les collections et items Zotero
+                await this.loadZoteroCollections();
+                await this.loadZoteroItems();
+            } else {
+                // Non configuré, afficher le formulaire
+                if (this.hasZoteroConfigFormTarget) this.zoteroConfigFormTarget.classList.remove('hidden');
+                if (this.hasZoteroConfigViewTarget) this.zoteroConfigViewTarget.classList.add('hidden');
+            }
+        } catch (err) {
+            console.error('Erreur config Zotero :', err);
+        }
+    }
+
+    /**
+     * Enregistre et valide la configuration Zotero.
+     */
+    async saveZoteroConfig() {
+        const subProjectId = this.hasSubProjectIdValue ? this.subProjectIdValue : null;
+        if (!subProjectId) return;
+
+        const userId = this.hasZoteroUserIdTarget ? this.zoteroUserIdTarget.value.trim() : '';
+        const apiKey = this.hasZoteroApiKeyTarget ? this.zoteroApiKeyTarget.value.trim() : '';
+
+        if (!userId || !apiKey) {
+            this.#setZoteroConfigStatus('Veuillez remplir les deux champs.', 'error');
+            return;
+        }
+
+        this.#setZoteroConfigStatus('Validation en cours...', 'info');
+
+        try {
+            const resp = await fetch(`/api/sub-projects/${subProjectId}/zotero/config`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    zotero_user_id: userId,
+                    zotero_api_key: apiKey
+                })
+            });
+
+            const json = await resp.json();
+
+            if (json.success) {
+                this.#setZoteroConfigStatus('Connexion réussie !', 'success');
+                // Réinitialiser les champs
+                if (this.hasZoteroUserIdTarget) this.zoteroUserIdTarget.value = '';
+                if (this.hasZoteroApiKeyTarget) this.zoteroApiKeyTarget.value = '';
+                
+                // Charger la configuration
+                setTimeout(() => {
+                    this.loadZoteroConfig();
+                }, 1000);
+            } else {
+                this.#setZoteroConfigStatus(json.error?.message || 'Erreur d\'identification.', 'error');
+            }
+        } catch (err) {
+            this.#setZoteroConfigStatus('Erreur de connexion au serveur.', 'error');
+        }
+    }
+
+    /**
+     * Force l'affichage du formulaire de configuration pour modifier les identifiants.
+     */
+    showZoteroConfigForm() {
+        if (this.hasZoteroConfigFormTarget) this.zoteroConfigFormTarget.classList.remove('hidden');
+        if (this.hasZoteroConfigViewTarget) this.zoteroConfigViewTarget.classList.add('hidden');
+        if (this.hasZoteroConfigStatusTarget) this.zoteroConfigStatusTarget.textContent = '';
+    }
+
+    /**
+     * Charge les collections Zotero pour alimenter le menu déroulant.
+     */
+    async loadZoteroCollections() {
+        if (!this.hasZoteroCollectionTarget) return;
+
+        const subProjectId = this.hasSubProjectIdValue ? this.subProjectIdValue : null;
+        if (!subProjectId) return;
+
+        try {
+            const resp = await fetch(`/api/sub-projects/${subProjectId}/zotero/collections`);
+            const json = await resp.json();
+
+            if (json.success && json.data.collections.length) {
+                const optionsHtml = ['<option value="">Toutes les collections</option>'];
+                json.data.collections.forEach(col => {
+                    optionsHtml.push(`<option value="${col.key}">${col.name}</option>`);
+                });
+                this.zoteroCollectionTarget.innerHTML = optionsHtml.join('');
+            } else {
+                this.zoteroCollectionTarget.innerHTML = '<option value="">Aucune collection trouvée</option>';
+            }
+        } catch (err) {
+            this.zoteroCollectionTarget.innerHTML = '<option value="">Erreur de chargement collections</option>';
+        }
+    }
+
+    /**
+     * Charge et affiche les références Zotero selon les filtres (collection et recherche).
+     */
+    async loadZoteroItems() {
+        if (!this.hasZoteroResultsTarget) return;
+
+        const subProjectId = this.hasSubProjectIdValue ? this.subProjectIdValue : null;
+        if (!subProjectId) return;
+
+        const collection = this.hasZoteroCollectionTarget ? this.zoteroCollectionTarget.value : '';
+        const search     = this.hasZoteroSearchTarget ? this.zoteroSearchTarget.value.trim() : '';
+
+        let url = `/api/sub-projects/${subProjectId}/zotero/search?`;
+        if (collection) url += `collection=${collection}&`;
+        if (search)     url += `q=${encodeURIComponent(search)}&`;
+
+        this.zoteroResultsTarget.innerHTML = '<p class="text-xs text-slate-400 text-center py-8 animate-pulse">Recherche sur Zotero...</p>';
+
+        try {
+            const resp = await fetch(url);
+            const json = await resp.json();
+
+            if (!json.success || !json.data.items.length) {
+                this.zoteroResultsTarget.innerHTML = '<p class="text-xs text-slate-400 text-center py-8 italic">Aucune référence trouvée sur votre compte Zotero.</p>';
+                return;
+            }
+
+            this.#renderZoteroItems(json.data.items);
+        } catch (err) {
+            this.zoteroResultsTarget.innerHTML = '<p class="text-xs text-red-400 text-center py-8">Erreur de connexion à Zotero.</p>';
+        }
+    }
+
+    /**
+     * Rend la liste des items Zotero dans l'UI.
+     */
+    #renderZoteroItems(items) {
+        if (!this.hasZoteroResultsTarget) return;
+
+        this.zoteroResultsTarget.innerHTML = items.map(item => {
+            const authors = item.authors || 'Anonyme';
+            const year    = item.year ? ` (${item.year})` : '';
+            const journal = item.journal ? `<span class="text-slate-400 text-[10px]">${item.journal}</span>` : '';
+
+            return `
+                <label class="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 cursor-pointer border border-transparent hover:border-slate-100 transition-all select-none">
+                    <input type="checkbox" 
+                           value="${item.zoteroKey}" 
+                           class="zotero-item-checkbox mt-1 rounded text-djoliba focus:ring-djoliba border-slate-300"
+                           data-action="change->writing-editor#updateZoteroImportButtonState" />
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-1.5 mb-0.5">
+                            <span class="text-[9px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-mono">${item.entryType}</span>
+                            <code class="text-[9px] text-amber-600 font-mono">${item.citeKey}</code>
+                        </div>
+                        <p class="text-xs text-slate-700 font-bold leading-snug truncate">${item.title}</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">${authors}${year} ${journal}</p>
+                    </div>
+                </label>
+            `;
+        }).join('');
+
+        this.updateZoteroImportButtonState();
+    }
+
+    /**
+     * Met à jour l'état du bouton d'importation (active/désactive).
+     */
+    updateZoteroImportButtonState() {
+        if (!this.hasZoteroResultsTarget) return;
+        const checkboxes = this.zoteroResultsTarget.querySelectorAll('.zotero-item-checkbox:checked');
+        const importBtn = this.element.querySelector('[data-zotero-import-btn]');
+        
+        if (importBtn) {
+            if (checkboxes.length > 0) {
+                importBtn.disabled = false;
+                importBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                importBtn.innerHTML = `
+                    <svg class="w-3.5 h-3.5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    Importer (${checkboxes.length}) références
+                `;
+            } else {
+                importBtn.disabled = true;
+                importBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                importBtn.innerHTML = `
+                    <svg class="w-3.5 h-3.5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    Importer références
+                `;
+            }
+        }
+    }
+
+    /**
+     * Déclenche l'import des références Zotero cochées.
+     */
+    async importSelectedZoteroItems() {
+        if (!this.hasZoteroResultsTarget) return;
+
+        const subProjectId = this.hasSubProjectIdValue ? this.subProjectIdValue : null;
+        if (!subProjectId) return;
+
+        const checkedCheckboxes = this.zoteroResultsTarget.querySelectorAll('.zotero-item-checkbox:checked');
+        const keys = Array.from(checkedCheckboxes).map(cb => cb.value);
+
+        if (keys.length === 0) return;
+
+        this.#setZoteroSyncStatus('Importation depuis Zotero...', 'info');
+
+        try {
+            const resp = await fetch(`/api/sub-projects/${subProjectId}/zotero/import`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ keys })
+            });
+
+            const json = await resp.json();
+
+            if (json.success) {
+                this.#setZoteroSyncStatus(json.data.message || 'Import réussi !', 'success');
+
+                // Rediriger vers l'onglet local après 1,5 seconde
+                setTimeout(() => {
+                    // Simuler le clic sur l'onglet local
+                    if (this.hasBibTabLocalTarget) {
+                        this.bibTabLocalTarget.click();
+                    }
+                    this.#setZoteroSyncStatus('', 'info');
+                }, 1500);
+            } else {
+                this.#setZoteroSyncStatus(json.error?.message || 'Erreur lors de l\'importation.', 'error');
+            }
+        } catch (err) {
+            this.#setZoteroSyncStatus('Erreur réseau pendant la synchronisation.', 'error');
+        }
+    }
+
+    #setZoteroConfigStatus(message, type) {
+        if (!this.hasZoteroConfigStatusTarget) return;
+
+        this.zoteroConfigStatusTarget.textContent = message;
+        this.zoteroConfigStatusTarget.className = 'text-[10px] italic font-semibold mt-1 ';
+        
+        if (type === 'error') {
+            this.zoteroConfigStatusTarget.className += 'text-red-500';
+        } else if (type === 'success') {
+            this.zoteroConfigStatusTarget.className += 'text-emerald-500';
+        } else {
+            this.zoteroConfigStatusTarget.className += 'text-slate-400 animate-pulse';
+        }
+    }
+
+    #setZoteroSyncStatus(message, type) {
+        if (!this.hasZoteroSyncStatusTarget) return;
+
+        this.zoteroSyncStatusTarget.textContent = message;
+        this.zoteroSyncStatusTarget.className = 'text-[10px] italic font-semibold mt-1 ';
+
+        if (type === 'error') {
+            this.zoteroSyncStatusTarget.className += 'text-red-500';
+        } else if (type === 'success') {
+            this.zoteroSyncStatusTarget.className += 'text-emerald-500';
+        } else {
+            this.zoteroSyncStatusTarget.className += 'text-slate-400 animate-pulse';
+        }
     }
 }

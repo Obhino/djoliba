@@ -4,6 +4,9 @@ namespace App\Controller\Api;
 
 use App\Service\Project\ProjectManager;
 use App\Service\Converter\LatexConverter;
+use App\Service\Bibliography\BibliographyManager;
+use App\Repository\SubProjectRepository;
+use App\Repository\BibliographyEntryRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -21,7 +24,10 @@ class EditorController extends AbstractController
         private LatexConverter $latexConverter,
         private EntityManagerInterface $entityManager,
         private \App\Service\Editor\AIAssistantService $aiAssistantService,
-        private \App\Service\Editor\EditorHistoryManager $editorHistoryManager
+        private \App\Service\Editor\EditorHistoryManager $editorHistoryManager,
+        private BibliographyManager $bibliographyManager,
+        private SubProjectRepository $subProjectRepository,
+        private BibliographyEntryRepository $bibliographyEntryRepository,
     ) {
     }
 
@@ -492,4 +498,169 @@ class EditorController extends AbstractController
             'data' => $data
         ]);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // BIBLIOGRAPHIE — Routes dédiées aux références BibTeX par sous-projet
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * POST /api/sub-projects/{id}/bibliography/import
+     *
+     * Upload et parse un fichier .bib, importe les références dans le sous-projet.
+     * Corps : multipart/form-data avec champ 'bib_file' (fichier .bib)
+     * OU JSON : { "bib_content": "...contenu brut..." }
+     */
+    #[Route('/sub-projects/{id}/bibliography/import', name: 'api_bibliography_import', methods: ['POST'])]
+    public function importBibliography(int $id, Request $request): JsonResponse
+    {
+        $subProject = $this->subProjectRepository->find($id);
+
+        if (!$subProject || $subProject->getUser() !== $this->getUser()) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 404, 'message' => 'Sous-projet non trouvé.']
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $bibContent = null;
+
+        // Cas 1 : fichier uploadé
+        $uploadedFile = $request->files->get('bib_file');
+        if ($uploadedFile) {
+            $extension = strtolower($uploadedFile->getClientOriginalExtension());
+            if ($extension !== 'bib') {
+                return $this->json([
+                    'success' => false,
+                    'error'   => ['code' => 400, 'message' => 'Le fichier doit être au format .bib']
+                ], Response::HTTP_BAD_REQUEST);
+            }
+            $bibContent = file_get_contents($uploadedFile->getPathname());
+        }
+
+        // Cas 2 : contenu JSON brut
+        if (!$bibContent) {
+            $data = json_decode($request->getContent(), true);
+            $bibContent = $data['bib_content'] ?? null;
+        }
+
+        if (empty($bibContent)) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 400, 'message' => 'Aucun contenu BibTeX fourni.']
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $result = $this->bibliographyManager->importFromBib($subProject, $bibContent);
+
+            return $this->json([
+                'success' => true,
+                'data'    => [
+                    'imported' => $result['imported'],
+                    'updated'  => $result['updated'],
+                    'total'    => $result['total'],
+                    'message'  => sprintf(
+                        '%d référence(s) importée(s), %d mise(s) à jour.',
+                        $result['imported'],
+                        $result['updated']
+                    ),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 500, 'message' => 'Erreur lors du parsing BibTeX : ' . $e->getMessage()]
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * GET /api/sub-projects/{id}/bibliography
+     *
+     * Retourne la liste complète des références du sous-projet.
+     */
+    #[Route('/sub-projects/{id}/bibliography', name: 'api_bibliography_list', methods: ['GET'])]
+    public function listBibliography(int $id): JsonResponse
+    {
+        $subProject = $this->subProjectRepository->find($id);
+
+        if (!$subProject || $subProject->getUser() !== $this->getUser()) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 404, 'message' => 'Sous-projet non trouvé.']
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $entries = $this->bibliographyManager->getEntries($subProject);
+
+        return $this->json([
+            'success' => true,
+            'data'    => [
+                'entries' => $this->bibliographyManager->toApiArray($entries),
+                'count'   => count($entries),
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/sub-projects/{id}/bibliography/search?q=terme
+     *
+     * Recherche plein texte dans titre, auteurs et citeKey.
+     */
+    #[Route('/sub-projects/{id}/bibliography/search', name: 'api_bibliography_search', methods: ['GET'])]
+    public function searchBibliography(int $id, Request $request): JsonResponse
+    {
+        $subProject = $this->subProjectRepository->find($id);
+
+        if (!$subProject || $subProject->getUser() !== $this->getUser()) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 404, 'message' => 'Sous-projet non trouvé.']
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $query   = $request->query->get('q', '');
+        $entries = $this->bibliographyManager->searchEntries($subProject, $query);
+
+        return $this->json([
+            'success' => true,
+            'data'    => [
+                'entries' => $this->bibliographyManager->toApiArray($entries),
+                'count'   => count($entries),
+                'query'   => $query,
+            ],
+        ]);
+    }
+
+    /**
+     * DELETE /api/sub-projects/{id}/bibliography/{entryId}
+     *
+     * Supprime une référence bibliographique.
+     */
+    #[Route('/sub-projects/{id}/bibliography/{entryId}', name: 'api_bibliography_delete', methods: ['DELETE'])]
+    public function deleteBibliographyEntry(int $id, int $entryId): JsonResponse
+    {
+        $subProject = $this->subProjectRepository->find($id);
+
+        if (!$subProject || $subProject->getUser() !== $this->getUser()) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 404, 'message' => 'Sous-projet non trouvé.']
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $entry = $this->bibliographyEntryRepository->find($entryId);
+
+        if (!$entry || $entry->getSubProject() !== $subProject) {
+            return $this->json([
+                'success' => false,
+                'error'   => ['code' => 404, 'message' => 'Référence non trouvée.']
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $this->bibliographyManager->deleteEntry($entry);
+
+        return $this->json(['success' => true]);
+    }
 }
+
