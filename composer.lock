@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4cf3dfd76bd794360c05cfadd8572ce6",
+    "content-hash": "c1017966b176dedfba98ad4495bf2e65",
     "packages": [
         {
             "name": "composer/semver",
@@ -2353,6 +2353,69 @@
                 "source": "https://github.com/php-fig/log/tree/3.0.2"
             },
             "time": "2024-09-11T13:17:53+00:00"
+        },
+        {
+            "name": "renanbr/bibtex-parser",
+            "version": "2.3.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/renanbr/bibtex-parser.git",
+                "reference": "ae177e8ab1f3bec2bd041ace042c148b02fcace1"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/renanbr/bibtex-parser/zipball/ae177e8ab1f3bec2bd041ace042c148b02fcace1",
+                "reference": "ae177e8ab1f3bec2bd041ace042c148b02fcace1",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.2 | ^8.3 | ^8.4 | ^8.5"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.95.1",
+                "phpstan/phpstan": "^2.1.47",
+                "phpunit/phpunit": "^10.5.47 | ^11.5.26 | ^12.5.19",
+                "ueberdosis/pandoc": "^0.9"
+            },
+            "suggest": {
+                "ueberdosis/pandoc": "Needed to support LaTeX decoder in class RenanBr\\BibTexParser\\Processor\\LatexToUnicodeProcessor"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "2.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "RenanBr\\BibTexParser\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Renan de Lima Barbosa",
+                    "email": "renandelima@gmail.com"
+                }
+            ],
+            "description": "BibTex Parser provides an API to read .bib files programmatically",
+            "keywords": [
+                "Bibliography",
+                "bib",
+                "bibtex",
+                "citation",
+                "cite",
+                "latex",
+                "parser"
+            ],
+            "support": {
+                "issues": "https://github.com/renanbr/bibtex-parser/issues",
+                "source": "https://github.com/renanbr/bibtex-parser/tree/2.3.0"
+            },
+            "time": "2026-04-13T20:01:43+00:00"
         },
         {
             "name": "sabberworm/php-css-parser",

@@ -1,9 +1,9 @@
 services:
     _defaults:
+        public: true
         autowire: true
         autoconfigure: true
-        public: true
 
-    # Déclare les services de l'assistant IA comme publics pour pouvoir les mocker dans les tests fonctionnels
-    App\Service\Editor\AIAssistantService:
-        public: true
+    App\Service\Bibliography\BibliographicReferenceManager: ~
+    App\Service\Bibliography\BibtexImporter: ~
+    App\Service\Bibliography\DoiResolver: ~

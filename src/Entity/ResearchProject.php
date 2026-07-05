@@ -68,6 +68,9 @@ class ResearchProject
     #[Groups(['research_project:read'])]
     private Collection $subProjects;
 
+    #[ORM\OneToOne(mappedBy: 'researchProject', targetEntity: ProjectBibliography::class, cascade: ['persist', 'remove'])]
+    private ?ProjectBibliography $projectBibliography = null;
+
     private const VALID_STATUSES = ['active', 'archived', 'deleted'];
 
     public function __construct()
@@ -237,6 +240,22 @@ class ResearchProject
     public function setSynthesis(?string $synthesis): static
     {
         $this->synthesis = $synthesis;
+        return $this;
+    }
+
+    public function getProjectBibliography(): ?ProjectBibliography
+    {
+        return $this->projectBibliography;
+    }
+
+    public function setProjectBibliography(?ProjectBibliography $projectBibliography): static
+    {
+        // set the owning side of the relation if necessary
+        if ($projectBibliography !== null && $projectBibliography->getResearchProject() !== $this) {
+            $projectBibliography->setResearchProject($this);
+        }
+
+        $this->projectBibliography = $projectBibliography;
         return $this;
     }
 }

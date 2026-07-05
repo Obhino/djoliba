@@ -4,6 +4,7 @@ namespace App\Controller\Api;
 
 use App\Service\Project\ProjectManager;
 use App\Service\Converter\LatexConverter;
+use App\Service\Bibliography\BibliographyExporter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,7 +21,8 @@ class ExportController extends AbstractController
     public function __construct(
         private ProjectManager $projectManager,
         private LatexConverter $latexConverter,
-        private Environment $twig
+        private Environment $twig,
+        private BibliographyExporter $bibliographyExporter
     ) {
     }
 
@@ -50,6 +52,16 @@ class ExportController extends AbstractController
 
         // Conversion du HTML enrichi en LaTeX standardisé de haute qualité
         $latexContent = $this->latexConverter->htmlToLatex($html);
+
+        // Génération et intégration de la bibliographie
+        $keys = $this->bibliographyExporter->extractKeys($html);
+        if (!empty($keys)) {
+            $references = $this->bibliographyExporter->getReferencesByKeys($this->getUser(), $keys);
+            if (!empty($references)) {
+                $bibLatex = $this->bibliographyExporter->generateLatex($references);
+                $latexContent .= "\n" . $bibLatex;
+            }
+        }
 
         $response = new Response($latexContent);
         $response->headers->set('Content-Type', 'application/x-tex');
@@ -102,6 +114,16 @@ class ExportController extends AbstractController
             }
             return '<img src="' . $url . '" alt="' . htmlspecialchars($formula) . '" style="vertical-align: middle; max-height: 18px; display: inline-block; margin: 0 2px;" />';
         }, $html);
+
+        // Génération et intégration de la bibliographie
+        $keys = $this->bibliographyExporter->extractKeys($html);
+        if (!empty($keys)) {
+            $references = $this->bibliographyExporter->getReferencesByKeys($this->getUser(), $keys);
+            if (!empty($references)) {
+                $bibHtml = $this->bibliographyExporter->generateHtml($references);
+                $html .= "\n" . $bibHtml;
+            }
+        }
 
         // Configuration Dompdf
         $options = new Options();

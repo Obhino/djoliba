@@ -95,12 +95,19 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFact
     #[ORM\OneToMany(targetEntity: SubProject::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
     private Collection $subProjects;
 
+    /**
+     * @var Collection<int, BibliographicReference>
+     */
+    #[ORM\OneToMany(targetEntity: BibliographicReference::class, mappedBy: 'user', cascade: ['persist', 'remove'])]
+    private Collection $bibliographicReferences;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
         $this->isVerified = false;
         $this->researchProjects = new ArrayCollection();
         $this->subProjects = new ArrayCollection();
+        $this->bibliographicReferences = new ArrayCollection();
         $this->roles = [];
     }
 
@@ -487,8 +494,38 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, TwoFact
         return $this;
     }
 
+    /**
+     * @return Collection<int, BibliographicReference>
+     */
+    public function getBibliographicReferences(): Collection
+    {
+        return $this->bibliographicReferences;
+    }
+
+    public function addBibliographicReference(BibliographicReference $reference): static
+    {
+        if (!$this->bibliographicReferences->contains($reference)) {
+            $this->bibliographicReferences->add($reference);
+            $reference->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeBibliographicReference(BibliographicReference $reference): static
+    {
+        if ($this->bibliographicReferences->removeElement($reference)) {
+            if ($reference->getUser() === $this) {
+                $reference->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
     public function __toString(): string
     {
         return $this->email ?? '';
     }
 }
+

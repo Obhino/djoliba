@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use App\Service\Bibliography\BibliographyExporter;
 use App\Attribute\RateLimiter;
 
 #[Route('/api/writing')]
@@ -22,6 +23,7 @@ class WritingController extends AbstractController
         private ProjectManager $projectManager,
         private FileStorageService $fileStorageService,
         private \App\Service\File\TextExtractorService $textExtractorService,
+        private BibliographyExporter $bibliographyExporter
     ) {
     }
 
@@ -40,6 +42,16 @@ class WritingController extends AbstractController
 
         if (!str_ends_with($filename, '.tex')) {
             $filename .= '.tex';
+        }
+
+        // Génération et intégration de la bibliographie
+        $keys = $this->bibliographyExporter->extractKeys($content);
+        if (!empty($keys)) {
+            $references = $this->bibliographyExporter->getReferencesByKeys($this->getUser(), $keys);
+            if (!empty($references)) {
+                $bibLatex = $this->bibliographyExporter->generateLatex($references);
+                $content .= "\n" . $bibLatex;
+            }
         }
 
         $response = new Response($content);

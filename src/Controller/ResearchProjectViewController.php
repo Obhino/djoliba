@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\ResearchProject;
 use App\Entity\SubProject;
+use App\Service\Bibliography\BibliographicReferenceManager;
 use App\Service\Project\ProjectExporterService;
 use App\Service\Project\ResearchProjectManager;
 use App\Service\Project\SubProjectManager;
@@ -22,6 +23,7 @@ class ResearchProjectViewController extends AbstractController
         private ResearchProjectManager $rpManager,
         private SubProjectManager $spManager,
         private ProjectExporterService $exporterService,
+        private BibliographicReferenceManager $bibReferenceManager,
         private \Doctrine\ORM\EntityManagerInterface $entityManager
     ) {}
 
@@ -54,10 +56,18 @@ class ResearchProjectViewController extends AbstractController
             }
         }
 
+        // Récupérer toutes les références globales de l'utilisateur
+        $allReferences = $this->bibReferenceManager->getReferencesForUser($this->getUser());
+        
+        // Récupérer uniquement les références associées à ce projet
+        $projectReferences = $this->bibReferenceManager->getReferencesForProject($rp);
+
         return $this->render('project/research_project_show.html.twig', [
             'research_project' => $rp,
             'sub_projects' => $subProjects,
-            'stats' => $stats
+            'stats' => $stats,
+            'all_references' => $allReferences,
+            'project_references' => $projectReferences,
         ]);
     }
 

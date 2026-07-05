@@ -1086,6 +1086,41 @@ export default class extends Controller {
         this.#setStatus("Préparation de l'impression PDF...");
 
         try {
+            // Extraire les clés de citation pour récupérer la bibliographie correspondante
+            const keys = new Set();
+            if (this.currentMode === 'wysiwyg') {
+                const htmlMatches = [...html.matchAll(/data-cite-key="([^"]+)"/gi)];
+                htmlMatches.forEach(m => {
+                    m[1].split(',').forEach(k => {
+                        const tk = k.trim();
+                        if (tk) keys.add(tk);
+                    });
+                });
+            } else {
+                const rawLatex = this.codeMirror ? this.codeMirror.getValue() : (this.hasInputTarget ? this.inputTarget.value : '');
+                const latexMatches = [...rawLatex.matchAll(/\\cite\{([^}]+)\}/gi)];
+                latexMatches.forEach(m => {
+                    m[1].split(',').forEach(k => {
+                        const tk = k.trim();
+                        if (tk) keys.add(tk);
+                    });
+                });
+            }
+
+            let bibHtml = '';
+            if (keys.size > 0) {
+                try {
+                    const keysQuery = Array.from(keys).join(',');
+                    const resp = await fetch(`/api/user/bibliographic-references/render?keys=${encodeURIComponent(keysQuery)}`);
+                    const data = await resp.json();
+                    if (data.success && data.html) {
+                        bibHtml = data.html;
+                    }
+                } catch (err) {
+                    console.error("Failed to render bibliography for PDF", err);
+                }
+            }
+
             // Créer un div temporaire pour le rendu intermédiaire (KaTeX, légendes de tableaux, syntax highlighting)
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = html;
@@ -1227,6 +1262,30 @@ export default class extends Controller {
                         padding: 8px 0;
                         margin-top: 15px;
                     }
+                    .bibliography-section {
+                        margin-top: 2cm;
+                        border-top: 1px solid #ccc;
+                        padding-top: 15px;
+                        page-break-before: always;
+                    }
+                    .bibliography-section h2 {
+                        font-size: 16pt;
+                        margin-bottom: 20px;
+                        color: #0B2545;
+                        font-weight: bold;
+                    }
+                    .bibliography-section ul {
+                        list-style-type: none;
+                        padding-left: 0;
+                    }
+                    .bibliography-section li {
+                        margin-bottom: 12px;
+                        padding-left: 30px;
+                        text-indent: -30px;
+                        text-align: justify;
+                        font-size: 10pt;
+                        line-height: 1.5;
+                    }
                 </style>
             `);
             doc.write('</head><body>');
@@ -1241,8 +1300,8 @@ export default class extends Controller {
                 </div>
             `);
 
-            // Contenu
-            doc.write('<div class="content">' + renderedHtml + '</div>');
+            // Contenu + Bibliographie
+            doc.write('<div class="content">' + renderedHtml + (bibHtml ? '\n' + bibHtml : '') + '</div>');
             doc.write('</body></html>');
             doc.close();
 
@@ -3823,17 +3882,9 @@ export default class extends Controller {
     async #bibLoadEntries(query = '') {
         if (!this.hasCitationSelectTarget) return;
 
-        // Utilise la valeur Stimulus subProjectId (data-writing-editor-sub-project-id-value)
-        const subProjectId = this.hasSubProjectIdValue ? this.subProjectIdValue : null;
-
-        if (!subProjectId) {
-            this.citationSelectTarget.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Configurez l\'ID du sous-projet (sub-project-id-value).</p>';
-            return;
-        }
-
         const url = query
-            ? `/api/sub-projects/${subProjectId}/bibliography/search?q=${encodeURIComponent(query)}`
-            : `/api/sub-projects/${subProjectId}/bibliography`;
+            ? `/api/user/bibliographic-references?q=${encodeURIComponent(query)}`
+            : `/api/user/bibliographic-references`;
 
         this.citationSelectTarget.innerHTML = '<p class="text-xs text-slate-400 text-center py-4 animate-pulse">Chargement...</p>';
 
@@ -3842,7 +3893,7 @@ export default class extends Controller {
             const json = await resp.json();
 
             if (!json.success || !json.data.entries.length) {
-                this.citationSelectTarget.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Aucune référence trouvée.<br>Importez un fichier .bib pour commencer.</p>';
+                this.citationSelectTarget.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Aucune référence trouvée.<br>Veuillez en ajouter ou en importer dans votre bibliothèque.</p>';
                 return;
             }
 
@@ -3853,70 +3904,107 @@ export default class extends Controller {
     }
 
     /**
-     * Affiche la liste des entrées dans le modal.
-     * @param {Array} entries - Entrées BibliographyEntry sérialisées
+     * Affiche la liste des entrées dans le modal avec checkboxes et labels cliquables.
+     * @param {Array} entries - Références bibliographiques
      */
     #bibRenderEntries(entries) {
         if (!this.hasCitationSelectTarget) return;
 
         this.citationSelectTarget.innerHTML = entries.map(entry => {
-            const authors = entry.authorsFormatted || entry.authors || 'Anonyme';
+            const authors = entry.authors || 'Anonyme';
             const year    = entry.year ? ` (${entry.year})` : '';
             const journal = entry.journal ? `<span class="text-slate-400 text-[10px]">${entry.journal}</span>` : '';
             const doi     = entry.doi     ? `<a href="https://doi.org/${entry.doi}" target="_blank" class="text-blue-400 text-[10px] hover:underline">DOI</a>` : '';
 
             return `
-                <div class="bib-entry group flex items-start gap-2 p-2 rounded-lg hover:bg-amber-50 cursor-pointer border border-transparent hover:border-amber-100 transition-all"
-                     data-cite-key="${entry.citeKey}"
-                     data-display="(${authors.split(',')[0].trim()}${year})"
-                     data-entry-id="${entry.id}"
-                     data-action="click->writing-editor#selectBibEntry">
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-1.5 mb-0.5">
-                            <span class="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-mono">${entry.entryType}</span>
-                            <code class="text-[10px] text-amber-600 font-mono">${entry.citeKey}</code>
+                <label class="bib-entry group flex items-start gap-3 p-3 rounded-2xl hover:bg-amber-50/50 cursor-pointer border border-slate-100 hover:border-amber-200 transition-all select-none">
+                    <input type="checkbox" class="bib-entry-checkbox mt-1 rounded border-slate-300 text-djoliba focus:ring-djoliba" 
+                           value="${entry.id}" 
+                           data-cite-key="${entry.citeKey}" 
+                           data-display="(${authors.split(',')[0].trim()}${year})">
+                    <div class="flex-grow min-w-0">
+                        <div class="flex items-center gap-1.5 mb-1">
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded uppercase tracking-wider">${entry.entryType}</span>
+                            <code class="text-[10px] text-amber-700 bg-amber-50 px-1 rounded border border-amber-200/35 font-mono font-bold">${entry.citeKey}</code>
                         </div>
-                        <p class="text-xs text-slate-700 font-medium leading-snug truncate">${entry.title || '(sans titre)'}</p>
-                        <p class="text-[10px] text-slate-400 mt-0.5">${authors}${year} ${journal} ${doi}</p>
+                        <p class="text-xs text-slate-800 font-semibold leading-normal line-clamp-2">${entry.title || '(sans titre)'}</p>
+                        <p class="text-[10px] text-slate-400 mt-1">${authors}${year} ${journal ? ' · ' + journal : ''} ${doi}</p>
                     </div>
-                    <button class="opacity-0 group-hover:opacity-100 transition-opacity text-red-300 hover:text-red-500 text-[10px] mt-1 flex-shrink-0"
-                            data-entry-id="${entry.id}"
-                            data-action="click->writing-editor#deleteBibEntry"
-                            title="Supprimer cette référence">
-                        ✕
-                    </button>
-                </div>`;
+                </label>`;
         }).join('');
     }
 
     /**
-     * Sélectionne une entrée bib pour insertion (met en surbrillance la sélection).
+     * Non utilisée en mode multi-sélection, conservée pour rétrocompatibilité
      */
     selectBibEntry(event) {
-        // Clic sur le bouton suppression → ne pas sélectionner
-        if (event.target.closest('[data-action*="deleteBibEntry"]')) return;
-
-        const entryEl = event.currentTarget;
-        this.citationSelectTarget.querySelectorAll('.bib-entry').forEach(el => {
-            el.classList.remove('bg-amber-100', 'border-amber-200');
-        });
-        entryEl.classList.add('bg-amber-100', 'border-amber-200');
-        this._selectedBibEntry = {
-            citeKey: entryEl.dataset.citeKey,
-            display: entryEl.dataset.display
-        };
+        // Géré directement par les checkboxes natifs et labels
     }
 
     /**
-     * Insère la citation sélectionnée dans l'éditeur TipTap à la position du curseur.
+     * Insère la ou les citations sélectionnées dans l'éditeur.
      */
-    insertSelectedCitation() {
-        if (!this._selectedBibEntry || !this.editor) return;
+    async insertSelectedCitation() {
+        if (!this.editor) return;
 
-        const { citeKey, display } = this._selectedBibEntry;
-        this.insertCitation(citeKey, display);
+        const checkedCheckboxes = this.citationSelectTarget.querySelectorAll('.bib-entry-checkbox:checked');
+        if (checkedCheckboxes.length === 0) {
+            return; // Aucune sélection
+        }
+
+        const citeKeys = [];
+        const displays = [];
+        const referenceIds = [];
+
+        checkedCheckboxes.forEach(cb => {
+            citeKeys.push(cb.dataset.citeKey);
+            displays.push(cb.dataset.display);
+            referenceIds.push(parseInt(cb.value));
+        });
+
+        const keysString = citeKeys.join(',');
+
+        if (this.currentMode === 'wysiwyg' && this.editor) {
+            const displayText = `(${citeKeys.join(', ')})`;
+            this.editor.chain().focus().insertContent({
+                type: 'citation',
+                attrs: { citeKey: keysString, displayText: displayText, style: 'apa' }
+            }).run();
+        } else if (this.currentMode === 'latex' && this.codeMirror) {
+            const citeString = `\\cite{${keysString}}`;
+            const doc = this.codeMirror.getDoc();
+            const cursor = doc.getCursor();
+            doc.replaceRange(citeString, cursor);
+        }
+
+        this.#handleContentChange();
         this.closeCitationModal();
-        this._selectedBibEntry = null;
+
+        // Associer automatiquement les références utilisées à la bibliographie du projet
+        const projectId = this.hasProjectIdValue ? this.projectIdValue : null;
+        if (projectId && referenceIds.length > 0) {
+            await this.addReferencesToProjectBibliography(projectId, referenceIds);
+        }
+    }
+
+    /**
+     * Associe en arrière-plan Ajax les références au projet.
+     */
+    async addReferencesToProjectBibliography(projectId, referenceIds) {
+        try {
+            await fetch(`/api/research-project/${projectId}/bibliography/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    reference_ids: referenceIds
+                })
+            });
+        } catch (err) {
+            console.error("Erreur d'association de référence :", err);
+        }
     }
 
     /**
