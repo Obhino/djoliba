@@ -4051,7 +4051,7 @@ export default class extends Controller {
         if (!subProjectId) return;
 
         const statusEl = this.element.querySelector('[data-bib-import-status]');
-        if (statusEl) statusEl.textContent = 'Import en cours...';
+        if (statusEl) statusEl.textContent = `Import de "${file.name}" en cours...`;
 
         const formData = new FormData();
         formData.append('bib_file', file);
@@ -4064,14 +4064,14 @@ export default class extends Controller {
             const json = await resp.json();
 
             if (json.success) {
-                if (statusEl) statusEl.textContent = json.data.message;
+                if (statusEl) statusEl.textContent = `"${file.name}" : ` + json.data.message;
                 // Recharger la liste
                 await this.#bibLoadEntries('');
             } else {
-                if (statusEl) statusEl.textContent = json.error?.message || 'Erreur import.';
+                if (statusEl) statusEl.textContent = `Erreur lors de l'import de "${file.name}".`;
             }
         } catch (err) {
-            if (statusEl) statusEl.textContent = 'Erreur réseau lors de l\'import.';
+            if (statusEl) statusEl.textContent = `Erreur réseau lors de l'import de "${file.name}".`;
         }
 
         // Réinitialiser l'input fichier

@@ -237,9 +237,15 @@
             </div>
             
             <form action="{{ path('app_bibliography_import') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
-                <div>
-                    <label for="bib-file-field" class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Fichier BibTeX (.bib)</label>
-                    <input type="file" id="bib-file-field" name="bib_file" accept=".bib" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs font-semibold">
+                <div data-controller="bibliography-file-input">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Fichier BibTeX (.bib)</label>
+                    <div class="flex items-center gap-3">
+                        <button type="button" data-action="click->bibliography-file-input#triggerSelect" class="px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-100 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm">
+                            📁 Choisir un fichier
+                        </button>
+                        <span data-bibliography-file-input-target="filename" class="text-xs text-slate-400 font-semibold italic truncate">Aucun fichier sélectionné</span>
+                    </div>
+                    <input type="file" id="bib-file-field" name="bib_file" accept=".bib" data-bibliography-file-input-target="input" data-action="change->bibliography-file-input#onFileSelect" class="hidden">
                 </div>
 
                 <div class="relative flex py-2 items-center">
