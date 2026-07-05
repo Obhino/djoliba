@@ -2226,7 +2226,7 @@ export default class extends Controller {
         if (!this.editor) return;
         this.editingFigureEl = null;
         if (this.hasFigureDeleteBtnTarget) this.figureDeleteBtnTarget.classList.add('hidden');
-        this.figureUrlInputTarget.value = '';
+        this.#setFigureUrl('');
         this.figureCaptionInputTarget.value = '';
         this.figureLabelInputTarget.value = '';
         if (this.hasFigureUploadStatusTarget) {
@@ -2272,7 +2272,7 @@ export default class extends Controller {
         const figcaption = figureEl.querySelector('figcaption');
         const label = figureEl.getAttribute('data-label') || '';
         
-        this.figureUrlInputTarget.value = img ? img.getAttribute('src') : '';
+        this.#setFigureUrl(img ? img.getAttribute('src') : '');
         this.figureCaptionInputTarget.value = figcaption ? figcaption.textContent.trim() : '';
         this.figureLabelInputTarget.value = label;
         
@@ -2285,7 +2285,11 @@ export default class extends Controller {
     }
 
     confirmInsertFigure() {
-        const imageUrl = this.figureUrlInputTarget.value.trim() || 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=600&auto=format&fit=crop';
+        let imageUrl = this.figureUrlInputTarget.value.trim() || 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=600&auto=format&fit=crop';
+        const fullUrl = this.figureUrlInputTarget.dataset.fullUrl;
+        if (fullUrl && fullUrl.endsWith(imageUrl)) {
+            imageUrl = fullUrl;
+        }
         const caption = this.figureCaptionInputTarget.value.trim() || 'Figure sans titre';
         const label = this.figureLabelInputTarget.value.trim();
 
@@ -2421,9 +2425,7 @@ export default class extends Controller {
 
             const result = await response.json();
             if (response.ok && result.success) {
-                if (this.hasFigureUrlInputTarget) {
-                    this.figureUrlInputTarget.value = result.url;
-                }
+                this.#setFigureUrl(result.url);
                 this.#setFigureUploadStatus("Image importée avec succès !", false);
             } else {
                 const errorMsg = result.error?.message || "Erreur de chargement";
@@ -2434,6 +2436,19 @@ export default class extends Controller {
             this.#setFigureUploadStatus("Erreur : Impossible d'envoyer l'image", true);
         } finally {
             fileInput.value = '';
+        }
+    }
+
+    #setFigureUrl(url) {
+        if (!this.hasFigureUrlInputTarget) return;
+        const input = this.figureUrlInputTarget;
+        if (url && (url.startsWith('/uploads/') || url.includes('/uploads/'))) {
+            input.dataset.fullUrl = url;
+            const parts = url.split('/');
+            input.value = parts[parts.length - 1];
+        } else {
+            input.dataset.fullUrl = '';
+            input.value = url || '';
         }
     }
 
