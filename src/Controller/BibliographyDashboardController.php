@@ -331,6 +331,68 @@ class BibliographyDashboardController extends AbstractController
         return $response;
     }
 
+    #[Route('/api/bibliography/import', name: 'api_bibliography_import_json', methods: ['POST'])]
+    public function importApi(Request $request): JsonResponse
+    {
+        $user = $this->getUser();
+        $bibContent = '';
+
+        $file = $request->files->get('bib_file');
+        if ($file) {
+            $extension = strtolower($file->getClientOriginalExtension());
+            if ($extension !== 'bib') {
+                return $this->json([
+                    'success' => false,
+                    'error' => 'Le fichier doit être au format .bib'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+            $bibContent = file_get_contents($file->getPathname());
+        } else {
+            $data = json_decode($request->getContent(), true);
+            $bibContent = $data['bib_content'] ?? '';
+        }
+
+        if (empty(trim($bibContent))) {
+            return $this->json([
+                'success' => false,
+                'error' => 'Aucun contenu BibTeX fourni.'
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $stats = $this->importer->import($user, $bibContent);
+            return $this->json([
+                'success' => true,
+                'data' => [
+                    'imported' => $stats['imported'],
+                    'total' => $stats['total'],
+                    'message' => sprintf(
+                        '%d référence(s) importée(s) sur %d trouvée(s).',
+                        $stats['imported'],
+                        $stats['total']
+                    ),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return $this->json([
+                'success' => false,
+                'error' => 'Erreur BibTeX : ' . $e->getMessage()
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    #[Route('/api/bibliography/{id}', name: 'api_bibliography_delete_json', methods: ['DELETE'])]
+    public function deleteApi(int $id): JsonResponse
+    {
+        $reference = $this->entityManager->getRepository(BibliographicReference::class)->find($id);
+        if (!$reference || $reference->getUser() !== $this->getUser()) {
+            return $this->json(['success' => false, 'error' => 'Référence introuvable.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $this->manager->deleteReference($reference);
+        return $this->json(['success' => true]);
+    }
+
     /**
      * Redirige vers la page précédente (HTTP referer) ou vers une fallback par défaut.
      */
@@ -343,3 +405,4 @@ class BibliographyDashboardController extends AbstractController
         return $this->redirect($defaultUrl);
     }
 }
+

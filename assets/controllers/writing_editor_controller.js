@@ -53,6 +53,55 @@ export default class extends Controller {
     };
 
     async connect() {
+        // Relocate all modals to document.body to prevent layout clipping (overflow: hidden) and z-index issues
+        const modalTargetNames = [
+            'originalityModal', 'journalModal', 'previewModal', 'helpModal', 'latexPreviewModal',
+            'tableModal', 'figureModal', 'footnoteModal', 'referenceModal', 'mathModal',
+            'snapshotModal', 'annotationModal', 'readabilityModal', 'citationModal'
+        ];
+        
+        modalTargetNames.forEach(modalName => {
+            if (this[`has${modalName.charAt(0).toUpperCase() + modalName.slice(1)}Target`]) {
+                const modalElement = this[`${modalName}Target`];
+                if (modalElement && modalElement.parentNode !== document.body) {
+                    document.body.appendChild(modalElement);
+                }
+            }
+        });
+
+        // Override target getters for all relocated modal elements and their children/inputs
+        const modalRelatedTargets = [
+            'originalityModal', 'originalityContent',
+            'journalModal', 'journalContent',
+            'previewModal', 'previewContent',
+            'helpModal',
+            'latexPreviewModal', 'latexPreviewContent',
+            'tableModal', 'tableCaptionInput', 'tableLabelInput', 'tableGridContainer', 'tableDeleteBtn',
+            'figureModal', 'figureUrlInput', 'figureCaptionInput', 'figureLabelInput', 'figureDeleteBtn',
+            'footnoteModal', 'footnoteTextInput',
+            'referenceModal', 'referenceLabelSelect',
+            'mathModal', 'mathFormulaInput', 'mathDisplaySelect',
+            'snapshotModal', 'snapshotNameInput', 'snapshotList', 'snapshotEmptyMsg',
+            'annotationModal', 'annotationSelectedText', 'annotationCommentInput',
+            'readabilityModal', 'readabilityFleschScore', 'readabilityFleschAppreciation',
+            'readabilityWordsPerSentence', 'readabilityPassivePercent', 'readabilityRecommendations',
+            'citationModal', 'citationSelect',
+            'bibTabLocal', 'bibTabZotero', 'bibLocalPanel', 'bibZoteroPanel',
+            'zoteroUserId', 'zoteroApiKey', 'zoteroConfigForm', 'zoteroConfigView',
+            'zoteroCollection', 'zoteroSearch', 'zoteroResults', 'zoteroSyncStatus', 'zoteroConfigStatus'
+        ];
+
+        modalRelatedTargets.forEach(targetName => {
+            Object.defineProperty(this, `${targetName}Target`, {
+                get: () => document.querySelector(`[data-writing-editor-target="${targetName}"]`),
+                configurable: true
+            });
+            Object.defineProperty(this, `has${targetName.charAt(0).toUpperCase() + targetName.slice(1)}Target`, {
+                get: () => !!document.querySelector(`[data-writing-editor-target="${targetName}"]`),
+                configurable: true
+            });
+        });
+
         this.currentMode = this.hasInitialModeValue ? this.initialModeValue : 'wysiwyg';
         this.tipTapLoaded = false;
         this.autosaveTimeout = null;
@@ -587,7 +636,12 @@ export default class extends Controller {
         if (this.currentMode === 'wysiwyg' && this.editor) {
             html = this.editor.getHTML();
         } else {
-            const markdown = this.#getMarkdown();
+            let markdown = this.#getMarkdown();
+            // Transformer les \cite{cle} en balises HTML <cite data-cite-key="cle">[@cle]</cite> pour le rendu HTML par Marked
+            markdown = markdown.replace(/\\cite\{([^}]+)\}/gi, (match, key) => {
+                const cleanKey = key.trim();
+                return `<cite data-cite-key="${cleanKey}">[@${cleanKey}]</cite>`;
+            });
             html = this.marked.parse(markdown);
         }
         
@@ -622,6 +676,9 @@ export default class extends Controller {
                 window.hljs.highlightElement(block);
             });
         }
+
+        // Rendu de la section bibliographie
+        this.renderBibliographySection();
     }
 
     #updateCounters() {
@@ -3688,81 +3745,57 @@ export default class extends Controller {
     // CITATIONS BIBTEX
     // =============================================
 
-    async insertCitationModal() {
-        if (!this.editor) return;
-
-        const select = this.citationSelectTarget;
-        select.innerHTML = '<option value="">-- Chargement des sources... --</option>';
-
+    insertCitationModal() {
         this.openCitationModal();
-
-        try {
-            const response = await fetch(`/api/projects/${this.projectIdValue}/citations`);
-            if (!response.ok) throw new Error("Échec du chargement des citations");
-            const res = await response.json();
-
-            if (res.success && res.data.length > 0) {
-                select.innerHTML = '';
-                res.data.forEach(item => {
-                    const opt = document.createElement('option');
-                    opt.value = item.key;
-                    opt.textContent = `[${item.key}] ${item.filename} (${item.created_at || 'N/A'})`;
-                    select.appendChild(opt);
-                });
-            } else {
-                select.innerHTML = '<option value="">-- Aucune source trouvée --</option>';
-            }
-        } catch (err) {
-            console.error("Citations load error:", err);
-            select.innerHTML = '<option value="">-- Erreur de chargement --</option>';
-        }
     }
 
     openCitationModal() {
-        if (!this.hasCitationModalTarget) return;
-        const modal = this.citationModalTarget;
-        modal.classList.remove('hidden');
+        // Trouver la modale réelle dans le document entier (elle peut avoir été déplacée dans le body)
+        const modal = document.querySelector('[data-writing-editor-target="citationModal"]');
+        if (!modal) {
+            console.warn('openCitationModal: citationModal target not found in document');
+            return;
+        }
+
+        // S'assurer qu'elle est attachée directement au body pour éviter tout clipping
+        if (modal.parentNode !== document.body) {
+            document.body.appendChild(modal);
+        }
+
+        // Appliquer les styles nécessaires en inline pour fiabilité totale
+        modal.style.cssText = 'position: fixed; inset: 0px; z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 1rem; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); opacity: 0; transition: opacity 300ms ease-out;';
         document.body.classList.add('overflow-hidden');
-        setTimeout(() => {
-            modal.classList.remove('opacity-0');
-            modal.classList.add('opacity-100');
+
+        // Déclencher la transition d'apparition
+        requestAnimationFrame(() => {
+            modal.style.opacity = '1';
             const card = modal.querySelector('.modal-card');
-            if (card) card.classList.remove('scale-95', 'opacity-0');
-            if (card) card.classList.add('scale-100', 'opacity-100');
-        }, 50);
+            if (card) {
+                card.style.opacity = '1';
+                card.style.transform = 'scale(1)';
+                card.style.transition = 'opacity 300ms ease-out, transform 300ms ease-out';
+            }
+        });
+
+        // Charger la liste des références depuis /api/user/bibliographic-references
+        this.#bibLoadEntries('');
     }
 
     closeCitationModal() {
-        if (!this.hasCitationModalTarget) return;
-        const modal = this.citationModalTarget;
+        const modal = document.querySelector('[data-writing-editor-target="citationModal"]');
+        if (!modal) return;
+
         const card = modal.querySelector('.modal-card');
-        if (card) card.classList.remove('scale-100', 'opacity-100');
-        if (card) card.classList.add('scale-95', 'opacity-0');
-        modal.classList.remove('opacity-100');
-        modal.classList.add('opacity-0');
-        setTimeout(() => {
-            modal.classList.add('hidden');
-            document.body.classList.remove('overflow-hidden');
-        }, 300);
-    }
-
-    confirmInsertCitation() {
-        const key = this.citationSelectTarget.value;
-        if (!key) return;
-
-        const citeString = `\\cite{${key}}`;
-
-        if (this.currentMode === 'wysiwyg' && this.editor) {
-            this.editor.chain().focus().insertContent(citeString).run();
-        } else if (this.currentMode === 'latex' && this.codeMirror) {
-            const doc = this.codeMirror.getDoc();
-            const cursor = doc.getCursor();
-            doc.replaceRange(citeString, cursor);
-            this.codeMirror.focus();
+        modal.style.opacity = '0';
+        if (card) {
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.95)';
         }
 
-        this.closeCitationModal();
-        this.#handleContentChange();
+        setTimeout(() => {
+            modal.style.display = 'none';
+            document.body.classList.remove('overflow-hidden');
+        }, 300);
     }
 
     #convertHtmlToLatex(html) {
@@ -3864,23 +3897,7 @@ export default class extends Controller {
     // BIBLIOGRAPHIE — Gestion des citations et références BibTeX
     // ═══════════════════════════════════════════════════════════════════════════
 
-    /**
-     * Ouvre le modal de gestion de bibliographie.
-     * Charge automatiquement la liste des références du sous-projet.
-     */
-    openCitationModal() {
-        if (!this.hasCitationModalTarget) return;
-        this.citationModalTarget.classList.remove('hidden');
-        this.#bibLoadEntries('');
-    }
-
-    /**
-     * Ferme le modal de bibliographie.
-     */
-    closeCitationModal() {
-        if (!this.hasCitationModalTarget) return;
-        this.citationModalTarget.classList.add('hidden');
-    }
+    // openCitationModal fusionné et déplacé plus haut
 
     /**
      * Recherche dans la bibliographie (appelée sur input dans la barre de recherche).
@@ -3895,26 +3912,27 @@ export default class extends Controller {
      * @param {string} query - Terme de recherche optionnel
      */
     async #bibLoadEntries(query = '') {
-        if (!this.hasCitationSelectTarget) return;
+        const listContainer = document.querySelector('[data-writing-editor-target="citationSelect"]');
+        if (!listContainer) return;
 
         const url = query
             ? `/api/user/bibliographic-references?q=${encodeURIComponent(query)}`
             : `/api/user/bibliographic-references`;
 
-        this.citationSelectTarget.innerHTML = '<p class="text-xs text-slate-400 text-center py-4 animate-pulse">Chargement...</p>';
+        listContainer.innerHTML = '<p class="text-xs text-slate-400 text-center py-4 animate-pulse">Chargement...</p>';
 
         try {
             const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
             const json = await resp.json();
 
             if (!json.success || !json.data.entries.length) {
-                this.citationSelectTarget.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Aucune référence trouvée.<br>Veuillez en ajouter ou en importer dans votre bibliothèque.</p>';
+                listContainer.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Aucune référence trouvée.<br>Veuillez en ajouter ou en importer dans votre bibliothèque.</p>';
                 return;
             }
 
             this.#bibRenderEntries(json.data.entries);
         } catch (err) {
-            this.citationSelectTarget.innerHTML = '<p class="text-xs text-red-400 text-center py-4">Erreur de chargement.</p>';
+            listContainer.innerHTML = '<p class="text-xs text-red-400 text-center py-4">Erreur de chargement.</p>';
         }
     }
 
@@ -3923,9 +3941,10 @@ export default class extends Controller {
      * @param {Array} entries - Références bibliographiques
      */
     #bibRenderEntries(entries) {
-        if (!this.hasCitationSelectTarget) return;
+        const listContainer = document.querySelector('[data-writing-editor-target="citationSelect"]');
+        if (!listContainer) return;
 
-        this.citationSelectTarget.innerHTML = entries.map(entry => {
+        listContainer.innerHTML = entries.map(entry => {
             const authors = entry.authors || 'Anonyme';
             const year    = entry.year ? ` (${entry.year})` : '';
             const journal = entry.journal ? `<span class="text-slate-400 text-[10px]">${entry.journal}</span>` : '';
@@ -3960,10 +3979,21 @@ export default class extends Controller {
      * Insère la ou les citations sélectionnées dans l'éditeur.
      */
     async insertSelectedCitation() {
-        if (!this.editor) return;
+        console.log("insertSelectedCitation called! currentMode:", this.currentMode);
+        console.log("editor:", !!this.editor, "codeMirror:", !!this.codeMirror);
+        
+        if (!this.editor && !this.codeMirror) {
+            console.warn("Neither editor nor codeMirror is defined. Aborting.");
+            return;
+        }
 
-        const checkedCheckboxes = this.citationSelectTarget.querySelectorAll('.bib-entry-checkbox:checked');
+        const listContainer = document.querySelector('[data-writing-editor-target="citationSelect"]');
+        const checkedCheckboxes = listContainer
+            ? listContainer.querySelectorAll('.bib-entry-checkbox:checked')
+            : [];
+        console.log("Checked boxes found:", checkedCheckboxes.length);
         if (checkedCheckboxes.length === 0) {
+            console.log("No citation selected, aborting.");
             return; // Aucune sélection
         }
 
@@ -3981,7 +4011,9 @@ export default class extends Controller {
 
         if (this.currentMode === 'wysiwyg' && this.editor) {
             const displayText = `(${citeKeys.join(', ')})`;
-            this.editor.chain().focus().insertContent({
+            const { selection } = this.editor.state;
+            const endOfBlock = selection.$anchor.end(selection.$anchor.depth);
+            this.editor.chain().focus().insertContentAt(endOfBlock, {
                 type: 'citation',
                 attrs: { citeKey: keysString, displayText: displayText, style: 'apa' }
             }).run();
@@ -3989,7 +4021,9 @@ export default class extends Controller {
             const citeString = `\\cite{${keysString}}`;
             const doc = this.codeMirror.getDoc();
             const cursor = doc.getCursor();
-            doc.replaceRange(citeString, cursor);
+            const lineContent = doc.getLine(cursor.line);
+            doc.replaceRange(citeString, { line: cursor.line, ch: lineContent.length });
+            this.codeMirror.focus();
         }
 
         this.#handleContentChange();
@@ -4047,9 +4081,6 @@ export default class extends Controller {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        const subProjectId = this.hasSubProjectIdValue ? this.subProjectIdValue : null;
-        if (!subProjectId) return;
-
         const statusEl = this.element.querySelector('[data-bib-import-status]');
         if (statusEl) statusEl.textContent = `Import de "${file.name}" en cours...`;
 
@@ -4057,7 +4088,7 @@ export default class extends Controller {
         formData.append('bib_file', file);
 
         try {
-            const resp = await fetch(`/api/sub-projects/${subProjectId}/bibliography/import`, {
+            const resp = await fetch(`/api/bibliography/import`, {
                 method: 'POST',
                 body: formData
             });
@@ -4085,14 +4116,13 @@ export default class extends Controller {
     async deleteBibEntry(event) {
         event.stopPropagation();
         const entryId = event.currentTarget.dataset.entryId;
-        const subProjectId = this.hasSubProjectIdValue ? this.subProjectIdValue : null;
 
-        if (!entryId || !subProjectId) return;
+        if (!entryId) return;
 
         if (!confirm('Supprimer cette référence de la bibliographie ?')) return;
 
         try {
-            const resp = await fetch(`/api/sub-projects/${subProjectId}/bibliography/${entryId}`, {
+            const resp = await fetch(`/api/bibliography/${entryId}`, {
                 method: 'DELETE'
             });
             if (resp.ok) {
@@ -4108,29 +4138,78 @@ export default class extends Controller {
      * Lit les <cite data-cite-key> dans le contenu de l'éditeur et génère
      * la liste bibliographique numérotée.
      */
-    renderBibliographySection() {
+    async renderBibliographySection() {
         if (!this.hasPreviewContainerTarget) return;
 
         // Collecter toutes les citations du document
         const cites = this.previewContainerTarget.querySelectorAll('cite[data-cite-key]');
-        if (!cites.length) return;
+        if (!cites.length) {
+            // Nettoyer si plus aucune citation
+            const oldSection = this.previewContainerTarget.querySelector('.bibliography-section');
+            if (oldSection) oldSection.remove();
+            return;
+        }
 
         // Dédupliquer et numéroter
         const seen  = new Map();
         let   index = 1;
         cites.forEach(cite => {
             const key = cite.dataset.citeKey;
-            if (!seen.has(key)) {
-                seen.set(key, index++);
+            if (key) {
+                const keys = key.split(',').map(k => k.trim()).filter(k => k);
+                keys.forEach(k => {
+                    if (!seen.has(k)) {
+                        seen.set(k, index++);
+                    }
+                });
             }
         });
 
         // Mettre à jour les labels inline [1], [2]…
         cites.forEach(cite => {
             const key = cite.dataset.citeKey;
-            const num = seen.get(key);
-            cite.textContent = `[${num}]`;
+            if (key) {
+                const keys = key.split(',').map(k => k.trim()).filter(k => k);
+                const nums = keys.map(k => seen.get(k)).filter(n => n !== undefined);
+                cite.textContent = `[${nums.join(', ')}]`;
+            }
         });
+
+        // Charger et injecter la liste des références formatées
+        try {
+            const keysArray = Array.from(seen.keys());
+            if (keysArray.length === 0) return;
+
+            const keysQuery = keysArray.join(',');
+            const resp = await fetch(`/api/user/bibliographic-references/render?keys=${encodeURIComponent(keysQuery)}`);
+            const data = await resp.json();
+
+            if (data.success && data.html) {
+                // Supprimer l'ancienne section si elle existe déjà
+                const oldSection = this.previewContainerTarget.querySelector('.bibliography-section');
+                if (oldSection) {
+                    oldSection.remove();
+                }
+
+                // Remplacer les [citeKey] par les numéros dans le HTML de la bibliographie
+                let bibHtml = data.html;
+                seen.forEach((num, key) => {
+                    const escapedKey = key.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                    const regex = new RegExp(`\\[${escapedKey}\\]`, 'g');
+                    bibHtml = bibHtml.replace(regex, `[${num}]`);
+                });
+
+                // Créer et ajouter la bibliographie
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = bibHtml;
+                const bibElement = tempDiv.firstElementChild;
+                if (bibElement) {
+                    this.previewContainerTarget.appendChild(bibElement);
+                }
+            }
+        } catch (err) {
+            console.error('Erreur de rendu de la bibliographie :', err);
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────

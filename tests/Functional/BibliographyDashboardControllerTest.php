@@ -357,5 +357,76 @@ BIBTEX;
         $content = $this->client->getResponse()->getContent();
         $this->assertStringContainsString('@article{Schrodinger1926,', $content);
     }
+
+    public function testImportApiJson(): void
+    {
+        $this->client->loginUser($this->user);
+
+        $bibContent = <<<BIB
+@article{Einstein1905,
+    author = {Einstein, Albert},
+    title = {Ist die Trägheit eines Körpers von seinem Energieinhalt abhängig?},
+    journal = {Annalen der Physik},
+    volume = {18},
+    pages = {639--641},
+    year = {1905}
 }
+BIB;
+
+        $this->client->request(
+            'POST',
+            '/api/bibliography/import',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode(['bib_content' => $bibContent])
+        );
+
+        $this->assertResponseIsSuccessful();
+        $response = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertTrue($response['success']);
+        $this->assertEquals(1, $response['data']['imported']);
+
+        // Vérifier que la référence a bien été créée dans la base
+        $ref = $this->entityManager->getRepository(BibliographicReference::class)->findOneBy([
+            'user' => $this->user,
+            'citeKey' => 'Einstein1905'
+        ]);
+        $this->assertNotNull($ref);
+        $this->assertEquals('Einstein1905', $ref->getCiteKey());
+        $this->assertEquals('article', $ref->getEntryType());
+    }
+
+    public function testDeleteApiJson(): void
+    {
+        $this->client->loginUser($this->user);
+
+        // 1. Créer une référence
+        $ref = new BibliographicReference();
+        $ref->setUser($this->user);
+        $ref->setCiteKey('Bohr1913');
+        $ref->setEntryType('article');
+        $ref->setTitle('On the Constitution of Atoms and Molecules');
+        $ref->setAuthors('Bohr, Niels');
+        $ref->setYear('1913');
+        $ref->setSource('manual');
+        $this->entityManager->persist($ref);
+        $this->entityManager->flush();
+
+        $refId = $ref->getId();
+
+        // 2. Supprimer via l'API JSON
+        $this->client->request('DELETE', sprintf('/api/bibliography/%d', $refId));
+        $this->assertResponseIsSuccessful();
+
+        $response = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertTrue($response['success']);
+
+        // 3. S'assurer de la suppression en base
+        $this->entityManager->clear();
+        $deletedRef = $this->entityManager->getRepository(BibliographicReference::class)->find($refId);
+        $this->assertNull($deletedRef);
+    }
+}
+
 

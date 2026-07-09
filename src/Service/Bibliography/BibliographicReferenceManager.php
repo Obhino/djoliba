@@ -84,6 +84,29 @@ class BibliographicReferenceManager
     }
 
     /**
+     * Recherche des références bibliographiques par leurs citeKeys pour un utilisateur.
+     *
+     * @param User $user
+     * @param string[] $keys
+     * @return BibliographicReference[]
+     */
+    public function searchReferencesByKeys(User $user, array $keys): array
+    {
+        if (empty($keys)) {
+            return [];
+        }
+
+        return $this->referenceRepository->createQueryBuilder('b')
+            ->where('b.user = :user')
+            ->andWhere('b.citeKey IN (:keys)')
+            ->setParameter('user', $user)
+            ->setParameter('keys', $keys)
+            ->orderBy('b.authors', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Recherche dans les références de l'utilisateur avec filtres.
      *
      * @return BibliographicReference[]
