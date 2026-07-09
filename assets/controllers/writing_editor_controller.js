@@ -3760,6 +3760,33 @@ export default class extends Controller {
         // S'assurer qu'elle est attachée directement au body pour éviter tout clipping
         if (modal.parentNode !== document.body) {
             document.body.appendChild(modal);
+
+            // Attacher manuellement les écouteurs sur les boutons de la modale,
+            // car Stimulus ne capte plus les data-action hors de son élément racine
+            modal.querySelectorAll('[data-action*="closeCitationModal"]').forEach(btn => {
+                btn.addEventListener('click', () => this.closeCitationModal());
+            });
+
+            modal.querySelectorAll('[data-action*="insertSelectedCitation"]').forEach(btn => {
+                btn.addEventListener('click', () => this.insertSelectedCitation());
+            });
+
+            modal.querySelectorAll('[data-action*="searchBibEntries"]').forEach(input => {
+                input.addEventListener('input', (e) => this.searchBibEntries(e));
+            });
+
+            modal.querySelectorAll('[data-action*="importBibFile"]').forEach(input => {
+                input.addEventListener('change', (e) => this.importBibFile(e));
+            });
+
+            modal.querySelectorAll('[data-action*="switchBibTab"]').forEach(btn => {
+                btn.addEventListener('click', (e) => this.switchBibTab(e));
+            });
+
+            // Fermer au clic sur le fond (overlay)
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) this.closeCitationModal();
+            });
         }
 
         // Appliquer les styles nécessaires en inline pour fiabilité totale
