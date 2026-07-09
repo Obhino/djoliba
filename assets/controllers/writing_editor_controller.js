@@ -53,54 +53,6 @@ export default class extends Controller {
     };
 
     async connect() {
-        // Relocate all modals to document.body to prevent layout clipping (overflow: hidden) and z-index issues
-        const modalTargetNames = [
-            'originalityModal', 'journalModal', 'previewModal', 'helpModal', 'latexPreviewModal',
-            'tableModal', 'figureModal', 'footnoteModal', 'referenceModal', 'mathModal',
-            'snapshotModal', 'annotationModal', 'readabilityModal', 'citationModal'
-        ];
-        
-        modalTargetNames.forEach(modalName => {
-            if (this[`has${modalName.charAt(0).toUpperCase() + modalName.slice(1)}Target`]) {
-                const modalElement = this[`${modalName}Target`];
-                if (modalElement && modalElement.parentNode !== document.body) {
-                    document.body.appendChild(modalElement);
-                }
-            }
-        });
-
-        // Override target getters for all relocated modal elements and their children/inputs
-        const modalRelatedTargets = [
-            'originalityModal', 'originalityContent',
-            'journalModal', 'journalContent',
-            'previewModal', 'previewContent',
-            'helpModal',
-            'latexPreviewModal', 'latexPreviewContent',
-            'tableModal', 'tableCaptionInput', 'tableLabelInput', 'tableGridContainer', 'tableDeleteBtn',
-            'figureModal', 'figureUrlInput', 'figureCaptionInput', 'figureLabelInput', 'figureDeleteBtn',
-            'footnoteModal', 'footnoteTextInput',
-            'referenceModal', 'referenceLabelSelect',
-            'mathModal', 'mathFormulaInput', 'mathDisplaySelect',
-            'snapshotModal', 'snapshotNameInput', 'snapshotList', 'snapshotEmptyMsg',
-            'annotationModal', 'annotationSelectedText', 'annotationCommentInput',
-            'readabilityModal', 'readabilityFleschScore', 'readabilityFleschAppreciation',
-            'readabilityWordsPerSentence', 'readabilityPassivePercent', 'readabilityRecommendations',
-            'citationModal', 'citationSelect',
-            'bibTabLocal', 'bibTabZotero', 'bibLocalPanel', 'bibZoteroPanel',
-            'zoteroUserId', 'zoteroApiKey', 'zoteroConfigForm', 'zoteroConfigView',
-            'zoteroCollection', 'zoteroSearch', 'zoteroResults', 'zoteroSyncStatus', 'zoteroConfigStatus'
-        ];
-
-        modalRelatedTargets.forEach(targetName => {
-            Object.defineProperty(this, `${targetName}Target`, {
-                get: () => document.querySelector(`[data-writing-editor-target="${targetName}"]`),
-                configurable: true
-            });
-            Object.defineProperty(this, `has${targetName.charAt(0).toUpperCase() + targetName.slice(1)}Target`, {
-                get: () => !!document.querySelector(`[data-writing-editor-target="${targetName}"]`),
-                configurable: true
-            });
-        });
 
         this.currentMode = this.hasInitialModeValue ? this.initialModeValue : 'wysiwyg';
         this.tipTapLoaded = false;
