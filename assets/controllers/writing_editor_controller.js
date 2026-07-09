@@ -174,6 +174,15 @@ export default class extends Controller {
                 codeBlockStyle: 'fenced'
             });
 
+            // Règle personnalisée pour convertir les balises <cite data-cite-key="..."> en \cite{...}
+            this.turndownService.addRule('citation', {
+                filter: 'cite',
+                replacement: function (content, node) {
+                    const citeKey = node.getAttribute('data-cite-key');
+                    return citeKey ? `\\cite{${citeKey}}` : content;
+                }
+            });
+
             // Préserver les balises HTML scientifiques pour éviter de perdre les tableaux, figures et notes de bas de page lors du round-trip HTML <-> Markdown
             this.turndownService.keep(['table', 'thead', 'tbody', 'tr', 'th', 'td', 'figure', 'figcaption', 'img', 'sup', 'span']);
 
@@ -265,8 +274,12 @@ export default class extends Controller {
     #initEditor() {
         if (!this.tipTapLoaded || !this.hasEditorContainerTarget) return;
 
-        const initialMarkdown = this.hasWysiwygInputTarget ? this.wysiwygInputTarget.value : '';
-        const initialHtml = initialMarkdown ? this.marked.parse(initialMarkdown) : '';
+        const rawMarkdown = this.hasWysiwygInputTarget ? this.wysiwygInputTarget.value : '';
+        const processedMarkdown = rawMarkdown.replace(/\\cite\{([^}]+)\}/gi, (match, key) => {
+            const cleanKey = key.trim();
+            return `<cite data-cite-key="${cleanKey}">[@${cleanKey}]</cite>`;
+        });
+        const initialHtml = processedMarkdown ? this.marked.parse(processedMarkdown) : '';
         const placeholderText = this.hasPlaceholderValue ? this.placeholderValue : 'Rédigez votre manuscrit scientifique ici (Markdown & LaTeX supportés)...';
 
         // Configurer la visibilité initiale selon le mode de départ
@@ -1926,7 +1939,12 @@ export default class extends Controller {
         this.isSettingContent = true;
 
         if (this.editor) {
-            const initialHtml = wysiwygContent ? this.marked.parse(wysiwygContent) : '';
+            const rawWysiwyg = wysiwygContent || '';
+            const processedWysiwyg = rawWysiwyg.replace(/\\cite\{([^}]+)\}/gi, (match, key) => {
+                const cleanKey = key.trim();
+                return `<cite data-cite-key="${cleanKey}">[@${cleanKey}]</cite>`;
+            });
+            const initialHtml = processedWysiwyg ? this.marked.parse(processedWysiwyg) : '';
             this.editor.commands.setContent(initialHtml);
         }
 
@@ -3800,6 +3818,10 @@ export default class extends Controller {
             const tagName = node.tagName.toLowerCase();
 
             switch (tagName) {
+                case 'cite': {
+                    const citeKey = node.getAttribute('data-cite-key');
+                    return citeKey ? `\\cite{${citeKey}}` : childrenText;
+                }
                 case 'h1':
                     return `\\section{${childrenText.trim()}}\n\n`;
                 case 'h2':
@@ -3839,6 +3861,12 @@ export default class extends Controller {
         if (!latex) return '';
 
         let html = latex;
+
+        // Convert citations: \cite{cle} -> <cite data-cite-key="cle">[@cle]</cite>
+        html = html.replace(/\\cite\{([^}]+)\}/gi, (match, key) => {
+            const cleanKey = key.trim();
+            return `<cite data-cite-key="${cleanKey}">[@${cleanKey}]</cite>`;
+        });
 
         // Convert lists first (itemize & enumerate)
         html = html.replace(/\\begin{itemize}([\s\S]*?)\\end{itemize}/g, (match, content) => {
