@@ -1,4 +1,8 @@
 import { Controller } from '@hotwired/stimulus';
+import { getCitationNode } from '../js/editor/extensions/citation.js';
+import { getFigureNode, getFigcaptionNode } from '../js/editor/extensions/figure.js';
+import { getAnnotationMark } from '../js/editor/extensions/annotation.js';
+import { LatexConverter } from '../js/editor/converters/latex_converter.js';
 
 /**
  * Stimulus Controller — writing-editor (Rich Editor Scientific v2)
@@ -293,103 +297,10 @@ export default class extends Controller {
         }
 
         // Définir les extensions personnalisées pour les Figures scientifiques
-        const Figure = this.NodeClass.create({
-            name: 'figure',
-            group: 'block',
-            content: 'image figcaption',
-            addAttributes() {
-                return {
-                    label: { default: '' }
-                };
-            },
-            parseHTML() {
-                return [{ tag: 'figure', getAttrs: dom => ({ label: dom.getAttribute('data-label') || '' }) }];
-            },
-            renderHTML({ HTMLAttributes }) {
-                return ['figure', { 'data-label': HTMLAttributes.label, class: 'my-6 p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col items-center' }, 0];
-            }
-        });
-
-        const Figcaption = this.NodeClass.create({
-            name: 'figcaption',
-            group: 'block',
-            content: 'inline*',
-            selectable: false,
-            parseHTML() {
-                return [{ tag: 'figcaption' }];
-            },
-            renderHTML() {
-                return ['figcaption', { class: 'text-center text-xs text-slate-500 italic mt-2 focus:outline-none w-full' }, 0];
-            }
-        });
-
-        const Annotation = this.MarkClass.create({
-            name: 'annotation',
-            addAttributes() {
-                return {
-                    id: { default: null },
-                    comment: { default: '' },
-                    author: { default: '' },
-                    createdAt: { default: '' }
-                };
-            },
-            parseHTML() {
-                return [{
-                    tag: 'span[data-annotation-id]',
-                    getAttrs: dom => ({
-                        id: dom.getAttribute('data-annotation-id'),
-                        comment: dom.getAttribute('data-comment') || '',
-                        author: dom.getAttribute('data-author') || '',
-                        createdAt: dom.getAttribute('data-created-at') || ''
-                    })
-                }];
-            },
-            renderHTML({ HTMLAttributes }) {
-                return ['span', {
-                    'data-annotation-id': HTMLAttributes.id,
-                    'data-comment': HTMLAttributes.comment,
-                    'data-author': HTMLAttributes.author,
-                    'data-created-at': HTMLAttributes.createdAt,
-                    class: 'djoliba-annotation bg-amber-100 border-b border-amber-300 cursor-pointer hover:bg-amber-200/80 transition-colors'
-                }, 0];
-            }
-        });
-
-        // ─── Extension TipTap : CitationNode ─────────────────────────────────
-        // Nœud inline non-éditable représentant une citation bibliographique.
-        // Structure HTML : <cite data-cite-key="smith2023" data-display="(Smith, 2023)">[smith2023]</cite>
-        const CitationNode = this.NodeClass.create({
-            name: 'citation',
-            group: 'inline',
-            inline: true,
-            atom: true,
-            addAttributes() {
-                return {
-                    citeKey:     { default: '' },
-                    displayText: { default: '' },
-                    style:       { default: 'apa' }
-                };
-            },
-            parseHTML() {
-                return [{
-                    tag: 'cite[data-cite-key]',
-                    getAttrs: dom => ({
-                        citeKey:     dom.getAttribute('data-cite-key') || '',
-                        displayText: dom.getAttribute('data-display') || dom.textContent || '',
-                        style:       dom.getAttribute('data-style') || 'apa'
-                    })
-                }];
-            },
-            renderHTML({ HTMLAttributes }) {
-                return ['cite', {
-                    'data-cite-key': HTMLAttributes.citeKey,
-                    'data-display':  HTMLAttributes.displayText,
-                    'data-style':    HTMLAttributes.style,
-                    class:           'djoliba-citation inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-[11px] rounded font-mono cursor-default select-none hover:bg-amber-100 transition-colors',
-                    title:           `Référence : ${HTMLAttributes.citeKey}`
-                }, HTMLAttributes.displayText || `[@${HTMLAttributes.citeKey}]`];
-            }
-        });
+        const Figure = getFigureNode(this.NodeClass);
+        const Figcaption = getFigcaptionNode(this.NodeClass);
+        const Annotation = getAnnotationMark(this.MarkClass);
+        const CitationNode = getCitationNode(this.NodeClass);
         this.CitationNode = CitationNode;
 
         this.editor = new this.EditorClass({
@@ -736,7 +647,7 @@ export default class extends Controller {
             if (!this.isSettingContent) {
                 const rawLatex = this.codeMirror ? this.codeMirror.getValue() : (this.hasInputTarget ? this.inputTarget.value : '');
                 if (this.editor) {
-                    const html = this.#convertLatexToHtml(rawLatex);
+                    const html = LatexConverter.latexToHtml(rawLatex);
                     this.editor.commands.setContent(html);
                 }
             }
@@ -754,7 +665,7 @@ export default class extends Controller {
             // WYSIWYG ➔ LaTeX/Markdown brut (transfert automatique de texte)
             if (!this.isSettingContent && this.editor) {
                 const html = this.editor.getHTML();
-                const latex = this.#convertHtmlToLatex(html);
+                const latex = LatexConverter.htmlToLatex(html);
                 if (this.codeMirror) {
                     this.codeMirror.setValue(latex);
                     this.codeMirror.refresh();
@@ -3793,111 +3704,6 @@ export default class extends Controller {
             modal.style.display = 'none';
             document.body.classList.remove('overflow-hidden');
         }, 300);
-    }
-
-    #convertHtmlToLatex(html) {
-        if (!html) return '';
-
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-
-        const walk = (node) => {
-            if (node.nodeType === Node.TEXT_NODE) {
-                return node.textContent;
-            }
-
-            if (node.nodeType !== Node.ELEMENT_NODE) {
-                return '';
-            }
-
-            let childrenText = '';
-            node.childNodes.forEach(child => {
-                childrenText += walk(child);
-            });
-
-            const tagName = node.tagName.toLowerCase();
-
-            switch (tagName) {
-                case 'cite': {
-                    const citeKey = node.getAttribute('data-cite-key');
-                    return citeKey ? `\\cite{${citeKey}}` : childrenText;
-                }
-                case 'h1':
-                    return `\\section{${childrenText.trim()}}\n\n`;
-                case 'h2':
-                    return `\\subsection{${childrenText.trim()}}\n\n`;
-                case 'h3':
-                    return `\\subsubsection{${childrenText.trim()}}\n\n`;
-                case 'strong':
-                case 'b':
-                    return `\\textbf{${childrenText}}`;
-                case 'em':
-                case 'i':
-                    return `\\textit{${childrenText}}`;
-                case 'p':
-                    return `${childrenText.trim()}\n\n`;
-                case 'ul':
-                    return `\\begin{itemize}\n${childrenText}\\end{itemize}\n\n`;
-                case 'ol':
-                    return `\\begin{enumerate}\n${childrenText}\\end{enumerate}\n\n`;
-                case 'li':
-                    return `  \\item ${childrenText.trim()}\n`;
-                case 'br':
-                    return `\\\\\n`;
-                default:
-                    return childrenText;
-            }
-        };
-
-        let latex = '';
-        doc.body.childNodes.forEach(child => {
-            latex += walk(child);
-        });
-
-        return latex.replace(/\n{3,}/g, '\n\n').trim();
-    }
-
-    #convertLatexToHtml(latex) {
-        if (!latex) return '';
-
-        let html = latex;
-
-        // Convert citations: \cite{cle} -> <cite data-cite-key="cle">[@cle]</cite>
-        html = html.replace(/\\cite\{([^}]+)\}/gi, (match, key) => {
-            const cleanKey = key.trim();
-            return `<cite data-cite-key="${cleanKey}">[@${cleanKey}]</cite>`;
-        });
-
-        // Convert lists first (itemize & enumerate)
-        html = html.replace(/\\begin{itemize}([\s\S]*?)\\end{itemize}/g, (match, content) => {
-            const items = content.split(/\\item/).map(item => item.trim()).filter(Boolean);
-            return '<ul>' + items.map(item => `<li>${item}</li>`).join('') + '</ul>';
-        });
-
-        html = html.replace(/\\begin{enumerate}([\s\S]*?)\\end{enumerate}/g, (match, content) => {
-            const items = content.split(/\\item/).map(item => item.trim()).filter(Boolean);
-            return '<ol>' + items.map(item => `<li>${item}</li>`).join('') + '</ol>';
-        });
-
-        // Convert inline styles
-        html = html.replace(/\\textbf{([^}]+)}/g, '<strong>$1</strong>');
-        html = html.replace(/\\(textit|emph){([^}]+)}/g, '<em>$2</em>');
-
-        // Convert headings
-        html = html.replace(/\\section{([^}]+)}/g, '<h1>$1</h1>');
-        html = html.replace(/\\subsection{([^}]+)}/g, '<h2>$1</h2>');
-        html = html.replace(/\\subsubsection{([^}]+)}/g, '<h3>$1</h3>');
-
-        // Convert double newlines to paragraphs
-        const paragraphs = html.split(/\n\n+/);
-        html = paragraphs.map(p => {
-            p = p.trim();
-            if (!p) return '';
-            if (/^<(ul|ol|h1|h2|h3)/i.test(p)) return p;
-            return `<p>${p.replace(/\n/g, '<br>')}</p>`;
-        }).join('');
-
-        return html;
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
