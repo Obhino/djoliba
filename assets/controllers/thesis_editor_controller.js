@@ -193,12 +193,16 @@ export default class extends Controller {
         if (!this.currentChapterId) return;
 
         let content = '';
-        const editorEl = this.element.querySelector('[data-controller~="writing-editor"]');
-        if (editorEl) {
-            const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
-            if (writingEditor) {
-                content = writingEditor.getMarkdownContent();
+        try {
+            const editorEl = this.element.querySelector('[data-controller~="writing-editor"]');
+            if (editorEl) {
+                const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
+                if (writingEditor) {
+                    content = writingEditor.getMarkdownContent();
+                }
             }
+        } catch (err) {
+            console.warn("Impossible de récupérer le contenu de l'éditeur lors de l'autosave :", err);
         }
 
         this.#setStatus('Sauvegarde automatique...');
@@ -230,12 +234,16 @@ export default class extends Controller {
         if (!this.currentChapterId) return;
 
         let content = '';
-        const editorEl = this.element.querySelector('[data-controller~="writing-editor"]');
-        if (editorEl) {
-            const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
-            if (writingEditor) {
-                content = writingEditor.getMarkdownContent();
+        try {
+            const editorEl = this.element.querySelector('[data-controller~="writing-editor"]');
+            if (editorEl) {
+                const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
+                if (writingEditor) {
+                    content = writingEditor.getMarkdownContent();
+                }
             }
+        } catch (err) {
+            console.warn("Impossible de récupérer le contenu de l'éditeur lors de la sauvegarde :", err);
         }
 
         this.#setLoading(true, 'Enregistrement...');

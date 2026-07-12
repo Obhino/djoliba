@@ -1681,7 +1681,12 @@ export default class extends Controller {
      * @returns {string} Le texte Markdown ou LaTeX brut
      */
     getMarkdownContent() {
-        return this.#getMarkdown();
+        try {
+            return this.#getMarkdown();
+        } catch (error) {
+            console.error("Erreur de récupération du contenu Markdown :", error);
+            return this.hasInputTarget ? this.inputTarget.value : '';
+        }
     }
 
     // =============================================
