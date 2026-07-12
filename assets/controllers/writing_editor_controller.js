@@ -1339,6 +1339,10 @@ export default class extends Controller {
         this.openLatexPreviewModal();
     }
 
+    transcribeLatex(latex) {
+        return this.#transcribeLatex(latex);
+    }
+
     #transcribeLatex(latex) {
         if (!latex) return '';
 
@@ -1404,14 +1408,14 @@ export default class extends Controller {
         text = text.replace(/\\newline/g, '\n');
         text = text.replace(/\\newpage/g, '\n---\n');
 
+        // 9. Purger les macros orphelines non reconnues pour ne pas polluer l'affichage
+        text = text.replace(/\\[a-zA-Z]+\*?(?:\{.*?\})?/g, '');
+
         // 8. Réinsérer les blocs mathématiques isolés intacts
         mathBlocks.forEach(item => {
             const mathDelimiter = item.display ? `$$\n${item.math}\n$$` : `$${item.math}$`;
             text = text.replace(item.placeholder, mathDelimiter);
         });
-
-        // 9. Purger les macros orphelines non reconnues pour ne pas polluer l'affichage
-        text = text.replace(/\\[a-zA-Z]+\*?(?:\{.*?\})?/g, '');
 
         return text;
     }

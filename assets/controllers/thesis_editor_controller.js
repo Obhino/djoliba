@@ -115,7 +115,7 @@ export default class extends Controller {
                 const content = chapter.content || '';
                 
                 // Trouver l'instance du contrôleur writing-editor et lui injecter le contenu
-                const editorEl = this.element.querySelector('[data-controller="writing-editor"]');
+                const editorEl = this.element.querySelector('[data-controller~="writing-editor"]');
                 if (editorEl) {
                     const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
                     if (writingEditor) {
@@ -193,7 +193,7 @@ export default class extends Controller {
         if (!this.currentChapterId) return;
 
         let content = '';
-        const editorEl = this.element.querySelector('[data-controller="writing-editor"]');
+        const editorEl = this.element.querySelector('[data-controller~="writing-editor"]');
         if (editorEl) {
             const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
             if (writingEditor) {
@@ -230,7 +230,7 @@ export default class extends Controller {
         if (!this.currentChapterId) return;
 
         let content = '';
-        const editorEl = this.element.querySelector('[data-controller="writing-editor"]');
+        const editorEl = this.element.querySelector('[data-controller~="writing-editor"]');
         if (editorEl) {
             const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
             if (writingEditor) {
@@ -413,7 +413,7 @@ Le format attendu est :
         this.#setLoading(true, 'Application de l\'amélioration par l\'IA...');
         
         let currentContent = '';
-        const editorEl = this.element.querySelector('[data-controller="writing-editor"]');
+        const editorEl = this.element.querySelector('[data-controller~="writing-editor"]');
         if (editorEl) {
             const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
             if (writingEditor) {
@@ -483,7 +483,7 @@ Renvoie UNIQUEMENT le texte complet du chapitre mis à jour (aucun commentaire d
                 const generatedContent = data.data.response;
                 
                 // Injecter le contenu généré dans le writing-editor
-                const editorEl = this.element.querySelector('[data-controller="writing-editor"]');
+                const editorEl = this.element.querySelector('[data-controller~="writing-editor"]');
                 if (editorEl) {
                     const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
                     if (writingEditor) {
@@ -534,6 +534,128 @@ Renvoie UNIQUEMENT le texte complet du chapitre mis à jour (aucun commentaire d
             this.#setStatus('Erreur d\'analyse', true);
         }
     }
+
+    // ─────────────────────────────────────────────
+    // Export PDF du document complet
+    // ─────────────────────────────────────────────
+
+    /**
+     * Génère un PDF contenant tous les chapitres et sous-chapitres du document.
+     * La structure est récupérée depuis l'API, assemblée en HTML cohérent,
+     * puis envoyée à la logique de génération PDF partagée (generatePdfFromHtml).
+     * N'affecte pas l'export de la section courante dans l'éditeur.
+     */
+    async exportFullPdf() {
+        const exportBtn = document.getElementById('btn-export-full-pdf');
+        if (exportBtn) exportBtn.disabled = true;
+        this.#setStatus('Préparation du document...');
+
+        try {
+            // 1. Récupérer la structure complète avec le contenu (déjà inclus dans la réponse)
+            const response = await fetch(`/api/thesis/structure?project_id=${this.projectIdValue}`);
+            const data = await response.json();
+
+            if (!data.success || !data.data.structure || data.data.structure.length === 0) {
+                this.#setStatus('Aucun chapitre à exporter.', true);
+                return;
+            }
+
+            const structure = data.data.structure;
+
+            // 2. Récupérer l'instance du writing-editor enfant pour accéder à ses méthodes
+            const editorEl = this.element.querySelector('[data-controller~="writing-editor"]');
+            if (!editorEl) {
+                this.#setStatus('Éditeur introuvable.', true);
+                return;
+            }
+            const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
+            if (!writingEditor) {
+                this.#setStatus('Contrôleur éditeur introuvable.', true);
+                return;
+            }
+
+            // 3. Assembler le HTML du document complet depuis la structure
+            const documentHtml = this.#buildDocumentHtml(structure, writingEditor);
+
+            if (!documentHtml.trim()) {
+                this.#setStatus('Le document est vide.', true);
+                return;
+            }
+
+            // 4. Déléguer la génération PDF à la méthode partagée de l'éditeur
+            const projectName = document.title.replace(' – Djoliba Search', '').trim() || 'these';
+            const filename = `djoliba_these_${this.projectIdValue}.pdf`;
+
+            await writingEditor.generatePdfFromHtml(documentHtml, filename);
+
+        } catch (err) {
+            console.error('Erreur exportFullPdf:', err);
+            this.#setStatus('Erreur lors de la génération du PDF', true);
+        } finally {
+            if (exportBtn) exportBtn.disabled = false;
+        }
+    }
+
+    /**
+     * Assemble un HTML structuré depuis l'arbre des chapitres.
+     * Chaque chapitre (et sous-chapitre) est converti de Markdown → HTML
+     * via les méthodes internes de l'éditeur.
+     * @param {Array} structure  - L'arbre de chapitres (avec children)
+     * @param {Object} writingEditor - L'instance du writing-editor pour la conversion
+     * @returns {string} - HTML complet du document
+     */
+    #buildDocumentHtml(structure, writingEditor) {
+        let html = '';
+
+        structure.forEach((chapter, chapterIdx) => {
+            const chapterNum = chapterIdx + 1;
+
+            // Titre de chapitre (h1)
+            html += `<h1>${chapterNum}. ${chapter.title}</h1>`;
+
+            // Contenu du chapitre (Markdown → HTML)
+            if (chapter.content && chapter.content.trim()) {
+                const transcribed = writingEditor.transcribeLatex ? writingEditor.transcribeLatex(chapter.content) : chapter.content;
+                const chapterHtml = writingEditor.marked.parse(transcribed);
+                html += `<div class="chapter-content">${chapterHtml}</div>`;
+            }
+
+            // Sous-chapitres (children)
+            if (chapter.children && chapter.children.length > 0) {
+                chapter.children.forEach((sub, subIdx) => {
+                    const subNum = subIdx + 1;
+
+                    // Titre de sous-chapitre (h2)
+                    html += `<h2>${chapterNum}.${subNum} ${sub.title}</h2>`;
+
+                    // Contenu du sous-chapitre (Markdown → HTML)
+                    if (sub.content && sub.content.trim()) {
+                        const transcribedSub = writingEditor.transcribeLatex ? writingEditor.transcribeLatex(sub.content) : sub.content;
+                        const subHtml = writingEditor.marked.parse(transcribedSub);
+                        html += `<div class="chapter-content">${subHtml}</div>`;
+                    }
+
+                    // Sous-sous-chapitres (niveau 3, si nécessaire)
+                    if (sub.children && sub.children.length > 0) {
+                        sub.children.forEach((subsub, subsubIdx) => {
+                            html += `<h3>${chapterNum}.${subNum}.${subsubIdx + 1} ${subsub.title}</h3>`;
+                            if (subsub.content && subsub.content.trim()) {
+                                const transcribedSubSub = writingEditor.transcribeLatex ? writingEditor.transcribeLatex(subsub.content) : subsub.content;
+                                const subsubHtml = writingEditor.marked.parse(transcribedSubSub);
+                                html += `<div class="chapter-content">${subsubHtml}</div>`;
+                            }
+                        });
+                    }
+                });
+            }
+        });
+
+        return html;
+    }
+
+    // ─────────────────────────────────────────────
+    // Rendu et Drag & Drop
+    // ─────────────────────────────────────────────
 
     #renderTree(structure) {
         this.treeTarget.innerHTML = this.#buildTreeHtml(structure);
@@ -629,7 +751,7 @@ Renvoie UNIQUEMENT le texte complet du chapitre mis à jour (aucun commentaire d
     }
 
     checkOriginality() {
-        const editorEl = this.element.querySelector('[data-controller="writing-editor"]');
+        const editorEl = this.element.querySelector('[data-controller~="writing-editor"]');
         if (editorEl) {
             const writingEditor = this.application.getControllerForElementAndIdentifier(editorEl, 'writing-editor');
             if (writingEditor) {
