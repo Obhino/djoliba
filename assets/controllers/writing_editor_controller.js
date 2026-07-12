@@ -994,267 +994,62 @@ export default class extends Controller {
     // ─────────────────────────────────────────────
 
     async exportPdf() {
-        const filename = `djoliba_export_${this.projectIdValue || 'document'}.pdf`;
-        let html = '';
-
-        if (this.currentMode === 'wysiwyg') {
-            if (!this.editor) {
-                this.#setStatus("Éditeur non initialisé.", true);
-                return;
-            }
-            html = this.editor.getHTML();
-            if (!html || this.editor.isEmpty) {
-                this.#setStatus("L'éditeur est vide. Rien à exporter.", true);
-                return;
-            }
-        } else {
-            const rawLatex = this.codeMirror ? this.codeMirror.getValue() : (this.hasInputTarget ? this.inputTarget.value : '');
-            if (!rawLatex.trim()) {
-                this.#setStatus("L'éditeur est vide. Rien à exporter.", true);
-                return;
-            }
-            html = this.marked.parse(rawLatex);
-        }
-
-        this.#setStatus("Préparation de l'impression PDF...");
-
         try {
-            // Extraire les clés de citation pour récupérer la bibliographie correspondante
-            const keys = new Set();
-            if (this.currentMode === 'wysiwyg') {
-                const htmlMatches = [...html.matchAll(/data-cite-key="([^"]+)"/gi)];
-                htmlMatches.forEach(m => {
-                    m[1].split(',').forEach(k => {
-                        const tk = k.trim();
-                        if (tk) keys.add(tk);
-                    });
-                });
-            } else {
-                const rawLatex = this.codeMirror ? this.codeMirror.getValue() : (this.hasInputTarget ? this.inputTarget.value : '');
-                const latexMatches = [...rawLatex.matchAll(/\\cite\{([^}]+)\}/gi)];
-                latexMatches.forEach(m => {
-                    m[1].split(',').forEach(k => {
-                        const tk = k.trim();
-                        if (tk) keys.add(tk);
-                    });
-                });
+            const rawContent = this.#getMarkdown();
+            if (!rawContent.trim()) {
+                this.#setStatus("L'éditeur est vide. Rien à exporter.", true);
+                return;
             }
 
-            let bibHtml = '';
-            if (keys.size > 0) {
-                try {
-                    const keysQuery = Array.from(keys).join(',');
-                    const resp = await fetch(`/api/user/bibliographic-references/render?keys=${encodeURIComponent(keysQuery)}`);
-                    const data = await resp.json();
-                    if (data.success && data.html) {
-                        bibHtml = data.html;
-                    }
-                } catch (err) {
-                    console.error("Failed to render bibliography for PDF", err);
-                }
-            }
+            // 1. Structurer et préparer le rendu (LaTeX -> Markdown -> HTML)
+            const transcribedMarkdown = this.#transcribeLatex(rawContent);
+            const html = this.marked.parse(transcribedMarkdown);
+            const filename = `djoliba_export_${this.projectIdValue || 'document'}.pdf`;
 
-            // Créer un div temporaire pour le rendu intermédiaire (KaTeX, légendes de tableaux, syntax highlighting)
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = html;
-
-            // Rendu des titres de tableaux
-            tempDiv.querySelectorAll('table[data-caption]').forEach(table => {
-                const caption = table.getAttribute('data-caption');
-                const label = table.getAttribute('data-label') || '';
-                const captionEl = document.createElement('div');
-                captionEl.className = 'text-center text-xs text-slate-500 italic mb-2 mt-4 font-semibold';
-                captionEl.textContent = `Tableau : ${caption} ${label ? `(${label})` : ''}`;
-                table.parentNode.insertBefore(captionEl, table);
-            });
-
-            // Rendu mathématique automatique KaTeX côté client
-            if (window.renderMathInElement) {
-                window.renderMathInElement(tempDiv, {
-                    delimiters: [
-                        { left: '$$', right: '$$', display: true },
-                        { left: '$', right: '$', display: false },
-                        { left: '\\(', right: '\\)', display: false },
-                        { left: '\\[', right: '\\]', display: true }
-                    ],
-                    throwOnError: false
-                });
-            }
-
-            // Coloration syntaxique des blocs de code
-            if (window.hljs) {
-                tempDiv.querySelectorAll('pre code').forEach((block) => {
-                    window.hljs.highlightElement(block);
-                });
-            }
-
-            const renderedHtml = tempDiv.innerHTML;
-
-            // Créer un iframe temporaire masqué pour imprimer
-            const iframe = document.createElement('iframe');
-            iframe.style.position = 'absolute';
-            iframe.style.width = '0px';
-            iframe.style.height = '0px';
-            iframe.style.border = 'none';
-            document.body.appendChild(iframe);
-
-            const doc = iframe.contentWindow.document;
-            doc.open();
-            doc.write('<html><head><title>' + filename + '</title>');
-
-            // Copier toutes les feuilles de styles de la page principale pour le rendu de KaTeX, etc.
-            document.querySelectorAll('link[rel="stylesheet"], style').forEach(style => {
-                doc.write(style.outerHTML);
-            });
-
-            // Ajouter les règles CSS spécifiques pour l'impression A4 académique
-            doc.write(`
-                <style>
-                    @page {
-                        size: A4;
-                        margin: 2.5cm 2.0cm;
-                    }
-                    body {
-                        font-family: 'DejaVu Sans', 'Helvetica Neue', Arial, sans-serif;
-                        color: #0B2545;
-                        line-height: 1.6;
-                        font-size: 11pt;
-                        background: white;
-                        margin: 0;
-                        padding: 0;
-                    }
-                    h1, h2, h3, h4 {
-                        color: #0B2545;
-                        font-weight: bold;
-                        page-break-after: avoid;
-                        margin-top: 1.2cm;
-                        margin-bottom: 0.4cm;
-                    }
-                    h1 { font-size: 18pt; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-                    h2 { font-size: 14pt; }
-                    h3 { font-size: 12pt; }
-                    p { margin-bottom: 15px; text-align: justify; }
-                    pre, code {
-                        font-family: monospace;
-                        background-color: #f5f5f5;
-                        font-size: 9pt;
-                    }
-                    pre {
-                        padding: 10px;
-                        border-left: 3px solid #ccc;
-                        display: block;
-                        margin: 15px 0;
-                        white-space: pre-wrap;
-                    }
-                    code {
-                        padding: 2px 4px;
-                    }
-                    blockquote {
-                        margin: 15px 0;
-                        padding-left: 15px;
-                        border-left: 4px solid #ccc;
-                        color: #555;
-                        font-style: italic;
-                    }
-                    table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin: 20px 0;
-                        font-size: 9.5pt;
-                    }
-                    th, td {
-                        border: 1px solid #ddd;
-                        padding: 8px;
-                        text-align: left;
-                    }
-                    th {
-                        background-color: #f9f9f9;
-                        font-weight: bold;
-                    }
-                    img {
-                        max-width: 100%;
-                        height: auto;
-                        margin: 15px 0;
-                        display: block;
-                    }
-                    .title-block {
-                        text-align: center;
-                        margin-bottom: 2cm;
-                    }
-                    .title-block .title {
-                        font-size: 24pt;
-                        font-weight: bold;
-                        color: #0B2545;
-                        margin-bottom: 10px;
-                    }
-                    .title-block .metadata {
-                        font-size: 10pt;
-                        color: #666;
-                        border-top: 1px solid #eee;
-                        border-bottom: 1px solid #eee;
-                        padding: 8px 0;
-                        margin-top: 15px;
-                    }
-                    .bibliography-section {
-                        margin-top: 2cm;
-                        border-top: 1px solid #ccc;
-                        padding-top: 15px;
-                        page-break-before: always;
-                    }
-                    .bibliography-section h2 {
-                        font-size: 16pt;
-                        margin-bottom: 20px;
-                        color: #0B2545;
-                        font-weight: bold;
-                    }
-                    .bibliography-section ul {
-                        list-style-type: none;
-                        padding-left: 0;
-                    }
-                    .bibliography-section li {
-                        margin-bottom: 12px;
-                        padding-left: 30px;
-                        text-indent: -30px;
-                        text-align: justify;
-                        font-size: 10pt;
-                        line-height: 1.5;
-                    }
-                </style>
-            `);
-            doc.write('</head><body>');
-
-            // Bloc de titre
-            doc.write(`
-                <div class="title-block">
-                    <div class="title">${this.projectIdValue ? 'Djoliba Search - Document de recherche' : 'Document de recherche'}</div>
-                    <div class="metadata">
-                        Date d'export : ${new Date().toLocaleDateString('fr-FR')} | ${new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}
-                    </div>
-                </div>
-            `);
-
-            // Contenu + Bibliographie
-            doc.write('<div class="content">' + renderedHtml + (bibHtml ? '\n' + bibHtml : '') + '</div>');
-            doc.write('</body></html>');
-            doc.close();
-
-            // Attendre un court instant que le contenu de l'iframe se charge, puis imprimer
-            setTimeout(() => {
-                iframe.contentWindow.focus();
-                iframe.contentWindow.print();
-                
-                // Retirer l'iframe après l'impression
-                setTimeout(() => {
-                    document.body.removeChild(iframe);
-                    this.#setStatus("Exportation PDF réussie");
-                    setTimeout(() => this.#setStatus(''), 2000);
-                }, 1000);
-            }, 600);
+            // 2. Envoyer le rendu à la logique de génération du PDF
+            await this.generatePdfFromHtml(html, filename);
 
         } catch (err) {
             console.error("Export PDF error:", err);
             this.#setStatus("Erreur lors de la génération du PDF", true);
         }
+    }
+
+    /**
+     * Logique générique d'envoi du HTML structuré au serveur pour générer et télécharger le PDF.
+     */
+    async generatePdfFromHtml(html, filename) {
+        this.#setStatus("Génération du PDF...");
+
+        const response = await fetch(`/api/projects/${this.projectIdValue}/export/pdf`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                html: html,
+                filename: filename
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erreur serveur (${response.status})`);
+        }
+
+        // Récupérer le blob PDF et déclencher le téléchargement automatique
+        const blob = await response.blob();
+        const downloadUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+
+        this.#setStatus("PDF téléchargé avec succès !");
+        setTimeout(() => this.#setStatus(''), 2000);
     }
 
     // ─────────────────────────────────────────────
@@ -1601,7 +1396,7 @@ export default class extends Controller {
         text = text.replace(/\\begin\{lstlisting\}([\s\S]*?)\\end\{lstlisting\}/gi, '\n```\n$1\n```\n');
 
         // 6. Citations & Références
-        text = text.replace(/\\cite\{([\s\S]*?)\}/gi, '<sup>[$1]</sup>');
+        text = text.replace(/\\cite\{([\s\S]*?)\}/gi, '<cite data-cite-key="$1">[@$1]</cite>');
         text = text.replace(/\\ref\{([\s\S]*?)\}/gi, '`$1`');
 
         // 7. Retours à la ligne

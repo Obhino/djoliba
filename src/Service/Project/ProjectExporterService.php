@@ -10,8 +10,8 @@ use App\Repository\ChapterRepository;
 use App\Repository\DocumentRepository;
 use Symfony\Component\Filesystem\Filesystem;
 
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use App\Service\Converter\PdfGeneratorService;
+use App\Service\Bibliography\BibliographyExporter;
 use Twig\Environment;
 
 class ProjectExporterService
@@ -20,7 +20,9 @@ class ProjectExporterService
         private ChapterRepository $chapterRepository,
         private DocumentRepository $documentRepository,
         private Environment $twig,
-        private string $projectDir
+        private string $projectDir,
+        private PdfGeneratorService $pdfGenerator,
+        private BibliographyExporter $bibliographyExporter
     ) {
     }
 
@@ -29,23 +31,59 @@ class ProjectExporterService
      */
     public function exportToPdf(Project $project): string
     {
-        $options = new Options();
-        $options->set('defaultFont', 'DejaVu Sans');
-        $options->set('isHtml5ParserEnabled', true);
-        $options->set('isRemoteEnabled', true);
-
-        $dompdf = new Dompdf($options);
-
         $chapters = $this->chapterRepository->findBy(['project' => $project, 'parent' => null], ['order' => 'ASC']);
         
-        $html = $this->twig->render('export/pdf_thesis.html.twig', [
+        $contentString = '';
+        foreach ($chapters as $chapter) {
+            $contentString .= ' ' . ($chapter->getContent() ?? '');
+            foreach ($chapter->getChildren() as $sub) {
+                $contentString .= ' ' . ($sub->getContent() ?? '');
+            }
+        }
+
+        $subProject = $project->getSubProject();
+        $bibEntries = $subProject ? $subProject->getBibliographyEntries() : [];
+        $bibData = [];
+        foreach ($bibEntries as $entry) {
+            $bibData[] = $entry->toArray();
+        }
+
+        $keys = $this->bibliographyExporter->extractKeys($contentString);
+        if (!empty($keys)) {
+            $references = $this->bibliographyExporter->getReferencesByKeys($project->getUser(), $keys);
+            foreach ($references as $ref) {
+                // Éviter les doublons si déjà présents
+                $exists = false;
+                foreach ($bibData as $existing) {
+                    if (($existing['citeKey'] ?? '') === $ref->getCiteKey()) {
+                        $exists = true;
+                        break;
+                    }
+                }
+                if (!$exists) {
+                    $bibData[] = [
+                        'citeKey' => $ref->getCiteKey(),
+                        'entryType' => $ref->getEntryType(),
+                        'title' => $ref->getTitle(),
+                        'authors' => $ref->getAuthors(),
+                        'authorsFormatted' => $ref->getAuthors(),
+                        'year' => $ref->getYear(),
+                        'journal' => $ref->getJournal(),
+                        'doi' => $ref->getDoi(),
+                        'rawData' => $ref->getRawData() ?? [],
+                    ];
+                }
+            }
+        }
+        $bibEntriesJson = json_encode($bibData);
+
+        $html = $this->twig->render('export/print.html.twig', [
             'project' => $project,
             'chapters' => $chapters,
+            'bibEntries' => $bibEntries,
+            'bibEntriesJson' => $bibEntriesJson,
+            'source' => 'project',
         ]);
-
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
 
         $exportDir = $this->projectDir . '/public/uploads/exports';
         if (!is_dir($exportDir)) {
@@ -55,7 +93,13 @@ class ProjectExporterService
         $filename = sprintf('%s_%s.pdf', $this->slugify($project->getName()), uniqid());
         $pdfPath = $exportDir . '/' . $filename;
 
-        file_put_contents($pdfPath, $dompdf->output());
+        // Génération du PDF via WeasyPrint
+        $this->pdfGenerator->generate($html, $pdfPath, [
+            'title' => $project->getName(),
+            'author' => $project->getUser()->getUsername() ?? 'Chercheur Djoliba',
+            'keywords' => $project->getType() ?? '',
+            'description' => $project->getResearchProject()?->getDescription() ?? '',
+        ]);
 
         return $pdfPath;
     }

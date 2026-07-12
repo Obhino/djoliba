@@ -11,8 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Twig\Environment;
-use Dompdf\Dompdf;
-use Dompdf\Options;
+use App\Service\Converter\PdfGeneratorService;
 
 #[Route('/api/projects')]
 #[IsGranted('ROLE_USER')]
@@ -22,7 +21,8 @@ class ExportController extends AbstractController
         private ProjectManager $projectManager,
         private LatexConverter $latexConverter,
         private Environment $twig,
-        private BibliographyExporter $bibliographyExporter
+        private BibliographyExporter $bibliographyExporter,
+        private PdfGeneratorService $pdfGenerator
     ) {
     }
 
@@ -94,56 +94,70 @@ class ExportController extends AbstractController
             $filename .= '.pdf';
         }
 
-        // Remplacer les formules mathématiques LaTeX ($...$ et $$...$$) par des images CodeCogs pour Dompdf
-        // 1. Double dollars $$ (blocs centrés)
-        $html = preg_replace_callback('/\$\$(.*?)\$\$/s', function($matches) {
-            $formula = trim($matches[1]);
-            $url = 'https://latex.codecogs.com/png.image?\dpi{130}\bg{white}' . rawurlencode($formula);
-            if (!extension_loaded('gd')) {
-                return '<div style="text-align: center; margin: 15px 0; font-family: monospace; font-size: 10pt; color: #555;">[Équation : ' . htmlspecialchars($formula) . ']</div>';
-            }
-            return '<div style="text-align: center; margin: 15px 0;"><img src="' . $url . '" alt="' . htmlspecialchars($formula) . '" style="max-height: 80px; display: inline-block;" /></div>';
-        }, $html);
 
-        // 2. Simple dollar $ (en ligne)
-        $html = preg_replace_callback('/\$([^\$]+)\$/s', function($matches) {
-            $formula = trim($matches[1]);
-            $url = 'https://latex.codecogs.com/png.image?\dpi{110}\bg{white}' . rawurlencode($formula);
-            if (!extension_loaded('gd')) {
-                return '<span style="font-family: monospace; font-size: 9pt; color: #555;">[' . htmlspecialchars($formula) . ']</span>';
-            }
-            return '<img src="' . $url . '" alt="' . htmlspecialchars($formula) . '" style="vertical-align: middle; max-height: 18px; display: inline-block; margin: 0 2px;" />';
-        }, $html);
 
-        // Génération et intégration de la bibliographie
+        $subProject = $project->getSubProject();
+        $bibEntries = $subProject ? $subProject->getBibliographyEntries() : [];
+        $bibData = [];
+        
+        // 1. Ajouter les références spécifiques au sous-projet
+        foreach ($bibEntries as $entry) {
+            $bibData[] = $entry->toArray();
+        }
+
+        // 2. Extraire et ajouter les références globales (user-wide)
         $keys = $this->bibliographyExporter->extractKeys($html);
         if (!empty($keys)) {
-            $references = $this->bibliographyExporter->getReferencesByKeys($this->getUser(), $keys);
-            if (!empty($references)) {
-                $bibHtml = $this->bibliographyExporter->generateHtml($references);
-                $html .= "\n" . $bibHtml;
+            $references = $this->bibliographyExporter->getReferencesByKeys($project->getUser(), $keys);
+            foreach ($references as $ref) {
+                // Éviter les doublons si déjà présents
+                $exists = false;
+                foreach ($bibData as $existing) {
+                    if (($existing['citeKey'] ?? '') === $ref->getCiteKey()) {
+                        $exists = true;
+                        break;
+                    }
+                }
+                if (!$exists) {
+                    $bibData[] = [
+                        'citeKey' => $ref->getCiteKey(),
+                        'entryType' => $ref->getEntryType(),
+                        'title' => $ref->getTitle(),
+                        'authors' => $ref->getAuthors(),
+                        'authorsFormatted' => $ref->getAuthors(),
+                        'year' => $ref->getYear(),
+                        'journal' => $ref->getJournal(),
+                        'doi' => $ref->getDoi(),
+                        'rawData' => $ref->getRawData() ?? [],
+                    ];
+                }
             }
         }
 
-        // Configuration Dompdf
-        $options = new Options();
-        $options->set('defaultFont', 'DejaVu Sans');
-        $options->set('isHtml5ParserEnabled', true);
-        $options->set('isRemoteEnabled', true);
+        $bibEntriesJson = json_encode($bibData);
 
-        $dompdf = new Dompdf($options);
-
-        // Rendu HTML complet avec le template et la feuille de styles académique
-        $styledHtml = $this->twig->render('export/pdf_editor.html.twig', [
+        // Rendu HTML complet avec le template de prévisualisation et Gotenberg
+        $styledHtml = $this->twig->render('export/print.html.twig', [
             'project' => $project,
-            'contentHtml' => $html
+            'source' => 'editor_server',
+            'editorHtml' => $html,
+            'bibEntriesJson' => $bibEntriesJson,
         ]);
 
-        $dompdf->loadHtml($styledHtml);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
+        $tempPdfPath = tempnam(sys_get_temp_dir(), 'pdf_export_') . '.pdf';
 
-        $pdfOutput = $dompdf->output();
+        // Génération du PDF de haute qualité via WeasyPrint
+        $this->pdfGenerator->generate($styledHtml, $tempPdfPath, [
+            'title' => $project->getName(),
+            'author' => $project->getUser()->getFirstName() ?? $project->getUser()->getEmail(),
+            'keywords' => $project->getType() ?? '',
+            'description' => $project->getResearchProject()?->getDescription() ?? '',
+        ]);
+
+        $pdfOutput = file_get_contents($tempPdfPath);
+        if (file_exists($tempPdfPath)) {
+            unlink($tempPdfPath);
+        }
 
         $response = new Response($pdfOutput);
         $response->headers->set('Content-Type', 'application/pdf');

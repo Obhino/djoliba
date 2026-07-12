@@ -18,3 +18,9 @@ when@test:
         messenger:
             transports:
                 async: 'in-memory://'
+
+when@dev:
+    framework:
+        messenger:
+            transports:
+                async: 'sync://'

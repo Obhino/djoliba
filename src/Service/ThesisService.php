@@ -106,11 +106,17 @@ class ThesisService
      */
     public function updateChapter(Chapter $chapter, string $title, ?string $content): Chapter
     {
-        $chapter->setTitle($title);
-        $chapter->setContent($content);
-        $chapter->setUpdatedAt(new \DateTime());
+        $currentContent = $chapter->getContent();
+        $hasContentChanged = ($currentContent ?? '') !== ($content ?? '');
+        $hasTitleChanged = $chapter->getTitle() !== $title;
 
-        $this->entityManager->flush();
+        if ($hasTitleChanged || $hasContentChanged) {
+            $chapter->setTitle($title);
+            $chapter->setContent($content);
+            $chapter->setUpdatedAt(new \DateTime());
+
+            $this->entityManager->flush();
+        }
 
         return $chapter;
     }

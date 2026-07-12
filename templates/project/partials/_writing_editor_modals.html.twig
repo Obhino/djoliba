@@ -1,0 +1,954 @@
+{# templates/project/partials/_writing_editor_modals.html.twig #}
+
+	{# ───────────────────────────────────────────── #}
+	{# MODAL 1 : RÉSULTATS DE L'ORIGINALITÉ           #}
+	{# ───────────────────────────────────────────── #}
+		<div data-writing-editor-target="originalityModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true"> <div class="modal-card bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col max-h-[85vh]">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+						<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-djoliba">Rapport d'Originalité IA</h3>
+						<p class="text-[10px] text-slate-400">Analyse de plagiat & suggestions de reformulation</p>
+					</div>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeOriginalityModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+
+			<div
+				data-writing-editor-target="originalityContent" class="p-8 overflow-y-auto custom-scrollbar flex-grow">{# Rempli dynamiquement en JS #}
+			</div>
+
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeOriginalityModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">
+					Fermer le rapport
+				</button>
+			</div>
+		</div>
+	</div>
+
+	{# ───────────────────────────────────────────── #}
+	{# MODAL 2 : SUGGESTIONS DE REVUES               #}
+	{# ───────────────────────────────────────────── #}
+		<div data-writing-editor-target="journalModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true"> <div class="modal-card bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col max-h-[85vh]">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-gold_prestige/10 flex items-center justify-center text-gold_prestige">
+						<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-djoliba">Revues Scientifiques Cibles</h3>
+						<p class="text-[10px] text-slate-400">Opportunités de publication suggérées par l'IA</p>
+					</div>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeJournalModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+
+			<div
+				data-writing-editor-target="journalContent" class="p-8 overflow-y-auto custom-scrollbar flex-grow">{# Rempli dynamiquement en JS #}
+			</div>
+
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeJournalModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">
+					Fermer les suggestions
+				</button>
+			</div>
+		</div>
+	</div>
+
+	{# ───────────────────────────────────────────── #}
+	{# MODAL 3 : PRÉVISUALISATION DE L'IMPORT        #}
+	{# ───────────────────────────────────────────── #}
+		<div data-writing-editor-target="previewModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true"> <div class="modal-card bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col max-h-[90vh]">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba">
+						<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-djoliba">Prévisualisation de l'Import</h3>
+						<p class="text-[10px] text-slate-400">Texte extrait de votre document avant insertion</p>
+					</div>
+				</div>
+				<button type="button" data-action="click->writing-editor#closePreviewModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+
+			<div class="p-6 bg-slate-50">
+				<div
+					data-writing-editor-target="previewContent" class="w-full p-6 bg-white border border-slate-200 rounded-2xl text-xs text-slate-800 leading-relaxed whitespace-pre-wrap font-sans shadow-sm max-h-[240px] overflow-y-auto custom-scrollbar">{# Rempli par JS #}
+				</div>
+			</div>
+
+			<div class="px-8 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
+				<button type="button" data-action="click->writing-editor#closePreviewModal" class="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-100 transition-all">
+					Annuler
+				</button>
+				<button type="button" data-action="click->writing-editor#confirmImport" data-writing-editor-target="confirmImportBtn" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">
+					Confirmer l'insertion
+				</button>
+			</div>
+		</div>
+	</div>
+
+	{# ───────────────────────────────────────────── #}
+	{# MODAL 4 : GUIDE D'UTILISATION (AIDE)          #}
+	{# ───────────────────────────────────────────── #}
+		<div data-writing-editor-target="helpModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true"> <div
+			class="modal-card bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col max-h-[80vh]">
+			{# En-tête modal #}
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba font-bold text-sm">
+						?
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-djoliba">Guide de l'Éditeur Scientifique</h3>
+						<p class="text-[10px] text-slate-400">Comment rédiger, insérer du LaTeX et formater vos travaux</p>
+					</div>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeHelpModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+
+			{# Corps du modal #}
+			<div class="p-6 bg-slate-50 flex-grow overflow-y-auto custom-scrollbar" style="max-height: 400px;">
+				<div
+					class="space-y-5 text-xs text-slate-700 leading-relaxed">
+
+					{# Mode Visuel #}
+					<div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+						<h4 class="font-bold text-djoliba text-xs flex items-center gap-2">
+							<span class="w-2 h-2 rounded-full bg-djoliba"></span>
+							Mode Visuel (WYSIWYG)
+						</h4>
+						<p class="text-[11px] text-slate-500">
+							Rédigez comme dans votre traitement de texte habituel. Utilisez la barre d'outils supérieure pour mettre en forme instantanément votre texte (Gras, Italique, Titres scientifiques H1/H2/H3, Listes à puces, Listes ordonnées, Blocs de code). Les raccourcis clavier standards sont également supportés (<code>Ctrl+B</code>
+							pour le gras,
+							<code>Ctrl+I</code>
+							pour l'italique).
+						</p>
+					</div>
+
+					{# Mode LaTeX / Mathématiques #}
+					<div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+						<h4 class="font-bold text-djoliba text-xs flex items-center gap-2">
+							<span class="w-2 h-2 rounded-full bg-gold_prestige"></span>
+							LaTeX & Équations Mathématiques (KaTeX)
+						</h4>
+						<p class="text-[11px] text-slate-500">
+							L'éditeur supporte la saisie directe d'équations scientifiques LaTeX. Pour que vos formules soient compilées et affichées dans la prévisualisation, utilisez les délimiteurs standards :
+						</p>
+						<div class="bg-slate-50 p-4 rounded-xl border border-slate-100 font-mono text-[10px] text-slate-800 space-y-2">
+							<div>
+								<span class="font-bold text-djoliba">Équation en ligne :</span>
+								Entourez la formule d'un simple dollar
+								<code>$</code>.
+								<br><span class="italic text-slate-400">Exemple :</span>
+								<code>La formule $E=mc^2$ lie la masse à l'énergie.</code>
+							</div>
+							<div class="pt-2 border-t border-slate-200/50">
+								<span class="font-bold text-djoliba">Équation centrée en bloc :</span>
+								Entourez la formule de doubles dollars
+								<code>$$</code>.
+								<br><span class="italic text-slate-400">Exemple :</span>
+								<br><code>$$ \int_{a}^{b} x^2 dx = \left[ \frac{x^3}{3} \right]_{a}^{b} $$</code>
+							</div>
+						</div>
+						<p class="text-[10px] italic text-slate-400">
+							💡 Conseil : Cliquez sur le bouton
+							<strong class="text-djoliba font-semibold">"Prévisualiser"</strong>
+							dans la barre d'outils pour ouvrir l'écran partagé et voir vos équations compilées en temps réel à l'aide de KaTeX !
+						</p>
+						<div class="bg-amber-50 border border-amber-200/60 p-4 rounded-xl text-[10px] text-amber-800 space-y-1">
+							<span class="font-bold flex items-center gap-1.5 text-amber-900">
+								<svg class="w-3.5 h-3.5 text-amber-600 flex-shrink-0" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+								Note sur la compilation LaTeX :
+							</span>
+							<p class="leading-relaxed">
+								Veuillez noter que la plateforme ne compile pas de document PDF LaTeX complet (elle n'intègre pas de compilateur serveur lourd type
+								<code>pdflatex</code>
+								ou
+								<code>tectonic</code>). Elle sert à rédiger votre contenu de manière structurée et hybride, à prévisualiser vos formules mathématiques en temps réel, et à
+								<strong>exporter un fichier LaTeX (.tex) propre et standardisé</strong>
+								que vous pourrez ensuite compiler localement dans votre environnement habituel (Overleaf, Texmaker, etc.).
+							</p>
+						</div>
+					</div>
+
+					{# Import Word #}
+					<div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+						<h4 class="font-bold text-djoliba text-xs flex items-center gap-2">
+							<span class="w-2 h-2 rounded-full bg-emerald_ia"></span>
+							Importation Word (.docx) & LaTeX (.tex)
+						</h4>
+						<p class="text-[11px] text-slate-500">
+							Vous pouvez importer vos manuscrits externes existants en cliquant sur
+							<strong class="text-djoliba font-semibold">"Importer"</strong>.
+							<br>• Les fichiers
+							<strong>LaTeX (.tex)</strong>
+							sont lus instantanément.
+							<br>• Les fichiers
+							<strong>Word (.docx)</strong>
+							sont extraits côté client grâce à un parseur léger. Une modal de prévisualisation s'affiche pour vous permettre de relire le texte brut extrait avant de l'insérer d'un simple clic dans votre éditeur de recherche.
+						</p>
+					</div>
+
+					{# Sauvegarde auto #}
+					<div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+						<h4 class="font-bold text-djoliba text-xs flex items-center gap-2">
+							<svg class="w-4 h-4 text-emerald-600 animate-pulse" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+							Sauvegarde Automatique de Sécurité
+						</h4>
+						<p class="text-[11px] text-slate-500">
+							Vous n'avez aucun bouton "Enregistrer" à cliquer ! L'éditeur effectue une **double sauvegarde** de sécurité à chaque pause d'écriture de **2 secondes** :
+							<br>1.
+							<strong>Locale (LocalStorage)</strong>
+							: Stocke votre travail en continu dans votre propre navigateur. Même si votre connexion internet est coupée brusquement, votre travail est conservé !
+							<br>2.
+							<strong>Serveur (Backend)</strong>
+							: Synchronise en continu votre manuscrit pour qu'il soit disponible sur tous vos appareils.
+						</p>
+					</div>
+
+				</div>
+			</div>
+
+			{# Pied de page modal #}
+			<div class="px-8 py-4 border-t border-slate-100 flex justify-end bg-slate-50/50">
+				<button type="button" data-action="click->writing-editor#closeHelpModal" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">
+					Compris, je ferme le guide
+				</button>
+			</div>
+		</div>
+	</div>
+
+	{# ───────────────────────────────────────────── #}
+	{# MODAL 5 : APERÇU DE RENDU LATEX INTERPRÉTÉ     #}
+	{# ───────────────────────────────────────────── #}
+		<div data-writing-editor-target="latexPreviewModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true"> <div class="modal-card bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col max-h-[85vh]">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 animate-bounce">
+						<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+						</svg>
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-djoliba">Aperçu du Rendu Interprété (LaTeX / Markdown)</h3>
+						<p class="text-[10px] text-slate-400">Rendu de mise en page haute fidélité avec compilation mathématique</p>
+					</div>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeLatexPreviewModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+
+			<div class="p-6 bg-slate-50 overflow-y-auto custom-scrollbar flex-grow" style="max-height: 480px;">
+				<div
+					data-writing-editor-target="latexPreviewContent" class="w-full p-8 bg-white border border-slate-200 rounded-2xl shadow-sm min-h-[300px] overflow-y-auto custom-scrollbar prose prose-slate max-w-none font-sans leading-relaxed text-xs">{# Rempli dynamiquement en JS #}
+				</div>
+			</div>
+
+			<div class="px-8 py-4 border-t border-slate-100 flex justify-end bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeLatexPreviewModal" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 transition-all shadow-md shadow-djoliba/10">
+					Fermer l'aperçu
+				</button>
+			</div>
+		</div>
+	</div>
+
+	{# ───────────────────────────────────────────── #}
+	{# MODAL 6 : INSERTION DE TABLEAU                #}
+	{# ───────────────────────────────────────────── #}
+	<div data-writing-editor-target="tableModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba">
+						<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+					</div>
+					<h3 class="text-sm font-bold text-djoliba">Éditeur de Tableau Scientifique</h3>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeTableModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<div class="p-8 space-y-4">
+				<div class="grid grid-cols-2 gap-4">
+					<div>
+						<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Titre du Tableau</label>
+						<input type="text" data-writing-editor-target="tableCaptionInput" placeholder="Ex: Résultats d'analyse" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold bg-slate-50/50">
+					</div>
+					<div>
+						<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Label LaTeX (Optionnel)</label>
+						<input type="text" data-writing-editor-target="tableLabelInput" placeholder="Ex: tab:resultats" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold bg-slate-50/50">
+					</div>
+				</div>
+				
+				<div class="border border-slate-100 rounded-2xl p-4 bg-slate-50/30">
+					<div class="flex items-center justify-between mb-3">
+						<span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Édition des données de la grille</span>
+						<div class="flex gap-2">
+							<button type="button" data-action="click->writing-editor#addTableRow" class="px-2 py-1 bg-white border border-slate-200 text-slate-600 rounded hover:bg-slate-50 text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm" title="Ajouter une ligne">+ Ligne</button>
+							<button type="button" data-action="click->writing-editor#addTableCol" class="px-2 py-1 bg-white border border-slate-200 text-slate-600 rounded hover:bg-slate-50 text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm" title="Ajouter une colonne">+ Col</button>
+							<button type="button" data-action="click->writing-editor#removeTableRow" class="px-2 py-1 bg-white border border-slate-200 text-red-500 rounded hover:bg-red-50 text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm" title="Supprimer la dernière ligne">- Ligne</button>
+							<button type="button" data-action="click->writing-editor#removeTableCol" class="px-2 py-1 bg-white border border-slate-200 text-red-500 rounded hover:bg-red-50 text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm" title="Supprimer la dernière colonne">- Col</button>
+						</div>
+					</div>
+					<div class="max-h-[260px] overflow-y-auto custom-scrollbar border border-slate-100 rounded-xl bg-white p-2">
+						<div data-writing-editor-target="tableGridContainer" class="w-full"></div>
+					</div>
+				</div>
+			</div>
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-between bg-slate-50/20">
+				<div>
+					<button type="button" data-action="click->writing-editor#deleteTable" class="px-5 py-2.5 bg-red-50 text-red-600 text-xs font-bold rounded-xl hover:bg-red-100 hover:text-red-700 transition-all hidden" data-writing-editor-target="tableDeleteBtn">Supprimer le tableau</button>
+				</div>
+				<div class="flex gap-3">
+					<button type="button" data-action="click->writing-editor#closeTableModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">Annuler</button>
+					<button type="button" data-action="click->writing-editor#confirmInsertTable" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Enregistrer</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	{# ───────────────────────────────────────────── #}
+	{# MODAL 7 : INSERTION DE FIGURE                 #}
+	{# ───────────────────────────────────────────── #}
+	<div data-writing-editor-target="figureModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba">
+						<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+					</div>
+					<h3 class="text-sm font-bold text-djoliba">Insérer une Figure</h3>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeFigureModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<div class="p-8 space-y-4">
+				<div>
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">URL de l'image ou Source</label>
+					<div class="flex gap-2">
+						<input type="text" data-writing-editor-target="figureUrlInput" placeholder="https://example.com/image.png" class="flex-grow px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold bg-white">
+						<button type="button" data-action="click->writing-editor#triggerFigureImageUpload" class="px-3.5 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-100 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm flex-shrink-0" title="Importer une image locale">
+							<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+							Importer
+						</button>
+					</div>
+					<input type="file" data-writing-editor-target="figureImageFileInput" data-action="change->writing-editor#handleFigureImageUpload" class="hidden" accept="image/*">
+					<div data-writing-editor-target="figureUploadStatus" class="text-[10px] font-bold text-slate-400 mt-1.5 hidden"></div>
+				</div>
+				<div>
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Légende (Caption)</label>
+					<input type="text" data-writing-editor-target="figureCaptionInput" placeholder="Ex: Structure sémantique du réseau Djoliba" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold">
+				</div>
+				<div>
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Label LaTeX (optionnel)</label>
+					<input type="text" data-writing-editor-target="figureLabelInput" placeholder="Ex: fig:structure" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold">
+				</div>
+			</div>
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-between bg-slate-50/20">
+				<div>
+					<button type="button" data-action="click->writing-editor#deleteFigure" class="px-5 py-2.5 bg-red-50 text-red-600 text-xs font-bold rounded-xl hover:bg-red-100 hover:text-red-700 transition-all hidden" data-writing-editor-target="figureDeleteBtn">Supprimer la figure</button>
+				</div>
+				<div class="flex gap-3">
+					<button type="button" data-action="click->writing-editor#closeFigureModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">Annuler</button>
+					<button type="button" data-action="click->writing-editor#confirmInsertFigure" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Enregistrer</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	{# ───────────────────────────────────────────── #}
+	{# MODAL 8 : INSERTION DE NOTE                   #}
+	{# ───────────────────────────────────────────── #}
+	<div data-writing-editor-target="footnoteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba font-bold text-xs">
+						N<sup>1</sup>
+					</div>
+					<h3 class="text-sm font-bold text-djoliba">Note de bas de page</h3>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeFootnoteModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<div class="p-8 space-y-4">
+				<div>
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Contenu de la note</label>
+					<textarea data-writing-editor-target="footnoteTextInput" placeholder="Rédigez la note de bas de page ici..." rows="3" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold resize-none"></textarea>
+				</div>
+			</div>
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end gap-3 bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeFootnoteModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">Annuler</button>
+				<button type="button" data-action="click->writing-editor#confirmInsertFootnote" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Insérer</button>
+			</div>
+		</div>
+	</div>
+
+	{# ───────────────────────────────────────────── #}
+	{# MODAL 9 : INSERTION DE RÉFÉRENCE CROISÉE      #}
+	{# ───────────────────────────────────────────── #}
+	<div data-writing-editor-target="referenceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba">
+						<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+					</div>
+					<h3 class="text-sm font-bold text-djoliba">Référence Croisée</h3>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeReferenceModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<div class="p-8 space-y-4">
+				<div>
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Sélectionnez le label cible</label>
+					<select data-writing-editor-target="referenceLabelSelect" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold bg-white cursor-pointer">
+						<option value="">-- Aucun label trouvé --</option>
+					</select>
+				</div>
+			</div>
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end gap-3 bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeReferenceModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">Annuler</button>
+				<button type="button" data-action="click->writing-editor#confirmInsertReference" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Insérer</button>
+			</div>
+		</div>
+	</div>
+
+	{# ───────────────────────────────────────────── #}
+	{# ÉLÉMENTS DE L'ASSISTANT IA INTERACTIF         #}
+	{# ───────────────────────────────────────────── #}
+
+	{# BARRE D'OUTILS CONTEXTUELLE FLOTTANTE #}
+	<div data-editor-ai-target="floatingToolbar" class="hidden absolute z-50 bg-white/95 backdrop-blur-md text-slate-800 border border-slate-200/80 rounded-2xl shadow-xl p-1.5 flex items-center gap-1.5 transition-all duration-150 scale-95 opacity-0">
+		<button type="button" data-action="click->editor-ai#runReasoning" class="p-2 hover:bg-slate-100 rounded-xl text-sm transition-all flex items-center justify-center" title="Vérifier le raisonnement (Ctrl+Shift+R)">
+			🧠
+		</button>
+		<button type="button" data-action="click->editor-ai#runReformulate" class="p-2 hover:bg-slate-100 rounded-xl text-sm transition-all flex items-center justify-center" title="Reformuler le style (Ctrl+Shift+F)">
+			✍️
+		</button>
+		<button type="button" data-action="click->editor-ai#runPeerReview" class="p-2 hover:bg-slate-100 rounded-xl text-sm transition-all flex items-center justify-center" title="Simuler une relecture Peer Review (Ctrl+Shift+W)">
+			🔍
+		</button>
+		<button type="button" data-action="click->editor-ai#triggerTranslatePrompt" class="p-2 hover:bg-slate-100 rounded-xl text-sm transition-all flex items-center justify-center" title="Traduire le paragraphe (Ctrl+Shift+T)">
+			🌐
+		</button>
+		<button type="button" data-action="click->editor-ai#triggerTonePrompt" class="p-2 hover:bg-slate-100 rounded-xl text-sm transition-all flex items-center justify-center" title="Ajuster le registre académique">
+			🎭
+		</button>
+		<button type="button" data-action="click->editor-ai#runExplain" class="p-2 hover:bg-slate-100 rounded-xl text-sm transition-all flex items-center justify-center" title="Définir les concepts & Glossaire">
+			📖
+		</button>
+		<button type="button" data-action="click->editor-ai#triggerAskPrompt" class="p-2 hover:bg-slate-100 rounded-xl text-sm transition-all flex items-center justify-center" title="Demander à l'IA (Ctrl+Shift+A)">
+			💬
+		</button>
+		<button type="button" data-action="click->editor-ai#addAnnotationPrompt" class="p-2 hover:bg-slate-100 rounded-xl text-sm transition-all flex items-center justify-center border-l border-slate-200 pl-3 ml-1.5" title="Ajouter une note / annotation (Commentaire)">
+			📌
+		</button>
+	</div>
+
+	{# MODALE DE RÉSULTATS DE L'ASSISTANT IA #}
+	<div data-editor-ai-target="aiModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col" style="height: 600px; max-height: 80vh; max-width: 42rem; width: 100%;">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba text-base">
+						✨
+					</div>
+					<div>
+						<h3 data-editor-ai-target="modalTitle" class="text-sm font-bold text-djoliba">Assistant IA Djoliba</h3>
+						<p class="text-[10px] text-slate-400">Copilote de rédaction scientifique autonome</p>
+					</div>
+				</div>
+				<button type="button" data-action="click->editor-ai#closeModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+
+			<div class="p-8 overflow-y-auto custom-scrollbar flex-grow min-h-0" style="overflow-y: auto; flex-grow: 1; min-height: 0;">
+				<!-- Formulaire Demande spécifique -->
+				<div data-editor-ai-target="askFormContainer" class="hidden space-y-4">
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Posez votre question à l'IA avec le texte sélectionné comme contexte</label>
+					<textarea data-editor-ai-target="askInput" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold resize-none" rows="3" placeholder="Ex: Corrige le style passif de cette phrase ou Explique cette formule..."></textarea>
+					<div class="flex justify-end">
+						<button type="button" data-action="click->editor-ai#confirmAsk" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Poser la question</button>
+					</div>
+				</div>
+
+				<!-- Formulaire Traduction -->
+				<div data-editor-ai-target="translateContainer" class="hidden space-y-4">
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Sélectionnez la langue cible</label>
+					<select data-editor-ai-target="translateSelect" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold bg-white cursor-pointer">
+						<option value="anglais">Anglais (English)</option>
+						<option value="français">Français</option>
+					</select>
+					<div class="flex justify-end">
+						<button type="button" data-action="click->editor-ai#confirmTranslate" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Traduire</button>
+					</div>
+				</div>
+
+				<!-- Formulaire Registre/Ton -->
+				<div data-editor-ai-target="toneContainer" class="hidden space-y-4">
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Sélectionnez le registre scientifique</label>
+					<select data-editor-ai-target="toneSelect" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold bg-white cursor-pointer">
+						<option value="Voix Active Directe">Voix Active Directe (plus percutant)</option>
+						<option value="Formel & Distancié">Formel & Distancié (style académique standard)</option>
+						<option value="Vulgarisation & Impact">Vulgarisation & Impact (pour un public élargi)</option>
+					</select>
+					<div class="flex justify-end">
+						<button type="button" data-action="click->editor-ai#confirmTone" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Ajuster le registre</button>
+					</div>
+				</div>
+
+				<!-- Zone d'affichage des résultats -->
+				<div data-editor-ai-target="modalContent" class="space-y-4"></div>
+			</div>
+
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-between bg-slate-50/20">
+				<div class="flex items-center gap-2">
+					<button type="button" data-editor-ai-target="rejectBtn" data-action="click->editor-ai#rejectInteraction" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition-all">
+						Ignorer
+					</button>
+					<button type="button" data-editor-ai-target="acceptBtn" data-action="click->editor-ai#acceptInteraction" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition-all">
+						Marquer comme vu
+					</button>
+				</div>
+				<div class="flex items-center gap-2">
+					<button type="button" data-editor-ai-target="insertAfterBtn" data-action="click->editor-ai#applyInsertAfter" class="px-4 py-2 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-djoliba text-xs font-bold rounded-xl transition-all">
+						Insérer après
+					</button>
+					<button type="button" data-editor-ai-target="replaceBtn" data-action="click->editor-ai#applyReplacement" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">
+						Remplacer la sélection
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	{# MODALE D'HISTORIQUE DE L'ASSISTANT IA #}
+	<div data-editor-ai-target="historyModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col" style="height: 600px; max-height: 80vh; max-width: 42rem; width: 100%;">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba text-base">
+						📜
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-djoliba">Historique des suggestions IA</h3>
+						<p class="text-[10px] text-slate-400">Revoir et réutiliser vos échanges précédents</p>
+					</div>
+				</div>
+				<button type="button" data-action="click->editor-ai#closeHistoryModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+
+			<div class="p-8 overflow-y-auto custom-scrollbar flex-grow min-h-0" style="overflow-y: auto; flex-grow: 1; min-height: 0;">
+				<ul data-editor-ai-target="historyList" class="space-y-4">
+					{# Rempli dynamiquement en JS #}
+				</ul>
+				<div data-editor-ai-target="historyEmptyMsg" class="hidden text-center py-12 text-slate-400 italic text-xs">
+					Aucun échange précédent enregistré.
+				</div>
+			</div>
+
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end bg-slate-50/20">
+				<button type="button" data-action="click->editor-ai#closeHistoryModal" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 transition-all shadow-sm">
+					Fermer l'historique
+				</button>
+			</div>
+		</div>
+	</div>
+
+	{# MODALE D'ÉDITION DES FORMULES MATHÉMATIQUES (LATEX/KATEX) #}
+	<div data-writing-editor-target="mathModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba text-base font-serif">
+						∫
+					</div>
+					<h3 class="text-sm font-bold text-djoliba">Insérer une Formule Mathématique</h3>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeMathModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<div class="p-8 space-y-4">
+				<div>
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Formule LaTeX (sans les délimiteurs $)</label>
+					<textarea data-writing-editor-target="mathFormulaInput" placeholder="Ex: \sum_{i=1}^{n} i = \frac{n(n+1)}{2}" rows="3" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold font-mono resize-none"></textarea>
+				</div>
+				<div>
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Style d'affichage</label>
+					<select data-writing-editor-target="mathDisplaySelect" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold bg-white cursor-pointer">
+						<option value="inline">En ligne (dans le texte)</option>
+						<option value="block">Bloc centré (ligne dédiée)</option>
+					</select>
+				</div>
+			</div>
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end gap-3 bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeMathModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">Annuler</button>
+				<button type="button" data-action="click->writing-editor#confirmInsertMath" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Insérer</button>
+			</div>
+		</div>
+	</div>
+
+	{# MODALE DE GESTION DES VERSIONS / SNAPSHOTS #}
+	<div data-writing-editor-target="snapshotModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col max-h-[85vh]">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba text-base">
+						📸
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-djoliba">Versions & Instantanés</h3>
+						<p class="text-[10px] text-slate-400">Sauvegardez et restaurez des brouillons nommés</p>
+					</div>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeSnapshotModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+
+			<div class="p-8 space-y-6 flex-grow overflow-y-auto custom-scrollbar">
+				{# Section 1 : Créer une version #}
+				<div class="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-3">
+					<h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Créer une nouvelle version</h4>
+					<div class="flex gap-2">
+						<input type="text" data-writing-editor-target="snapshotNameInput" placeholder="Ex: Version finale avant soumission..." class="flex-grow px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold bg-white">
+						<button type="button" data-action="click->writing-editor#createSnapshot" class="px-5 py-2.5 bg-djoliba hover:opacity-90 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-djoliba/10 whitespace-nowrap">
+							Sauvegarder
+						</button>
+					</div>
+				</div>
+
+				{# Section 2 : Liste des versions #}
+				<div class="space-y-3">
+					<h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Versions sauvegardées</h4>
+					<div data-writing-editor-target="snapshotList" class="space-y-3">
+						{# Rempli dynamiquement en JS #}
+					</div>
+					<div data-writing-editor-target="snapshotEmptyMsg" class="hidden text-center py-8 text-slate-400 italic text-xs">
+						Aucun instantané enregistré pour ce projet.
+					</div>
+				</div>
+			</div>
+
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeSnapshotModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">
+					Fermer
+				</button>
+			</div>
+	</div>
+
+	{# MODALE D'INSERTION DE COMMENTAIRE / ANNOTATION #}
+	<div data-writing-editor-target="annotationModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba text-base">
+						📌
+					</div>
+					<h3 class="text-sm font-bold text-djoliba">Ajouter une note</h3>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeAnnotationModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<div class="p-8 space-y-4">
+				<div>
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Sélection</label>
+					<div data-writing-editor-target="annotationSelectedText" class="p-3 bg-slate-50 border border-slate-100 text-xs text-slate-600 italic rounded-xl max-h-24 overflow-y-auto line-clamp-3"></div>
+				</div>
+				<div>
+					<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Votre note / commentaire</label>
+					<textarea data-writing-editor-target="annotationCommentInput" placeholder="Saisissez votre commentaire..." rows="3" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-4 focus:ring-djoliba/10 transition-all text-xs text-djoliba font-semibold resize-none"></textarea>
+				</div>
+			</div>
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end gap-3 bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeAnnotationModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">Annuler</button>
+				<button type="button" data-action="click->writing-editor#confirmInsertAnnotation" class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all">Enregistrer</button>
+			</div>
+		</div>
+	</div>
+
+	{# MODALE DE LISIBILITÉ #}
+	<div data-writing-editor-target="readabilityModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300 opacity-0 hidden" role="dialog" aria-modal="true">
+		<div class="modal-card bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 transform scale-95 opacity-0 transition-all duration-300 ease-out flex flex-col">
+			<div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-full bg-djoliba/10 flex items-center justify-center text-djoliba text-base">
+						📊
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-djoliba">Analyse de Lisibilité</h3>
+						<p class="text-[10px] text-slate-400">Statistiques de lisibilité et suggestions de style</p>
+					</div>
+				</div>
+				<button type="button" data-action="click->writing-editor#closeReadabilityModal" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+
+			<div class="p-8 space-y-6">
+				{# Score Flesch #}
+				<div class="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+					<div>
+						<span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Score Flesch (Français)</span>
+						<span data-writing-editor-target="readabilityFleschAppreciation" class="text-xs font-bold text-slate-600">Calcul...</span>
+					</div>
+					<div data-writing-editor-target="readabilityFleschScore" class="text-2xl font-black text-djoliba">-</div>
+				</div>
+
+				{# Détails #}
+				<div class="grid grid-cols-2 gap-4">
+					<div class="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-1">
+						<span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Mots par phrase</span>
+						<div class="flex items-baseline gap-1">
+							<span data-writing-editor-target="readabilityWordsPerSentence" class="text-base font-bold text-slate-700">0</span>
+							<span class="text-[10px] text-slate-400 font-semibold">mots</span>
+						</div>
+					</div>
+					<div class="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-1">
+						<span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Phrases passives</span>
+						<div class="flex items-baseline gap-1">
+							<span data-writing-editor-target="readabilityPassivePercent" class="text-base font-bold text-slate-700">0</span>
+							<span class="text-[10px] text-slate-400 font-semibold">%</span>
+						</div>
+					</div>
+				</div>
+
+				{# Recommandations #}
+				<div class="space-y-3">
+					<h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Recommandations de style</h4>
+					<div data-writing-editor-target="readabilityRecommendations" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+						{# Rempli dynamiquement en JS #}
+					</div>
+				</div>
+			</div>
+
+			<div class="px-8 py-4 border-t border-slate-50 flex justify-end bg-slate-50/20">
+				<button type="button" data-action="click->writing-editor#closeReadabilityModal" class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">
+					Fermer
+				</button>
+			</div>
+		</div>
+	</div>
+
+	{# ════════════════════════════════════════════════════════════════════ #}
+	{# MODALE BIBLIOGRAPHIE BIBTEX — Sélection et insertion de citation   #}
+	{# ════════════════════════════════════════════════════════════════════ #}
+	<div data-writing-editor-target="citationModal"
+	     style="position: fixed; inset: 0px; z-index: 9999; display: none; align-items: center; justify-content: center; padding: 1rem; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); opacity: 0; transition: opacity 300ms ease-out;"
+	     role="dialog" aria-modal="true" aria-label="Gestionnaire de bibliographie">
+
+		<div class="modal-card bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-100/80 flex flex-col max-h-[85vh]"
+		     style="opacity: 0; transform: scale(0.95); transition: opacity 300ms ease-out, transform 300ms ease-out;">
+
+			{# ── En-tête ───────────────────────────────────────────── #}
+			<div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/60 flex-shrink-0">
+				<div class="flex items-center gap-3">
+					<div class="w-9 h-9 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-lg">📚</div>
+					<div>
+						<h3 class="text-sm font-black text-djoliba">Bibliographie</h3>
+						<p class="text-[10px] text-slate-400">Gérez vos références et insérez des citations dans l'éditeur</p>
+					</div>
+				</div>
+				<button type="button"
+				        data-action="click->writing-editor#closeCitationModal"
+				        class="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+				        title="Fermer (Échap)">
+					<svg class="w-4 h-4" fill="none" viewbox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+				</button>
+			</div>
+
+			{# ── Onglets ───────────────────────────────────────────── #}
+			<div class="flex border-b border-slate-100 bg-slate-50/30 text-xs font-bold text-slate-500 flex-shrink-0">
+				<button type="button" 
+				        data-writing-editor-target="bibTabLocal" 
+				        data-action="click->writing-editor#switchBibTab" 
+				        data-tab="local" 
+				        class="flex-1 py-3 text-center border-b-2 border-djoliba text-djoliba">
+					Fichier BibTeX local
+				</button>
+				<button type="button" 
+				        data-writing-editor-target="bibTabZotero" 
+				        data-action="click->writing-editor#switchBibTab" 
+				        data-tab="zotero" 
+				        class="flex-1 py-3 text-center border-b-2 border-transparent hover:text-djoliba transition-colors">
+					Bibliothèque Zotero
+				</button>
+			</div>
+
+			{# ── PANNEAU 1 : BIBTEX LOCAL ────────────────────────────── #}
+			<div data-writing-editor-target="bibLocalPanel" class="flex flex-col flex-grow overflow-hidden">
+				{# Barre de recherche #}
+				<div class="px-6 pt-4 pb-2 flex-shrink-0">
+					<div class="relative">
+						<svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+						</svg>
+						<input type="text"
+						       placeholder="Rechercher par auteur, titre, clé BibTeX…"
+						       class="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-2 focus:ring-djoliba/10 transition-all bg-slate-50/50"
+						       data-action="input->writing-editor#searchBibEntries"/>
+					</div>
+				</div>
+
+				{# Liste des références locales #}
+				<div data-writing-editor-target="citationSelect"
+				     class="flex-1 overflow-y-auto px-6 py-2 space-y-1 min-h-[220px] custom-scrollbar">
+					<p class="text-xs text-slate-400 text-center py-8 italic">Chargement des références…</p>
+				</div>
+
+				{# Zone import .bib #}
+				<div class="px-6 py-3 border-t border-slate-100 bg-slate-50/40 flex-shrink-0">
+					<div class="flex items-center gap-3">
+						<label class="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-[11px] font-semibold text-slate-600 hover:border-djoliba hover:text-djoliba cursor-pointer transition-all shadow-sm hover:shadow-md flex-shrink-0">
+							<svg class="w-3.5 h-3.5" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+							</svg>
+							Importer .bib
+							<input type="file"
+							       accept=".bib"
+							       class="hidden"
+							       data-action="change->writing-editor#importBibFile"/>
+						</label>
+						<span data-bib-import-status class="text-[10px] text-slate-400 italic flex-1 truncate"></span>
+					</div>
+				</div>
+
+				{# Footer actions local #}
+				<div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-white flex-shrink-0">
+					<button type="button"
+					        data-action="click->writing-editor#closeCitationModal"
+					        class="px-5 py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl hover:bg-slate-200 transition-all">
+						Annuler
+					</button>
+					<button type="button"
+					        data-action="click->writing-editor#insertSelectedCitation"
+					        class="px-5 py-2.5 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 shadow-md shadow-djoliba/10 transition-all flex items-center gap-2">
+						<svg class="w-3.5 h-3.5" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+						</svg>
+						Insérer la citation
+					</button>
+				</div>
+			</div>
+
+			{# ── PANNEAU 2 : SYSTEME ZOTERO ────────────────────────────── #}
+			<div data-writing-editor-target="bibZoteroPanel" class="flex flex-col flex-grow overflow-hidden hidden">
+				
+				{# Sous-panneau A : Formulaire de configuration Zotero #}
+				<div data-writing-editor-target="zoteroConfigForm" class="p-6 space-y-4 flex-1 overflow-y-auto hidden">
+					<div class="bg-amber-50/50 border border-amber-200/50 rounded-2xl p-4 text-[11px] text-amber-800 leading-relaxed">
+						<strong>Intégration de votre bibliothèque Zotero :</strong><br>
+						Saisissez votre Zotero User ID (disponible dans vos réglages de profil Zotero) et une clé d'API (créée dans vos réglages Zotero -> Developer settings).
+					</div>
+					<div class="space-y-3">
+						<div>
+							<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Zotero User ID</label>
+							<input type="text" 
+							       data-writing-editor-target="zoteroUserId" 
+							       placeholder="Ex: 1234567" 
+							       class="w-full px-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-2 focus:ring-djoliba/10 transition-all" />
+						</div>
+						<div>
+							<label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Clé d'API Zotero</label>
+							<input type="password" 
+							       data-writing-editor-target="zoteroApiKey" 
+							       placeholder="Clé générée sur zotero.org" 
+							       class="w-full px-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba focus:ring-2 focus:ring-djoliba/10 transition-all" />
+						</div>
+						<div class="pt-2 flex justify-between items-center gap-2">
+							<span data-writing-editor-target="zoteroConfigStatus" class="text-[10px] italic font-semibold"></span>
+							<button type="button" 
+							        data-action="click->writing-editor#saveZoteroConfig" 
+							        class="px-4 py-2 bg-djoliba text-white text-xs font-bold rounded-xl hover:opacity-90 transition-all shadow-sm">
+								Valider et Connecter
+							</button>
+						</div>
+					</div>
+				</div>
+
+				{# Sous-panneau B : Navigation & Import Zotero #}
+				<div data-writing-editor-target="zoteroConfigView" class="flex flex-col flex-1 overflow-hidden hidden">
+					{# Infos de connexion & déconnexion #}
+					<div class="px-6 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+						<span data-zotero-info class="text-[10px] text-slate-500 font-semibold">Connecté</span>
+						<button type="button" 
+						        data-action="click->writing-editor#showZoteroConfigForm" 
+						        class="text-[9px] text-red-500 hover:underline font-bold">
+							Modifier les identifiants
+						</button>
+					</div>
+
+					{# Filtres Zotero (Collections & Recherche) #}
+					<div class="px-6 pt-3 pb-2 space-y-2 border-b border-slate-100 flex-shrink-0 bg-slate-50/20">
+						<div class="grid grid-cols-2 gap-2">
+							<select data-writing-editor-target="zoteroCollection" 
+							        data-action="change->writing-editor#loadZoteroItems" 
+							        class="px-3 py-2 text-[11px] rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba bg-white font-medium text-slate-600">
+								<option value="">Toutes les collections</option>
+							</select>
+							<div class="relative">
+								<svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" fill="none" viewbox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+								</svg>
+								<input type="text" 
+								       data-writing-editor-target="zoteroSearch" 
+								       data-action="input->writing-editor#loadZoteroItems" 
+								       placeholder="Filtrer sur Zotero..." 
+								       class="w-full pl-7 pr-3 py-1.5 text-[11px] rounded-xl border border-slate-200 focus:outline-none focus:border-djoliba" />
+							</div>
+						</div>
+					</div>
+
+					{# Liste des items Zotero #}
+					<div data-writing-editor-target="zoteroResults" 
+					     class="flex-1 overflow-y-auto px-6 py-2 space-y-1 min-h-[160px] custom-scrollbar">
+						<p class="text-xs text-slate-400 text-center py-8">Chargement de votre bibliothèque Zotero...</p>
+					</div>
+
+					{# Footer sync & import #}
+					<div class="px-6 py-3 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between flex-shrink-0">
+						<span data-writing-editor-target="zoteroSyncStatus" class="text-[10px] italic font-semibold"></span>
+						<div class="flex gap-2">
+							<button type="button" 
+							        data-action="click->writing-editor#loadZoteroItems" 
+							        class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold rounded-xl transition-all" 
+							        title="Rafraîchir">
+								⟳
+							</button>
+							<button type="button" 
+							        data-zotero-import-btn 
+							        data-action="click->writing-editor#importSelectedZoteroItems" 
+							        disabled 
+							        class="px-4 py-2 bg-djoliba text-white text-[10px] font-bold rounded-xl hover:opacity-90 shadow-sm opacity-50 cursor-not-allowed transition-all flex items-center gap-1.5">
+								Importer références
+							</button>
+						</div>
+					</div>
+				</div>
+
+			</div>
+		</div>
+	</div>

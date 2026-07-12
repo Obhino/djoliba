@@ -1,65 +1,217 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <title>{{ project.name }}</title>
     <style>
+        /* Importation de polices de haute qualité */
+        @import url('https://fonts.googleapis.com/css2?family=Charis+SIL:ital,wght@0,400;0,700;1,400&family=Playfair+Display:wght@700&display=swap');
+
+        /* Structure de Page Académique (WeasyPrint) */
         @page {
+            size: A4;
             margin: 2.5cm;
+            
+            @bottom-right {
+                content: counter(page);
+                font-family: 'Charis SIL', 'Times New Roman', serif;
+                font-size: 10pt;
+                color: #475569;
+            }
+            
+            @top-center {
+                content: string(running_chapter);
+                font-family: 'Charis SIL', 'Times New Roman', serif;
+                font-size: 8pt;
+                font-style: italic;
+                color: #64748b;
+                border-bottom: 0.5px solid #e2e8f0;
+                padding-bottom: 5px;
+                width: 100%;
+                text-align: center;
+            }
         }
+
+        /* Masquage de l'en-tête et du pied de page sur la page de garde */
+        @page :first {
+            margin-top: 5cm;
+            @top-center {
+                content: none;
+                border-bottom: none;
+            }
+            @bottom-right {
+                content: none;
+            }
+        }
+
         body {
-            font-family: 'DejaVu Sans', sans-serif;
+            font-family: 'Charis SIL', 'Times New Roman', 'DejaVu Serif', serif;
             font-size: 11pt;
             line-height: 1.6;
-            color: #1a1a1a;
+            color: #0f172a;
+            text-align: justify;
         }
+
+        /* Page de garde */
         .cover {
             text-align: center;
-            margin-top: 5cm;
-            margin-bottom: 5cm;
-        }
-        .project-title {
-            font-size: 28pt;
-            font-weight: bold;
-            color: #0B2545;
-            margin-bottom: 0.5cm;
-        }
-        .project-type {
-            font-size: 14pt;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        .author {
-            margin-top: 2cm;
-            font-size: 12pt;
-        }
-        .page-break {
+            margin-top: 3cm;
+            height: 100%;
             page-break-after: always;
         }
+
+        .project-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 32pt;
+            font-weight: bold;
+            color: #0f172a;
+            margin-bottom: 0.5cm;
+            line-height: 1.2;
+        }
+
+        .project-type {
+            font-size: 14pt;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 3cm;
+        }
+
+        .author {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-top: 2cm;
+            color: #0f172a;
+        }
+
+        .date-export {
+            font-size: 10pt;
+            color: #64748b;
+            margin-top: 5cm;
+        }
+
+        /* Titres de sections */
+        h1, h2, h3 {
+            font-family: 'Playfair Display', serif;
+            color: #0f172a;
+            page-break-after: avoid;
+        }
+
         h1 {
-            color: #0B2545;
             font-size: 20pt;
-            border-bottom: 2px solid #0B2545;
+            border-bottom: 2px solid #0f172a;
             padding-bottom: 10px;
-            margin-top: 1cm;
+            margin-top: 1.5cm;
+            page-break-before: always;
+            string-set: running_chapter content(); /* running headers WeasyPrint */
         }
+        
+        /* H1 sans saut de page (Sommaire par ex) */
+        h1.no-break {
+            page-break-before: avoid;
+        }
+
         h2 {
-            color: #10B981;
-            font-size: 16pt;
-            margin-top: 0.8cm;
+            font-size: 15pt;
+            margin-top: 1.2cm;
+            color: #475569;
         }
+
+        /* Paragraphes */
+        p {
+            margin-top: 0;
+            margin-bottom: 12pt;
+            text-indent: 1cm; /* Retrait académique standard */
+        }
+        
+        p.no-indent, li p, blockquote p {
+            text-indent: 0;
+        }
+
         .content {
             text-align: justify;
         }
-        .footer {
-            position: fixed;
-            bottom: -1cm;
-            left: 0;
-            right: 0;
-            height: 1cm;
+
+        /* Sommaire Interactif avec WeasyPrint dotted leaders */
+        .toc-container {
+            page-break-before: always;
+            page-break-after: always;
+        }
+
+        .toc-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 22pt;
+            font-weight: bold;
             text-align: center;
-            font-size: 9pt;
-            color: #999;
+            margin-bottom: 1.5cm;
+        }
+
+        .toc-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .toc-item {
+            margin-bottom: 10px;
+            font-size: 11pt;
+        }
+
+        .toc-item.level-1 {
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        .toc-item.level-2 {
+            padding-left: 20px;
+            font-weight: normal;
+        }
+
+        .toc-item a {
+            text-decoration: none;
+            color: #0f172a;
+            display: block;
+        }
+
+        .toc-item a::after {
+            content: leader(dotted) " " target-counter(attr(href), page);
+            float: right;
+            font-weight: normal;
+        }
+
+        .toc-item.level-1 a::after {
+            font-weight: bold;
+        }
+
+        /* Tableaux */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 10pt;
+            page-break-inside: avoid;
+        }
+
+        th, td {
+            border-top: 1px solid #cbd5e1;
+            border-bottom: 1px solid #cbd5e1;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        th {
+            font-weight: bold;
+            background-color: #f8fafc;
+            border-bottom: 2px solid #0f172a;
+        }
+
+        /* Citations en bloc */
+        blockquote {
+            margin: 1.5em 2cm;
+            padding-left: 15px;
+            border-left: 3px solid #64748b;
+            font-style: italic;
+            color: #475569;
+            page-break-inside: avoid;
         }
     </style>
 </head>
@@ -69,50 +221,47 @@
         <div class="project-title">{{ project.name }}</div>
         <div class="project-type">{{ project.type }}</div>
         <div class="author">
-            Par : {{ project.user.username }}<br>
+            Par : {{ project.user.username }}
+        </div>
+        <div class="date-export">
             Généré par Djoliba Search le {{ "now"|date("d/m/Y") }}
         </div>
     </div>
-    <div class="page-break"></div>
 
-    <!-- Sommaire -->
-    <h1>Sommaire</h1>
-    <ul style="list-style-type: none; padding-left: 0;">
-        {% for chapter in chapters %}
-            <li style="margin-bottom: 10px;">
-                <strong>{{ chapter.order }}. {{ chapter.title }}</strong>
+    <!-- Sommaire Interactif -->
+    <div class="toc-container">
+        <div class="toc-title">Table des Matières</div>
+        <ul class="toc-list">
+            {% for chapter in chapters %}
+                <li class="toc-item level-1">
+                    <a href="#chapter-{{ chapter.id }}">{{ chapter.order }}. {{ chapter.title }}</a>
+                </li>
                 {% if not chapter.children.isEmpty() %}
-                    <ul style="list-style-type: none; padding-left: 20px;">
-                        {% for sub in chapter.children %}
-                            <li>{{ chapter.order }}.{{ sub.order }} {{ sub.title }}</li>
-                        {% endfor %}
-                    </ul>
+                    {% for sub in chapter.children %}
+                        <li class="toc-item level-2">
+                            <a href="#chapter-{{ sub.id }}">{{ chapter.order }}.{{ sub.order }} {{ sub.title }}</a>
+                        </li>
+                    {% endfor %}
                 {% endif %}
-            </li>
-        {% endfor %}
-    </ul>
-    <div class="page-break"></div>
+            {% endfor %}
+        </ul>
+    </div>
 
     <!-- Contenu -->
     {% for chapter in chapters %}
         <div class="chapter">
-            <h1>{{ chapter.order }}. {{ chapter.title }}</h1>
+            <h1 id="chapter-{{ chapter.id }}">{{ chapter.order }}. {{ chapter.title }}</h1>
             <div class="content">
                 {{ chapter.content|nl2br }}
             </div>
             
             {% for sub in chapter.children %}
-                <h2>{{ chapter.order }}.{{ sub.order }} {{ sub.title }}</h2>
+                <h2 id="chapter-{{ sub.id }}">{{ chapter.order }}.{{ sub.order }} {{ sub.title }}</h2>
                 <div class="content">
                     {{ sub.content|nl2br }}
                 </div>
             {% endfor %}
         </div>
-        {% if not loop.last %}<div class="page-break"></div>{% endif %}
     {% endfor %}
-
-    <div class="footer">
-        Djoliba Search - La 1ère plateforme autonome de recherche en Afrique
-    </div>
 </body>
 </html>

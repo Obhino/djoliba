@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Impression - {{ project.name }}</title>
+    
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    
+    <style>
+        /* Importation de polices de haute qualité */
+        @import url('https://fonts.googleapis.com/css2?family=Charis+SIL:ital,wght@0,400;0,700;1,400&family=Playfair+Display:wght@700&display=swap');
+
+        /* Configuration de la page de Paged.js (Paged Media) */
+        @page {
+            size: A4;
+            margin: 2.5cm;
+            
+            @bottom-right {
+                content: counter(page);
+                font-family: 'Charis SIL', 'Times New Roman', serif;
+                font-size: 10pt;
+                color: #475569;
+            }
+            
+            @top-center {
+                content: string(running_chapter);
+                font-family: 'Charis SIL', 'Times New Roman', serif;
+                font-size: 8pt;
+                font-style: italic;
+                color: #64748b;
+                border-bottom: 0.5px solid #e2e8f0;
+                padding-bottom: 5px;
+                width: 100%;
+                text-align: center;
+            }
+        }
+
+        /* Masquage de l'en-tête et du pied de page sur la page de garde */
+        @page :first {
+            margin-top: 5cm;
+            @top-center {
+                content: none;
+                border-bottom: none;
+            }
+            @bottom-right {
+                content: none;
+            }
+        }
+
+        body {
+            font-family: 'Charis SIL', 'Times New Roman', 'DejaVu Serif', serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: #0f172a;
+            text-align: justify;
+        }
+
+        /* Page de garde */
+        .cover {
+            text-align: center;
+            margin-top: 3cm;
+            height: 100%;
+            page-break-after: always;
+            break-after: page;
+        }
+
+        .project-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 32pt;
+            font-weight: bold;
+            color: #0f172a;
+            margin-bottom: 0.5cm;
+            line-height: 1.2;
+        }
+
+        .project-type {
+            font-size: 14pt;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 3cm;
+        }
+
+        .author {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-top: 2cm;
+            color: #0f172a;
+        }
+
+        .date-export {
+            font-size: 10pt;
+            color: #64748b;
+            margin-top: 5cm;
+        }
+
+        /* Titres de sections */
+        h1, h2, h3 {
+            font-family: 'Playfair Display', serif;
+            color: #0f172a;
+            page-break-after: avoid;
+            break-after: avoid;
+        }
+
+        h1 {
+            font-size: 20pt;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 10px;
+            margin-top: 1.5cm;
+            page-break-before: always;
+            break-before: page;
+            string-set: running_chapter content(); /* running headers */
+        }
+        
+        h1.no-break {
+            page-break-before: avoid;
+            break-before: avoid;
+        }
+
+        h2 {
+            font-size: 15pt;
+            margin-top: 1.2cm;
+            color: #475569;
+        }
+
+        /* Paragraphes */
+        p {
+            margin-top: 0;
+            margin-bottom: 12pt;
+            text-indent: 1cm; /* Retrait académique standard */
+        }
+        
+        p.no-indent, li p, blockquote p, .bibliography-section p {
+            text-indent: 0;
+        }
+
+        .content {
+            text-align: justify;
+        }
+
+        /* Sommaire Interactif */
+        .toc-container {
+            page-break-before: always;
+            page-break-after: always;
+            break-before: page;
+            break-after: page;
+        }
+
+        .toc-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 22pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 1.5cm;
+        }
+
+        .toc-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .toc-item {
+            margin-bottom: 10px;
+            font-size: 11pt;
+        }
+
+        .toc-item.level-1 {
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        .toc-item.level-2 {
+            padding-left: 20px;
+            font-weight: normal;
+        }
+
+        .toc-item a {
+            text-decoration: none;
+            color: #0f172a;
+            display: block;
+        }
+
+        .toc-item a::after {
+            content: leader(dotted) " " target-counter(attr(href), page);
+            float: right;
+            font-weight: normal;
+        }
+
+        .toc-item.level-1 a::after {
+            font-weight: bold;
+        }
+
+        /* Tableaux */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 10pt;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        th, td {
+            border-top: 1px solid #cbd5e1;
+            border-bottom: 1px solid #cbd5e1;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        th {
+            font-weight: bold;
+            background-color: #f8fafc;
+            border-bottom: 2px solid #0f172a;
+        }
+
+        /* Citations en bloc */
+        blockquote {
+            margin: 1.5em 2cm;
+            padding-left: 15px;
+            border-left: 3px solid #64748b;
+            font-style: italic;
+            color: #475569;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        /* Images et Figures */
+        .figure-container, figure {
+            text-align: center;
+            margin: 20px auto;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        img {
+            max-width: 80%;
+            height: auto;
+            display: block;
+            margin: 0 auto 10px auto;
+            border-radius: 4px;
+        }
+
+        .caption, figcaption {
+            font-size: 9.5pt;
+            font-style: italic;
+            color: #475569;
+            margin-top: 5px;
+        }
+
+        /* Bibliographie */
+        .bibliography-section {
+            page-break-before: always;
+            break-before: page;
+            margin-top: 2cm;
+            border-top: 1px solid #cbd5e1;
+            padding-top: 20px;
+        }
+
+        .bibliography-section h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 18pt;
+            margin-bottom: 20px;
+            color: #0f172a;
+        }
+
+        .bibliography-section ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .bibliography-section li {
+            margin-bottom: 12px;
+            padding-left: 30px;
+            text-indent: -30px; /* Alignement négatif standard APA */
+            text-align: justify;
+            font-size: 10.5pt;
+            line-height: 1.5;
+        }
+
+        /* Liens DOI */
+        .doi-link {
+            font-family: monospace;
+            font-size: 9pt;
+            color: #0284c7;
+        }
+
+        /* ── En-tête de contrôle de prévisualisation (à l'écran uniquement) ── */
+        .print-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 55px;
+            background-color: #0b2545;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 13px;
+            z-index: 99999;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .print-header button {
+            background-color: #10B981;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: 10px;
+        }
+
+        .print-header button:hover {
+            background-color: #059669;
+        }
+
+        .print-header button.secondary {
+            background-color: transparent;
+            border: 1px solid #ffffff40;
+        }
+
+        .print-header button.secondary:hover {
+            background-color: #ffffff10;
+        }
+
+        /* Ajustements d'affichage de Paged.js à l'écran */
+        body {
+            background-color: #f1f5f9;
+        }
+        
+        .pagedjs_pages {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 75px;
+            padding-bottom: 40px;
+        }
+        
+        .pagedjs_page {
+            background: white;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            margin-bottom: 30px;
+        }
+
+        /* Masquage complet de la barre d'outils et couleur de fond lors de l'impression */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background-color: white !important;
+            }
+            .pagedjs_pages {
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Barre d'outils de prévisualisation (Masquée à l'impression) -->
+    <div class="print-header no-print">
+        <div style="display:flex; align-items:center; gap: 10px; flex-wrap: wrap;">
+            <strong style="font-size:14px;">🎓 Djoliba PDF Preview</strong>
+            <span id="loading-status" style="color: #a7f3d0;">Génération de la mise en page en cours...</span>
+            <span class="academic-tips" style="margin-left: 20px; font-size: 11px; color: #94a3b8; display: flex; gap: 15px; align-items: center; background-color: rgba(255,255,255,0.05); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                <span>💡 <strong>Impression Académique :</strong></span>
+                <span>Marges : <strong>Aucune (None)</strong></span>
+                <span>En-têtes/Pieds de page : <strong>Décoché</strong></span>
+                <span>Graphiques d'arrière-plan : <strong>Coché</strong></span>
+            </span>
+        </div>
+        <div>
+            <button id="btn-print" style="display:none;" onclick="window.print();">🖨️ Imprimer en PDF</button>
+            <button class="secondary" onclick="window.close();">Fermer</button>
+        </div>
+    </div>
+
+    <!-- Indicateurs cachés pour JavaScript -->
+    <input type="hidden" id="source-type" value="{{ source }}">
+
+    <script id="bibliography-data" type="application/json">
+        {{ bibEntriesJson|default('[]')|raw }}
+    </script>
+
+    <div id="print-content">
+        {% if source == 'editor_server' %}
+            <div class="content">
+                {{ editorHtml|raw }}
+            </div>
+        {% elseif source == 'project' %}
+            <!-- Page de garde -->
+            <div class="cover">
+                <div class="project-title">{{ project.name }}</div>
+                <div class="project-type">{{ project.type }}</div>
+                <div class="author">
+                    Par : {{ project.user.firstName|default(project.user.lastName|default(project.user.email)) }}
+                </div>
+                <div class="date-export">
+                    Généré par Djoliba Search le {{ "now"|date("d/m/Y") }}
+                </div>
+            </div>
+
+            <!-- Sommaire Interactif -->
+            <div class="toc-container">
+                <div class="toc-title">Table des Matières</div>
+                <ul class="toc-list">
+                    {% for chapter in chapters %}
+                        <li class="toc-item level-1">
+                            <a href="#chapter-{{ chapter.id }}">{{ chapter.order }}. {{ chapter.title }}</a>
+                        </li>
+                        {% if not chapter.children.isEmpty() %}
+                            {% for sub in chapter.children %}
+                                <li class="toc-item level-2">
+                                    <a href="#chapter-{{ sub.id }}">{{ chapter.order }}.{{ sub.order }} {{ sub.title }}</a>
+                                </li>
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <!-- Contenu des Chapitres -->
+            {% for chapter in chapters %}
+                <div class="chapter">
+                    <h1 id="chapter-{{ chapter.id }}">{{ chapter.order }}. {{ chapter.title }}</h1>
+                    <div class="content">
+                        {{ chapter.content }}
+                    </div>
+                    
+                    {% for sub in chapter.children %}
+                        <h2 id="chapter-{{ sub.id }}">{{ chapter.order }}.{{ sub.order }} {{ sub.title }}</h2>
+                        <div class="content">
+                            {{ sub.content }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+
+            <!-- Bibliographie -->
+            {% if bibEntries is not empty %}
+                <div class="bibliography-section">
+                    <h2>Bibliographie</h2>
+                    <ul>
+                        {% for entry in bibEntries %}
+                            <li>
+                                {{ entry.author }}. ({{ entry.year }}). {{ entry.title }}. 
+                                {% if entry.journal %}<i>{{ entry.journal }}</i>,{% endif %}
+                                {% if entry.volume %} {{ entry.volume }}{% endif %}
+                                {% if entry.number %}({{ entry.number }}){% endif %}
+                                {% if entry.pages %}, {{ entry.pages }}{% endif %}.
+                                {% if entry.doi %}
+                                    <br><span class="doi-link">https://doi.org/{{ entry.doi }}</span>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <!-- Paged.js Config pour désactiver le démarrage automatique -->
+    <script>
+        window.PagedConfig = {
+            auto: false
+        };
+    </script>
+
+    <!-- Chargement de Paged.js -->
+    <script src="https://unpkg.com/pagedjs/dist/paged.legacy.polyfilled.min.js"></script>
+    
+    <!-- KaTeX JS et Auto-render -->
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+    <!-- Marked JS -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        function transcribeLatex(latex) {
+            if (!latex) return '';
+
+            let text = latex;
+
+            // 1. Supprimer le préambule LaTeX classique
+            text = text.replace(/\\documentclass\{[\s\S]*?\\begin\{document\}/gi, '');
+            text = text.replace(/\\end\{document\}/gi, '');
+            text = text.replace(/\\usepackage\{[\s\S]*?\}/gi, '');
+            text = text.replace(/\\title\{([\s\S]*?)\}/gi, '# $1\n');
+            text = text.replace(/\\author\{([\s\S]*?)\}/gi, '**Auteur :** $1\n');
+            text = text.replace(/\\date\{([\s\S]*?)\}/gi, '*Date :* $1\n');
+            text = text.replace(/\\maketitle/gi, '');
+
+            // 2. Isoler les expressions mathématiques ($ et $$) pour éviter qu'elles ne soient cassées par les regex
+            const mathBlocks = [];
+            text = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, math) => {
+                const placeholder = `__MATHBLOCK_DISP_${mathBlocks.length}__`;
+                mathBlocks.push({ placeholder, math, display: true });
+                return placeholder;
+            });
+            text = text.replace(/\$([\s\S]*?)\$/g, (match, math) => {
+                const placeholder = `__MATHBLOCK_INLINE_${mathBlocks.length}__`;
+                mathBlocks.push({ placeholder, math, display: false });
+                return placeholder;
+            });
+
+            // 3. Commandes de structuration de document
+            text = text.replace(/\\section\*?\{([\s\S]*?)\}/gi, '\n# $1\n');
+            text = text.replace(/\\subsection\*?\{([\s\S]*?)\}/gi, '\n## $1\n');
+            text = text.replace(/\\subsubsection\*?\{([\s\S]*?)\}/gi, '\n### $1\n');
+            text = text.replace(/\\paragraph\*?\{([\s\S]*?)\}/gi, '\n#### $1\n');
+
+            // Style inline
+            text = text.replace(/\\textbf\{([\s\S]*?)\}/gi, '**$1**');
+            text = text.replace(/\\textit\{([\s\S]*?)\}/gi, '*$1*');
+            text = text.replace(/\\texttt\{([\s\S]*?)\}/gi, '`$1`');
+            text = text.replace(/\\underline\{([\s\S]*?)\}/gi, '<u>$1</u>');
+
+            // Hyperliens
+            text = text.replace(/\\href\{([\s\S]*?)\}\{([\s\S]*?)\}/gi, '[$2]($1)');
+            text = text.replace(/\\url\{([\s\S]*?)\}/gi, '[$1]($1)');
+
+            // 4. Listes d'éléments
+            text = text.replace(/\\begin\{itemize\}/gi, '\n');
+            text = text.replace(/\\end\{itemize\}/gi, '\n');
+            text = text.replace(/\\begin\{enumerate\}/gi, '\n');
+            text = text.replace(/\\end\{enumerate\}/gi, '\n');
+            
+            // Remplacer \item en conservant le contenu jusqu'au prochain item ou fin
+            text = text.replace(/\\item\s+([\s\S]*?)(?=\\item|\\end|\n\n)/gi, '- $1\n');
+
+            // 5. Code verbatim
+            text = text.replace(/\\begin\{verbatim\}([\s\S]*?)\\end\{verbatim\}/gi, '\n```\n$1\n```\n');
+            text = text.replace(/\\begin\{lstlisting\}([\s\S]*?)\\end\{lstlisting\}/gi, '\n```\n$1\n```\n');
+
+            // 6. Citations & Références (convertir \cite en balises <cite> pour être traitées ensuite)
+            text = text.replace(/\\cite\{([\s\S]*?)\}/gi, '<cite data-cite-key="$1">[@$1]</cite>');
+            text = text.replace(/\\ref\{([\s\S]*?)\}/gi, '`$1`');
+
+            // 7. Retours à la ligne
+            text = text.replace(/\\\\/g, '\n');
+            text = text.replace(/\\newline/g, '\n');
+            text = text.replace(/\\newpage/g, '\n---\n');
+
+            // 8. Réinsérer les blocs mathématiques isolés intacts
+            mathBlocks.forEach(item => {
+                const mathDelimiter = item.display ? `$$\n${item.math}\n$$` : `$${item.math}$`;
+                text = text.replace(item.placeholder, mathDelimiter);
+            });
+
+            // 9. Purger les macros orphelines non reconnues pour ne pas polluer l'affichage
+            text = text.replace(/\\[a-zA-Z]+\*?(?:\{.*?\})?/g, '');
+
+            return text;
+        }
+
+        document.addEventListener("DOMContentLoaded", async function() {
+            const sourceType = document.getElementById('source-type').value;
+            const printContent = document.getElementById('print-content');
+
+            // 1. Obtenir et préparer le HTML
+            if (sourceType === 'editor') {
+                const htmlContent = sessionStorage.getItem('print_html_content');
+                if (htmlContent) {
+                    printContent.innerHTML = htmlContent;
+                } else {
+                    printContent.innerHTML = '<p class="no-indent">Aucun contenu à afficher.</p>';
+                }
+            } else if (sourceType === 'project') {
+                // Pour chaque chapitre, transcrire et compiler le markdown/LaTeX
+                const contentElements = printContent.querySelectorAll('.chapter .content');
+                contentElements.forEach(contentEl => {
+                    const rawText = contentEl.textContent || contentEl.innerText || '';
+                    const transcribed = transcribeLatex(rawText);
+                    contentEl.innerHTML = marked.parse(transcribed);
+                });
+
+                // Supprimer la section bibliographie statique Twig si elle existe pour la recalculer dynamiquement
+                const staticBib = printContent.querySelector('.bibliography-section');
+                if (staticBib) staticBib.remove();
+            }
+
+            // 2. Traiter les citations [data-cite-key] et charger la bibliographie dynamiquement
+            const cites = printContent.querySelectorAll('cite[data-cite-key]');
+            if (cites.length > 0) {
+                const seen = new Map();
+                let index = 1;
+                cites.forEach(cite => {
+                    const key = cite.dataset.citeKey;
+                    if (key) {
+                        const keys = key.split(',').map(k => k.trim()).filter(k => k);
+                        keys.forEach(k => {
+                            if (!seen.has(k)) {
+                                seen.set(k, index++);
+                            }
+                        });
+                    }
+                });
+
+                // Remplacer les citations inline par les numéros [1], [2]...
+                cites.forEach(cite => {
+                    const key = cite.dataset.citeKey;
+                    if (key) {
+                        const keys = key.split(',').map(k => k.trim()).filter(k => k);
+                        const nums = keys.map(k => seen.get(k)).filter(n => n !== undefined);
+                        cite.textContent = `[${nums.join(', ')}]`;
+                    }
+                });
+
+                // Charger et injecter les références
+                let bibData = null;
+                const bibDataScript = document.getElementById('bibliography-data');
+                if (bibDataScript) {
+                    try {
+                        bibData = JSON.parse(bibDataScript.textContent);
+                    } catch (e) {
+                        console.warn("Erreur de parsing de bibliography-data JSON", e);
+                    }
+                }
+
+                if (Array.isArray(bibData) && bibData.length > 0) {
+                    let bibHtml = '<div class="bibliography-section"><h2>Bibliographie</h2><ul>';
+                    seen.forEach((num, key) => {
+                        const entry = bibData.find(e => e.citeKey === key);
+                        if (entry) {
+                            let citationText = `${entry.authorsFormatted || entry.authors}. (${entry.year || ''}). ${entry.title}.`;
+                            if (entry.journal) citationText += ` <i>${entry.journal}</i>,`;
+                            if (entry.rawData && entry.rawData.volume) citationText += ` ${entry.rawData.volume}`;
+                            if (entry.rawData && entry.rawData.number) citationText += `(${entry.rawData.number})`;
+                            if (entry.rawData && entry.rawData.pages) citationText += `, ${entry.rawData.pages}`;
+                            citationText += '.';
+                            if (entry.doi) {
+                                citationText += `<br><span class="doi-link">https://doi.org/${entry.doi}</span>`;
+                            }
+                            bibHtml += `<li>[${num}] ${citationText}</li>`;
+                        } else {
+                            bibHtml += `<li>[${num}] Référence [${key}] introuvable.</li>`;
+                        }
+                    });
+                    bibHtml += '</ul></div>';
+                    
+                    const bibDiv = document.createElement('div');
+                    bibDiv.innerHTML = bibHtml;
+                    printContent.appendChild(bibDiv.firstElementChild);
+                } else {
+                    // Sinon, fallback historique sur l'API (pour l'éditeur, etc.)
+                    try {
+                        const keysArray = Array.from(seen.keys());
+                        if (keysArray.length > 0) {
+                            const keysQuery = keysArray.join(',');
+                            const resp = await fetch(`/api/user/bibliographic-references/render?keys=${encodeURIComponent(keysQuery)}`);
+                            const data = await resp.json();
+
+                            if (data.success && data.html) {
+                                let bibHtml = data.html;
+                                seen.forEach((num, key) => {
+                                    const escapedKey = key.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                                    const regex = new RegExp(`\\[${escapedKey}\\]`, 'g');
+                                    bibHtml = bibHtml.replace(regex, `[${num}]`);
+                                });
+
+                                const bibDiv = document.createElement('div');
+                                bibDiv.innerHTML = bibHtml;
+                                const bibElement = bibDiv.firstElementChild;
+                                if (bibElement) {
+                                    printContent.appendChild(bibElement);
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Erreur rendu bibliographie :', err);
+                    }
+                }
+            }
+
+            // 3. Déclencher le rendu KaTeX puis paged.js
+            try {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            } catch (err) {
+                console.warn("Erreur de rendu mathématique KaTeX :", err);
+            }
+
+            // 4. Enregistrer l'événement de fin de pagination dans Paged.js
+            class PrintHandler extends Paged.Handler {
+                constructor(chunker, polisher, caller) {
+                    super(chunker, polisher, caller);
+                    this.hasPrinted = false;
+                }
+                
+                afterPreview(pages) {
+                    console.log("afterPreview trigger");
+                    this.triggerPrint();
+                }
+
+                afterRendered(pages) {
+                    console.log("afterRendered trigger");
+                    this.triggerPrint();
+                }
+
+                triggerPrint() {
+                    if (this.hasPrinted) return;
+                    this.hasPrinted = true;
+                    
+                    console.log("Opening browser print dialog...");
+                    document.getElementById('loading-status').textContent = "Prêt pour l'impression";
+                    document.getElementById('btn-print').style.display = 'inline-block';
+                    
+                    // Indiquer à Gotenberg que le rendu est prêt
+                    window.status = 'ready';
+                    
+                    setTimeout(() => {
+                        window.print();
+                    }, 500);
+                }
+            }
+            Paged.registerHandlers(PrintHandler);
+
+            // 5. Lancer la mise en page
+            window.PagedPolyfill.preview();
+        });
+    </script>
+</body>
+</html>

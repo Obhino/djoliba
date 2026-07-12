@@ -133,6 +133,21 @@ class ThesisControllerTest extends WebTestCase
         $this->assertTrue($updateData['success']);
         $this->assertEquals('1.1 Contexte et Objectifs', $updateData['data']['chapter']['title']);
         $this->assertEquals('Voici le texte d\'introduction scientifique en LaTeX.', $updateData['data']['chapter']['content']);
+        $updatedAt1 = $updateData['data']['chapter']['updated_at'];
+        $this->assertNotNull($updatedAt1);
+
+        // --- STEP 5.5: Update with the SAME content/title and check updated_at remains identical ---
+        $this->client->request('PUT', '/api/thesis/chapter/' . $subChapterId, [], [], [
+            'CONTENT_TYPE' => 'application/json'
+        ], json_encode([
+            'title' => '1.1 Contexte et Objectifs',
+            'content' => 'Voici le texte d\'introduction scientifique en LaTeX.'
+        ]));
+        $this->assertResponseIsSuccessful();
+        $updateData2 = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertTrue($updateData2['success']);
+        $updatedAt2 = $updateData2['data']['chapter']['updated_at'];
+        $this->assertEquals($updatedAt1, $updatedAt2);
 
         // --- STEP 6: Reorder chapters (PUT /api/thesis/structure) ---
         // Let's swap the order of the two root chapters (Chapter 2 becomes order 1, Chapter 1 becomes order 2)

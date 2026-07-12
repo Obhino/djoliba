@@ -64,6 +64,8 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379
       # Laissé libre pour que Symfony lise la clé API depuis .env.local
       OPENSERP_URL: http://openserp:7000
+      GOTENBERG_URL: http://gotenberg:3000
+      APP_BASE_URL: http://app:8000
     volumes:
       - .:/var/www/html:rw
       - ./var/uploads:/var/www/html/var/uploads:rw
@@ -91,6 +93,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-djoliba}:${POSTGRES_PASSWORD:-djoliba_secret}@database:5432/${POSTGRES_DB:-djolibadb}?serverVersion=16&charset=utf8
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379
       OPENSERP_URL: http://openserp:7000
+      GOTENBERG_URL: http://gotenberg:3000
+      APP_BASE_URL: http://app:8000
     volumes:
       - .:/var/www/html:rw
 
@@ -128,6 +132,20 @@ services:
     command: serve -a 0.0.0.0 -p 7000
     ports:
       - "7000:7000"
+
+  # ─────────────────────────────────────────────
+  # Gotenberg — Générateur PDF Headless Chrome
+  # ─────────────────────────────────────────────
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: djoliba_gotenberg
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - CHROMIUM_IGNORE_CERTIFICATE_ERRORS=true
 
 volumes:
   database_data:

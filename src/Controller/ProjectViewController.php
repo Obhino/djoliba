@@ -186,4 +186,42 @@ class ProjectViewController extends AbstractController
         $project = $this->projectManager->getProject($id);
         return $this->render('project/writing.html.twig', ['project' => $project]);
     }
+
+    #[IsGranted('ROLE_USER')]
+    #[Route('/project/{id}/print', name: 'app_project_print')]
+    public function print(
+        int $id,
+        \Symfony\Component\HttpFoundation\Request $request,
+        \App\Repository\ChapterRepository $chapterRepository
+    ): Response {
+        $project = $this->projectManager->getProject($id);
+
+        if (!$project || $project->getUser() !== $this->getUser()) {
+            throw $this->createNotFoundException('Projet non trouvé.');
+        }
+
+        $source = $request->query->get('source', 'project');
+        $chapters = [];
+
+        if ($source === 'project') {
+            $chapters = $chapterRepository->findBy(['project' => $project, 'parent' => null], ['order' => 'ASC']);
+        }
+
+        $subProject = $project->getSubProject();
+        $bibEntries = $subProject ? $subProject->getBibliographyEntries() : [];
+
+        $bibData = [];
+        foreach ($bibEntries as $entry) {
+            $bibData[] = $entry->toArray();
+        }
+        $bibEntriesJson = json_encode($bibData);
+
+        return $this->render('export/print.html.twig', [
+            'project' => $project,
+            'chapters' => $chapters,
+            'bibEntries' => $bibEntries,
+            'bibEntriesJson' => $bibEntriesJson,
+            'source' => $source,
+        ]);
+    }
 }
