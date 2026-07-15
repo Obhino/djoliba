@@ -14,12 +14,18 @@ class Kernel extends BaseKernel
         parent::boot();
 
         if ($this->getEnvironment() === 'prod') {
-            $requiredSecrets = ['DEEPSEEK_API_KEY', 'OPENSERP_API_KEY', 'DB_PASSWORD'];
+            $requiredSecrets = ['DEEPSEEK_API_KEY', 'OPENSERP_API_KEY', 'DB_PASSWORD', 'ENCRYPTION_KEY'];
             $missing = [];
 
             foreach ($requiredSecrets as $secret) {
                 $value = $_ENV[$secret] ?? $_SERVER[$secret] ?? getenv($secret) ?? '';
-                if (empty($value) || str_contains($value, 'place_your_') || $value === 'sk_prod_placeholder' || $value === '!ChangeMe!') {
+                if (
+                    empty($value) || 
+                    str_contains($value, 'place_your_') || 
+                    $value === 'sk_prod_placeholder' || 
+                    $value === '!ChangeMe!' ||
+                    ($secret === 'ENCRYPTION_KEY' && $value === '2a8d54d9b4bfa2cfd1e34e56598c0d9a716c52a382c7f0d616c87a552ef3bf9d')
+                ) {
                     $missing[] = $secret;
                 }
             }

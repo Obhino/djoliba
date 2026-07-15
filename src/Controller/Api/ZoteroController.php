@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use App\Service\Security\EncryptionService;
 
 /**
  * ZoteroController — Contrôleur API pour la configuration et la synchronisation avec Zotero.
@@ -23,6 +24,7 @@ class ZoteroController extends AbstractController
         private SubProjectRepository $subProjectRepository,
         private ZoteroService $zoteroService,
         private EntityManagerInterface $entityManager,
+        private EncryptionService $encryptionService,
     ) {
     }
 
@@ -63,10 +65,10 @@ class ZoteroController extends AbstractController
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        // Sauvegarder dans metadata
+        // Sauvegarder dans metadata en chiffrant la clé API
         $metadata = $subProject->getMetadata() ?? [];
         $metadata['zotero_user_id'] = $zoteroUserId;
-        $metadata['zotero_api_key'] = $zoteroApiKey;
+        $metadata['zotero_api_key'] = $this->encryptionService->encrypt($zoteroApiKey);
 
         $subProject->setMetadata($metadata);
         $this->entityManager->flush();
@@ -101,7 +103,8 @@ class ZoteroController extends AbstractController
         // Masquer la clé API pour la sécurité (ex: s******)
         $maskedKey = '';
         if ($zoteroApiKey) {
-            $maskedKey = substr($zoteroApiKey, 0, 3) . str_repeat('*', max(6, strlen($zoteroApiKey) - 6)) . substr($zoteroApiKey, -3);
+            $decryptedApiKey = $this->encryptionService->decrypt($zoteroApiKey);
+            $maskedKey = substr($decryptedApiKey, 0, 3) . str_repeat('*', max(6, strlen($decryptedApiKey) - 6)) . substr($decryptedApiKey, -3);
         }
 
         return $this->json([
@@ -142,7 +145,8 @@ class ZoteroController extends AbstractController
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        $collections = $this->zoteroService->fetchCollections($zoteroUserId, $zoteroApiKey);
+        $decryptedApiKey = $this->encryptionService->decrypt($zoteroApiKey);
+        $collections = $this->zoteroService->fetchCollections($zoteroUserId, $decryptedApiKey);
 
         return $this->json([
             'success' => true,
@@ -186,7 +190,8 @@ class ZoteroController extends AbstractController
         $search        = $request->query->get('q');
         $collectionKey = $request->query->get('collection');
 
-        $items = $this->zoteroService->fetchItems($zoteroUserId, $zoteroApiKey, $collectionKey, $search);
+        $decryptedApiKey = $this->encryptionService->decrypt($zoteroApiKey);
+        $items = $this->zoteroService->fetchItems($zoteroUserId, $decryptedApiKey, $collectionKey, $search);
 
         return $this->json([
             'success' => true,
@@ -237,7 +242,8 @@ class ZoteroController extends AbstractController
         }
 
         try {
-            $result = $this->zoteroService->importSelectedItems($subProject, $keys, $zoteroUserId, $zoteroApiKey);
+            $decryptedApiKey = $this->encryptionService->decrypt($zoteroApiKey);
+            $result = $this->zoteroService->importSelectedItems($subProject, $keys, $zoteroUserId, $decryptedApiKey);
 
             return $this->json([
                 'success' => true,

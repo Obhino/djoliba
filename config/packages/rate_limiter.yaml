@@ -11,3 +11,9 @@ framework:
             limit: 20
             rate: { interval: '1 minute', amount: 20 }
             cache_pool: 'cache.rate_limiter'
+
+        api_login:
+            policy: 'token_bucket'
+            limit: 3
+            rate: { interval: '1 minute', amount: 3 }
+            cache_pool: 'cache.rate_limiter'

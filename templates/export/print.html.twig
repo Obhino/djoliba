@@ -393,7 +393,7 @@
     <div id="print-content">
         {% if source == 'editor_server' %}
             <div class="content">
-                {{ editorHtml|raw }}
+                {{ editorHtml|sanitize_html|raw }}
             </div>
         {% elseif source == 'project' %}
             <!-- Page de garde -->

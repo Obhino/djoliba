@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use App\Attribute\RateLimiter;
 
 /**
  * StreamController — Diffuse les réponses DeepSeek en Server-Sent Events (SSE).
@@ -34,6 +35,7 @@ class StreamController extends AbstractController
      * Retourne un flux SSE (Content-Type: text/event-stream).
      */
     #[Route('', name: 'api_stream', methods: ['POST'])]
+    #[RateLimiter('api_ia')]
     public function streamResponse(Request $request): StreamedResponse
     {
         $data = json_decode($request->getContent(), true);

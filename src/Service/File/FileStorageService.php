@@ -145,7 +145,55 @@ class FileStorageService
      */
     private function scanForVirus(string $filePath): bool
     {
-        // TODO: Implémenter ClamAV avant la mise en production
-        return false;
+        $clamavUrl = $_ENV['CLAMAV_URL'] ?? getenv('CLAMAV_URL') ?? '';
+        if (empty($clamavUrl)) {
+            return false;
+        }
+
+        try {
+            $socket = @stream_socket_client($clamavUrl, $errno, $errstr, 5);
+            if (!$socket) {
+                if (($_ENV['APP_ENV'] ?? 'dev') === 'prod') {
+                    throw new \RuntimeException("Le service antivirus est indisponible : " . $errstr);
+                }
+                return false;
+            }
+
+            // Commande INSTREAM de ClamAV
+            fwrite($socket, "zINSTREAM\0");
+
+            $handle = fopen($filePath, 'rb');
+            if (!$handle) {
+                fclose($socket);
+                return false;
+            }
+
+            while (!feof($handle)) {
+                $chunk = fread($handle, 8192);
+                $len = strlen($chunk);
+                if ($len > 0) {
+                    fwrite($socket, pack('N', $len)); // Taille en big-endian
+                    fwrite($socket, $chunk);
+                }
+            }
+            fclose($handle);
+
+            // Terminer le flux (taille 0)
+            fwrite($socket, pack('N', 0));
+            fflush($socket);
+
+            $response = fgets($socket, 128);
+            fclose($socket);
+
+            if ($response && str_contains($response, 'FOUND')) {
+                return true; // Virus détecté
+            }
+        } catch (\Exception $e) {
+            if (($_ENV['APP_ENV'] ?? 'dev') === 'prod') {
+                throw new \RuntimeException("Erreur lors de l'analyse antivirus : " . $e->getMessage());
+            }
+        }
+
+        return false; // Pas de virus ou scan ignoré (dev/test)
     }
 }

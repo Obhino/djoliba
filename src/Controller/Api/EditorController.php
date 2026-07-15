@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use App\Attribute\RateLimiter;
 
 #[Route('/api')]
 #[IsGranted('ROLE_USER')]
@@ -180,6 +181,7 @@ class EditorController extends AbstractController
      * Body JSON: { "action": "string", "text": "string", "options": {} }
      */
     #[Route('/projects/{id}/editor-ai/execute', name: 'api_editor_ai_execute', methods: ['POST'])]
+    #[RateLimiter('api_ia')]
     public function executeAiAction(int $id, Request $request): JsonResponse
     {
         $project = $this->projectManager->getProject($id);
@@ -224,6 +226,7 @@ class EditorController extends AbstractController
      * Retourne un flux SSE (Content-Type: text/event-stream).
      */
     #[Route('/projects/{id}/editor-ai/stream', name: 'api_editor_ai_stream', methods: ['POST'])]
+    #[RateLimiter('api_ia')]
     public function streamAiAction(int $id, Request $request): Response
     {
         $project = $this->projectManager->getProject($id);
@@ -341,7 +344,7 @@ class EditorController extends AbstractController
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        $interaction = $this->editorHistoryManager->updateStatus($interactionId, (bool) $accepted);
+        $interaction = $this->editorHistoryManager->updateStatus($interactionId, (bool) $accepted, $this->getUser());
 
         if (!$interaction) {
             return $this->json([

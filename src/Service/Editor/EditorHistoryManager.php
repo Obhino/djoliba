@@ -42,10 +42,13 @@ class EditorHistoryManager
     /**
      * Met à jour le statut d'acceptation d'une interaction.
      */
-    public function updateStatus(int $interactionId, bool $accepted): ?EditorInteraction
+    public function updateStatus(int $interactionId, bool $accepted, User $user): ?EditorInteraction
     {
         $interaction = $this->repository->find($interactionId);
         if ($interaction) {
+            if ($interaction->getUser() !== $user) {
+                return null;
+            }
             $interaction->setAccepted($accepted);
             $this->entityManager->flush();
         }

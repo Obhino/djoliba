@@ -12,6 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
+use App\Attribute\RateLimiter;
 use SymfonyCasts\Bundle\VerifyEmail\Exception\VerifyEmailExceptionInterface;
 use SymfonyCasts\Bundle\VerifyEmail\VerifyEmailHelperInterface;
 
@@ -43,6 +44,7 @@ class AuthController extends AbstractController
     }
 
     #[Route(path: '/register', name: 'app_register')]
+    #[RateLimiter('api_login')]
     public function register(
         Request $request,
         UserPasswordHasherInterface $userPasswordHasher,

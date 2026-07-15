@@ -41,6 +41,12 @@ class RateLimiterSubscriber implements EventSubscriberInterface
 
         if ($attribute) {
             $request = $event->getRequest();
+
+            // Ignorer la limitation pour les requêtes GET et HEAD (affichage de formulaires, lecture de page)
+            if (in_array($request->getMethod(), ['GET', 'HEAD'], true)) {
+                return;
+            }
+
             $env = isset($_ENV['APP_ENV']) ? $_ENV['APP_ENV'] : 'dev';
             if ($env === 'test' && !$request->headers->has('X-Enable-Rate-Limit')) {
                 return;

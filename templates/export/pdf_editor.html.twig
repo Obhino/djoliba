@@ -293,7 +293,7 @@
     <!-- TOC_PLACEHOLDER -->
 
     <div class="content">
-        {{ contentHtml|raw }}
+        {{ contentHtml|sanitize_html|raw }}
     </div>
 </body>
 </html>

@@ -63,6 +63,9 @@ services:
       OPENSERP_URL: http://openserp:7000
       MAILER_DSN: ${MAILER_DSN}
       MAILER_FROM: ${MAILER_FROM:-contact@djolibasearch.com}
+      GOTENBERG_URL: http://gotenberg:3000
+      CLAMAV_URL: tcp://clamav:3310
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       # Nom de domaine de production pour la génération de certificats HTTPS par Caddy (ex: djoliba.science)
       SERVER_NAME: ${SERVER_NAME:-:80}
     volumes:
@@ -103,6 +106,9 @@ services:
       OPENSERP_URL: http://openserp:7000
       MAILER_DSN: ${MAILER_DSN}
       MAILER_FROM: ${MAILER_FROM:-contact@djolibasearch.com}
+      GOTENBERG_URL: http://gotenberg:3000
+      CLAMAV_URL: tcp://clamav:3310
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
     healthcheck:
       disable: true
     volumes:
@@ -117,6 +123,25 @@ services:
     restart: unless-stopped
     command: serve -a 0.0.0.0 -p 7000
     # Pas d'exposition externe, accessible uniquement en réseau interne Docker
+
+  # ─────────────────────────────────────────────
+  # Gotenberg (Rendu PDF Production)
+  # ─────────────────────────────────────────────
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: djoliba_prod_gotenberg
+    restart: unless-stopped
+    environment:
+      - CHROMIUM_IGNORE_CERTIFICATE_ERRORS=true
+
+  # ─────────────────────────────────────────────
+  # ClamAV (Scanner Antivirus Production)
+  # ─────────────────────────────────────────────
+  clamav:
+    image: clamav/clamav:latest
+    container_name: djoliba_prod_clamav
+    restart: unless-stopped
+
 
 volumes:
   database_prod_data:
