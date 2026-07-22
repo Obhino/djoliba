@@ -1,0 +1,65 @@
+{% extends 'base.html.twig' %}
+{% set hide_sidebar = true %}
+
+{% block title %}Erreur Serveur (500) - Djoliba Search{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-slate-50 relative overflow-hidden">
+    <!-- Ambient Background Glows -->
+    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
+
+    <div class="max-w-lg w-full text-center relative z-10 space-y-8">
+        <!-- Logo Header -->
+        <a href="{{ path('app_hub') }}" class="inline-block transition-transform hover:scale-105 duration-300">
+            <img src="{{ asset('images/logo-full.png') }}" alt="Djoliba Search" class="h-24 sm:h-28 w-auto mx-auto object-contain drop-shadow-sm" />
+        </a>
+
+        <!-- Main Card -->
+        <div class="bg-white/90 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-8 sm:p-10 shadow-xl shadow-slate-200/50 space-y-6">
+            <!-- 500 Badge & Illustration -->
+            <div class="space-y-2">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                    <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Erreur Serveur
+                </span>
+                <h1 class="text-7xl font-display font-black text-[#0F2942] tracking-tight">
+                    500
+                </h1>
+            </div>
+
+            <div class="space-y-2">
+                <h2 class="text-xl font-bold text-slate-800">
+                    Un problème inattendu s'est produit
+                </h2>
+                <p class="text-sm text-slate-500 leading-relaxed max-w-sm mx-auto">
+                    Nos serveurs ont rencontré une difficulté temporaire lors du traitement de votre requête. Nos équipes ont été notifiées.
+                </p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="pt-4 flex flex-col sm:flex-row gap-3 justify-center">
+                <button onclick="window.location.reload()" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#10B981] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#10B981]/20 hover:bg-[#059669] transition-all">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Réessayer
+                </button>
+
+                <a href="{{ path('app_hub') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#0F2942] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#0F2942]/20 hover:bg-[#0F2942]/90 transition-all">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Tableau de bord
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <p class="text-xs text-slate-400 font-medium">
+            Djoliba Search &bull; La 1ère plateforme autonome de recherche scientifique en Afrique
+        </p>
+    </div>
+</div>
+{% endblock %}

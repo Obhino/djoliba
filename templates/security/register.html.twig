@@ -6,13 +6,13 @@
 {% block content %}
 <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
     <div class="max-w-md w-full space-y-8">
-        <div>
-            <div class="mx-auto h-12 w-12 bg-djoliba rounded-xl flex items-center justify-center text-white font-bold text-2xl shadow-lg">D</div>
-            <h2 class="mt-6 text-center text-3xl font-display font-extrabold text-djoliba">
-                Rejoignez la révolution
+        <div class="text-center space-y-3">
+            <img src="{{ asset('images/logo-full.png') }}" alt="Djoliba Search" class="mx-auto h-28 sm:h-32 w-auto object-contain drop-shadow-sm" />
+            <h2 class="text-2xl font-display font-bold text-[#0F2942]">
+                Rejoignez Djoliba Search
             </h2>
-            <p class="mt-2 text-center text-sm text-slate-500">
-                Déjà un compte ? <a href="{{ path('app_login') }}" class="font-medium text-emerald_ia hover:text-emerald-600 transition-colors">Connectez-vous</a>
+            <p class="text-sm text-slate-500">
+                Déjà un compte ? <a href="{{ path('app_login') }}" class="font-medium text-[#10B981] hover:underline transition-colors">Connectez-vous</a>
             </p>
         </div>
 

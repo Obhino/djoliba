@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 120" fill="none">
+  <!-- Emblem D -->
+  <g transform="translate(10, 10) scale(0.2)">
+    <rect x="95" y="140" width="105" height="220" rx="6" fill="#0F2942" />
+    <path d="M 95 85 C 240 85 410 135 410 250 C 410 365 240 415 95 415" stroke="#10B981" stroke-width="34" stroke-linecap="round" fill="none" />
+    <path d="M 95 135 C 215 135 365 175 365 250 C 365 325 215 365 95 365" stroke="#10B981" stroke-width="24" stroke-linecap="round" fill="none" />
+    <path d="M 95 185 C 190 185 320 215 320 250 C 320 285 190 315 95 315" stroke="#10B981" stroke-width="16" stroke-linecap="round" fill="none" />
+
+    <line x1="390" y1="160" x2="445" y2="250" stroke="#10B981" stroke-width="16" stroke-linecap="round" />
+    <line x1="445" y1="250" x2="390" y2="340" stroke="#10B981" stroke-width="16" stroke-linecap="round" />
+    <line x1="390" y1="160" x2="390" y2="340" stroke="#10B981" stroke-width="16" stroke-linecap="round" />
+
+    <circle cx="390" cy="160" r="28" fill="#10B981" />
+    <circle cx="445" cy="250" r="28" fill="#10B981" />
+    <circle cx="390" cy="340" r="28" fill="#10B981" />
+  </g>
+
+  <!-- Typography -->
+  <text x="120" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="900" letter-spacing="1">
+    <tspan fill="#0F2942">DJOLIBA </tspan>
+    <tspan fill="#10B981" font-weight="600">Search</tspan>
+  </text>
+  <text x="120" y="92" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#64748B" letter-spacing="0.2">
+    La 1ère plateforme autonome de recherche
+  </text>
+</svg>

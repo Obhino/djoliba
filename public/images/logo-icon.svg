@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" fill="none">
+  <defs>
+    <linearGradient id="djoliba-green-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Barre verticale bleue marine du "D" -->
+  <rect x="95" y="140" width="105" height="220" rx="6" fill="#0F2942" />
+
+  <!-- Vagues vertes supérieures et inférieures du "D" -->
+  <path d="M 95 85 C 240 85 410 135 410 250 C 410 365 240 415 95 415" stroke="url(#djoliba-green-grad)" stroke-width="34" stroke-linecap="round" fill="none" />
+  <path d="M 95 135 C 215 135 365 175 365 250 C 365 325 215 365 95 365" stroke="url(#djoliba-green-grad)" stroke-width="24" stroke-linecap="round" fill="none" />
+  <path d="M 95 185 C 190 185 320 215 320 250 C 320 285 190 315 95 315" stroke="url(#djoliba-green-grad)" stroke-width="16" stroke-linecap="round" fill="none" />
+
+  <!-- Réseau de nœuds interconnectés sur l'arc droit -->
+  <line x1="390" y1="160" x2="445" y2="250" stroke="#10B981" stroke-width="16" stroke-linecap="round" />
+  <line x1="445" y1="250" x2="390" y2="340" stroke="#10B981" stroke-width="16" stroke-linecap="round" />
+  <line x1="390" y1="160" x2="390" y2="340" stroke="#10B981" stroke-width="16" stroke-linecap="round" />
+
+  <!-- Cercles des nœuds -->
+  <circle cx="390" cy="160" r="28" fill="#10B981" />
+  <circle cx="445" cy="250" r="28" fill="#10B981" />
+  <circle cx="390" cy="340" r="28" fill="#10B981" />
+</svg>

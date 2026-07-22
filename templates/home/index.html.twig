@@ -4,21 +4,30 @@
 
 {% block content %}
 <div class="relative overflow-hidden bg-white">
-    {# En-tête avec bouton de connexion #}
-    <div class="absolute top-0 left-0 right-0 p-6 flex justify-end z-50">
-        {% if app.user %}
-            <a href="{{ path('app_dashboard') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-djoliba hover:text-emerald_ia transition-colors">
-                Mon tableau de bord 
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-            </a>
-        {% else %}
-            <div class="flex items-center gap-4">
-                <span class="text-sm text-slate-500 hidden sm:inline">Déjà inscrit ?</span>
-                <a href="{{ path('app_login') }}" class="inline-flex items-center justify-center rounded-full bg-slate-100 px-6 py-2.5 text-sm font-semibold text-djoliba hover:bg-slate-200 transition-colors">
-                    Se connecter
-                </a>
+    {# En-tête avec Logo et Boutons #}
+    <div class="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-50 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <a href="{{ path('app_home') }}" class="flex items-center gap-3 hover:opacity-90 transition-opacity">
+            <img src="{{ asset('images/logo-icon.png') }}" alt="Djoliba Search" class="h-10 w-auto object-contain" />
+            <div class="flex flex-col">
+                <span class="font-display font-extrabold text-xl leading-none text-[#0F2942]">DJOLIBA <span class="text-[#10B981] font-semibold">Search</span></span>
+                <span class="text-[11px] text-slate-400 font-medium tracking-tight mt-0.5 hidden sm:inline">La 1ère plateforme autonome de recherche</span>
             </div>
-        {% endif %}
+        </a>
+        <div>
+            {% if app.user %}
+                <a href="{{ path('app_dashboard') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-djoliba hover:text-emerald_ia transition-colors">
+                    Mon tableau de bord 
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                </a>
+            {% else %}
+                <div class="flex items-center gap-4">
+                    <span class="text-sm text-slate-500 hidden sm:inline">Déjà inscrit ?</span>
+                    <a href="{{ path('app_login') }}" class="inline-flex items-center justify-center rounded-full bg-[#0F2942] text-white px-6 py-2.5 text-sm font-semibold hover:bg-[#0F2942]/90 transition-colors shadow-md">
+                        Se connecter
+                    </a>
+                </div>
+            {% endif %}
+        </div>
     </div>
     {# Arrière-plan décoratif #}
     <div class="absolute inset-0 z-0">
@@ -27,7 +36,12 @@
         <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-emerald_ia/5 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-float" style="animation-delay: 2s;"></div>
     </div>
 
-    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 text-center lg:pt-48 lg:pb-32">
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 text-center lg:pt-44 lg:pb-32">
+        <!-- Logo Hero (Format Petit Emblem) -->
+        <div class="mb-8">
+            <img src="{{ asset('images/logo-icon.png') }}" alt="Djoliba Search Logo" class="mx-auto h-20 sm:h-24 w-auto object-contain drop-shadow-md hover:scale-105 transition-transform duration-300" />
+        </div>
+
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-djoliba text-sm font-medium mb-8 border border-slate-200 shadow-sm">
             <span class="flex h-2 w-2 rounded-full bg-emerald_ia animate-pulse"></span>
             Lancement de la phase bêta gratuite

@@ -8,14 +8,17 @@
     {# Barre de navigation #}
     <nav class="absolute top-0 left-0 right-0 z-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-20">
-                <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 bg-djoliba rounded-lg flex items-center justify-center text-white font-bold">D</div>
-                    <span class="font-display font-bold text-xl text-djoliba">Djoliba</span>
-                </div>
+            <div class="flex justify-between items-center h-24">
+                <a href="{{ path('app_home') }}" class="flex items-center gap-3 hover:opacity-90 transition-opacity">
+                    <img src="{{ asset('images/logo-icon.png') }}" alt="Djoliba Search" class="h-10 w-auto object-contain" />
+                    <div class="flex flex-col">
+                        <span class="font-display font-extrabold text-xl leading-none text-[#0F2942]">DJOLIBA <span class="text-[#10B981] font-semibold">Search</span></span>
+                        <span class="text-[11px] text-slate-400 font-medium tracking-tight mt-0.5">La 1ère plateforme autonome de recherche</span>
+                    </div>
+                </a>
                 <div class="hidden sm:flex items-center gap-6">
                     <a href="{{ path('app_login') }}" class="text-sm font-semibold text-slate-600 hover:text-djoliba transition-colors">Se connecter</a>
-                    <a href="{{ path('app_register') }}" class="px-5 py-2.5 bg-djoliba/5 text-djoliba text-sm font-bold rounded-full hover:bg-djoliba/10 transition-all border border-djoliba/10">S'inscrire</a>
+                    <a href="{{ path('app_register') }}" class="px-5 py-2.5 bg-djoliba text-white text-sm font-bold rounded-full hover:bg-djoliba/90 transition-all shadow-md">S'inscrire</a>
                 </div>
             </div>
         </div>
@@ -26,7 +29,12 @@
         <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%230B2545\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-50"></div>
     </div>
 
-    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 text-center lg:pt-48 lg:pb-32">
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 text-center lg:pt-44 lg:pb-32">
+        <!-- Logo Hero (Petit format emblem) -->
+        <div class="mb-8">
+            <img src="{{ asset('images/logo-icon.png') }}" alt="Djoliba Search Logo" class="mx-auto h-20 sm:h-24 w-auto object-contain drop-shadow-md hover:scale-105 transition-transform duration-300" />
+        </div>
+
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-djoliba text-sm font-medium mb-8 border border-slate-200 shadow-sm">
             <span class="flex h-2 w-2 rounded-full bg-emerald_ia animate-pulse"></span>
             Lancement de la phase bêta
