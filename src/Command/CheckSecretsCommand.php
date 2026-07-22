@@ -17,7 +17,8 @@ class CheckSecretsCommand extends Command
     private const REQUIRED_SECRETS = [
         'DEEPSEEK_API_KEY' => 'Clé API pour le service d\'IA DeepSeek',
         'OPENSERP_API_KEY' => 'Clé API / Token pour la recherche OpenSERP',
-        'DB_PASSWORD' => 'Mot de passe de la base de données'
+        'DB_PASSWORD' => 'Mot de passe de la base de données',
+        'ENCRYPTION_KEY' => 'Clé de chiffrement symétrique (64 caractères hexadécimaux)'
     ];
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -34,7 +35,11 @@ class CheckSecretsCommand extends Command
             $details = 'Manquant';
 
             if (!empty($value)) {
-                if (str_contains($value, 'place_your_') || $value === '!ChangeMe!') {
+                if (
+                    str_contains($value, 'place_your_') || 
+                    $value === '!ChangeMe!' ||
+                    ($envVar === 'ENCRYPTION_KEY' && $value === '2a8d54d9b4bfa2cfd1e34e56598c0d9a716c52a382c7f0d616c87a552ef3bf9d')
+                ) {
                     $status = '⚠️ Placeholder';
                     $details = 'Contient une valeur par défaut de modèle';
                     $hasMissing = true;

@@ -14,18 +14,20 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 class FileStorageService
 {
     private const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 Mo
+    private const MAX_USER_QUOTA = 500 * 1024 * 1024; // 500 Mo par utilisateur
 
     private const ALLOWED_MIME_TYPES = [
         'application/pdf',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'application/x-tex',
         'text/x-tex',
-        // NOTE: 'text/plain' a été retiré intentionnellement (fix sécurité).
-        // text/plain accepte n'importe quel fichier texte (scripts PHP, JS, etc.).
-        // Seuls application/x-tex et text/x-tex sont acceptés pour les fichiers LaTeX.
+        'image/png',
+        'image/jpeg',
+        'image/webp',
     ];
 
-    private const ALLOWED_EXTENSIONS = ['pdf', 'docx', 'tex'];
+    private const ALLOWED_EXTENSIONS = ['pdf', 'docx', 'tex', 'png', 'jpg', 'jpeg', 'webp'];
+    private const ALLOWED_CATEGORIES = ['documents', 'exports', 'attachments'];
 
     /**
      * IMPORTANT SÉCURITÉ : Ce répertoire doit TOUJOURS rester hors de public/.
@@ -41,58 +43,80 @@ class FileStorageService
     }
 
     /**
-     * Valide, upload le fichier physiquement et crée l'entité Document associée.
+     * Valide, upload le fichier physiquement dans une arborescence users/{user_id}/projects/{project_id}/{category}
+     * et crée l'entité Document associée.
      *
-     * @throws \InvalidArgumentException Si le fichier est invalide (taille, format).
+     * @throws \InvalidArgumentException Si le fichier est invalide (taille, format, quota).
      * @throws \RuntimeException Si une erreur système ou un virus survient.
      */
-    public function upload(UploadedFile $file, Project $project, User $user): Document
+    public function upload(UploadedFile $file, Project $project, User $user, string $category = 'documents'): Document
     {
-        // 1. Validation de la taille (25 Mo max)
+        // 1. Validation de la catégorie
+        if (!in_array($category, self::ALLOWED_CATEGORIES, true)) {
+            $category = 'documents';
+        }
+
+        // 2. Validation de la taille individuelle (25 Mo max)
         if ($file->getSize() > self::MAX_FILE_SIZE) {
             throw new \InvalidArgumentException('Le fichier dépasse la taille maximale autorisée de 25 Mo.');
         }
 
-        // 2. Double validation du format : MIME (via finfo/magic bytes) + extension déduite
-        //    Ces deux méthodes analysent le CONTENU du fichier, pas le nom fourni par l'utilisateur.
+        // 3. Validation du quota utilisateur
+        $currentUsage = $this->getUserStorageUsage($user);
+        if ($currentUsage + $file->getSize() > self::MAX_USER_QUOTA) {
+            throw new \InvalidArgumentException('Quota de stockage utilisateur dépassé (limite de 500 Mo atteinte).');
+        }
+
+        // 4. Double validation du format : MIME + extension déduite
         $mimeType = $file->getMimeType();
         $guessedExtension = $file->guessExtension();
 
-        if (!in_array($mimeType, self::ALLOWED_MIME_TYPES) || !in_array($guessedExtension, self::ALLOWED_EXTENSIONS)) {
-            throw new \InvalidArgumentException('Format de fichier non supporté. Seuls PDF, DOCX et LaTeX (.tex) sont acceptés.');
+        if (!in_array($mimeType, self::ALLOWED_MIME_TYPES, true) || !in_array($guessedExtension, self::ALLOWED_EXTENSIONS, true)) {
+            throw new \InvalidArgumentException('Format de fichier non supporté. Seuls PDF, DOCX, LaTeX et images (PNG, JPEG, WebP) sont acceptés.');
         }
 
-        // 3. Scan antivirus
+        // 5. Scan antivirus
         $isVirus = $this->scanForVirus($file->getPathname());
         if ($isVirus) {
             throw new \RuntimeException('Opération annulée : un virus a été détecté dans le fichier.');
         }
 
-        // 4. Génération d'un nom unique sécurisé
-        //    On utilise uniquement l'extension déduite (guessExtension), jamais celle fournie par le client.
+        // 6. Génération d'un nom unique sécurisé
         $originalFilename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
         $safeFilename = preg_replace('/[^a-zA-Z0-9_-]/', '', $originalFilename);
 
-        // Fix: prévenir un safeFilename vide si le nom original était composé de caractères spéciaux
         if (empty($safeFilename)) {
             $safeFilename = 'document';
         }
 
-        $newFilename = $safeFilename . '-' . uniqid() . '.' . $guessedExtension;
+        $newFilename = $safeFilename . '-' . uniqid('', true) . '.' . $guessedExtension;
+
+        // 7. Construction de l'arborescence structurée : users/{user_id}/projects/{project_id}/{category}
+        $relativeSubDir = sprintf('users/%d/projects/%d/%s', $user->getId(), $project->getId(), $category);
+        $targetDirectory = $this->uploadDirectory . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativeSubDir);
+
+        if (!is_dir($targetDirectory)) {
+            if (!mkdir($targetDirectory, 0775, true) && !is_dir($targetDirectory)) {
+                throw new \RuntimeException(sprintf('Impossible de créer le répertoire "%s"', $targetDirectory));
+            }
+        }
 
         try {
-            $file->move($this->uploadDirectory, $newFilename);
+            $file->move($targetDirectory, $newFilename);
         } catch (FileException $e) {
             throw new \RuntimeException('Erreur système lors de l\'enregistrement du fichier : ' . $e->getMessage());
         }
 
-        $finalPath = $this->uploadDirectory . DIRECTORY_SEPARATOR . $newFilename;
+        $finalPath = $targetDirectory . DIRECTORY_SEPARATOR . $newFilename;
+        $relativePath = $relativeSubDir . '/' . $newFilename;
 
-        // 5. Création et persistance de l'entité Document
+        // 8. Création et persistance de l'entité Document
         $document = new Document();
         $document->setProject($project);
         $document->setUser($user);
         $document->setFilename($file->getClientOriginalName());
+        $document->setCategory($category);
+        $document->setRelativePath($relativePath);
         $document->setStoredPath($finalPath);
         $document->setMimeType($mimeType);
         $document->setSizeBytes(filesize($finalPath));
@@ -106,9 +130,51 @@ class FileStorageService
     }
 
     /**
-     * Récupère un document appartenant à un utilisateur spécifique.
-     * Fix IDOR : on filtre toujours par user pour éviter qu'un utilisateur
-     * accède aux documents d'un autre en devinant l'ID.
+     * Résout le chemin d'accès absolu sur disque pour un document donné (gère la rétrocompatibilité).
+     */
+    public function getAbsoluteFilePath(Document $document): string
+    {
+        if ($document->getRelativePath()) {
+            return $this->uploadDirectory . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $document->getRelativePath());
+        }
+
+        return $document->getStoredPath() ?? '';
+    }
+
+    /**
+     * Récupère le volume total de stockage utilisé par un utilisateur (en octets).
+     */
+    public function getUserStorageUsage(User $user): int
+    {
+        $qb = $this->entityManager->createQueryBuilder();
+        $result = $qb->select('SUM(d.sizeBytes)')
+            ->from(Document::class, 'd')
+            ->where('d.user = :user')
+            ->setParameter('user', $user)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) ($result ?? 0);
+    }
+
+    /**
+     * Récupère le volume total de stockage utilisé pour un projet (en octets).
+     */
+    public function getProjectStorageUsage(Project $project): int
+    {
+        $qb = $this->entityManager->createQueryBuilder();
+        $result = $qb->select('SUM(d.sizeBytes)')
+            ->from(Document::class, 'd')
+            ->where('d.project = :project')
+            ->setParameter('project', $project)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) ($result ?? 0);
+    }
+
+    /**
+     * Récupère un document appartenant à un utilisateur spécifique (Fix IDOR).
      */
     public function getDocument(int $id, User $user): ?Document
     {
@@ -120,17 +186,17 @@ class FileStorageService
 
     /**
      * Supprime le fichier physique et l'entité en base de données.
-     * Fix Path Traversal : on vérifie que le chemin résolu est bien dans le répertoire d'upload
-     * avant d'appeler unlink(), pour éviter la suppression de fichiers système en cas de
-     * valeur corrompue dans storedPath.
      */
     public function deleteDocument(Document $document): void
     {
         $realUploadDir = realpath($this->uploadDirectory);
-        $realFilePath  = realpath($document->getStoredPath());
+        $filePath = $this->getAbsoluteFilePath($document);
+        $realFilePath  = realpath($filePath);
 
         if ($realFilePath !== false && $realUploadDir !== false && str_starts_with($realFilePath, $realUploadDir . DIRECTORY_SEPARATOR)) {
-            unlink($realFilePath);
+            if (file_exists($realFilePath)) {
+                @unlink($realFilePath);
+            }
         }
 
         $this->entityManager->remove($document);

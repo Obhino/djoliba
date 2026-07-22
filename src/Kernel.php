@@ -14,6 +14,14 @@ class Kernel extends BaseKernel
         parent::boot();
 
         if ($this->getEnvironment() === 'prod') {
+            if (
+                getenv('APP_BUILDING') === '1' || 
+                ($_ENV['APP_BUILDING'] ?? '') === '1' || 
+                ($_SERVER['APP_BUILDING'] ?? '') === '1'
+            ) {
+                return;
+            }
+
             $requiredSecrets = ['DEEPSEEK_API_KEY', 'OPENSERP_API_KEY', 'DB_PASSWORD', 'ENCRYPTION_KEY'];
             $missing = [];
 

@@ -68,10 +68,12 @@ RUN composer install --no-dev --no-interaction --optimize-autoloader --no-script
 COPY . .
 
 # Variables fictives pour passer la validation de boot/compilation
+ENV APP_BUILDING=1
 ENV DATABASE_URL=sqlite:///:memory:
 ENV DEEPSEEK_API_KEY=dummy_build_key_for_deepseek
 ENV OPENSERP_API_KEY=dummy_build_key_for_openserp
 ENV DB_PASSWORD=dummy_build_password_for_db
+ENV ENCRYPTION_KEY=0000000000000000000000000000000000000000000000000000000000000000
 
 # Compilation des assets (Tailwind CSS et AssetMapper)
 RUN php bin/console importmap:install --no-interaction

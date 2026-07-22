@@ -74,6 +74,7 @@ nano .env.prod
 - `REDIS_PASSWORD` : Un mot de passe fort pour Redis.
 - `DEEPSEEK_API_KEY` : Votre clé d'API DeepSeek réelle.
 - `OPENSERP_API_KEY` : Votre clé API ou token pour OpenSERP.
+- `ENCRYPTION_KEY` : Clé de chiffrement symétrique pour sécuriser les données sensibles comme les jetons API tiers. Doit être une clé hexadécimale de 64 caractères (génération : `openssl rand -hex 32`).
 - `SERVER_NAME` : Votre nom de domaine officiel (ex: `djoliba.science`). Caddy s'occupera d'obtenir le certificat HTTPS automatiquement.
 
 *(Sauvegardez et quittez nano : `Ctrl+O`, `Entrée`, `Ctrl+X`)*

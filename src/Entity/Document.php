@@ -46,6 +46,12 @@ class Document
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $createdAt = null;
 
+    #[ORM\Column(length: 50, options: ['default' => 'documents'])]
+    private ?string $category = 'documents';
+
+    #[ORM\Column(length: 512, nullable: true)]
+    private ?string $relativePath = null;
+
     #[ORM\ManyToOne(targetEntity: SubProject::class, inversedBy: 'documents')]
     #[ORM\JoinColumn(name: 'sub_project_id', referencedColumnName: 'id', nullable: true)]
     private ?SubProject $subProject = null;
@@ -179,6 +185,30 @@ class Document
     public function setSubProject(?SubProject $subProject): static
     {
         $this->subProject = $subProject;
+
+        return $this;
+    }
+
+    public function getCategory(): ?string
+    {
+        return $this->category ?? 'documents';
+    }
+
+    public function setCategory(string $category): static
+    {
+        $this->category = $category;
+
+        return $this;
+    }
+
+    public function getRelativePath(): ?string
+    {
+        return $this->relativePath;
+    }
+
+    public function setRelativePath(?string $relativePath): static
+    {
+        $this->relativePath = $relativePath;
 
         return $this;
     }
