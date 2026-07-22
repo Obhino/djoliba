@@ -30,9 +30,13 @@
     </div>
 
     <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 text-center lg:pt-44 lg:pb-32">
-        <!-- Logo Hero (Petit format emblem) -->
-        <div class="mb-8">
-            <img src="{{ asset('images/logo-icon.png') }}" alt="Djoliba Search Logo" class="mx-auto h-20 sm:h-24 w-auto object-contain drop-shadow-md hover:scale-105 transition-transform duration-300" />
+        <!-- Logo Hero (Petit logo-icon.png + Texte HTML/CSS) -->
+        <div class="mb-8 flex flex-col items-center justify-center gap-3">
+            <img src="{{ asset('images/logo-icon.png') }}" alt="Djoliba Search Logo" class="h-20 sm:h-24 w-auto object-contain drop-shadow-md hover:scale-105 transition-transform duration-300" />
+            <div class="flex flex-col items-center">
+                <span class="font-display font-black text-3xl sm:text-4xl tracking-tight text-[#0F2942]">DJOLIBA <span class="text-[#10B981] font-semibold">Search</span></span>
+                <span class="text-xs sm:text-sm text-slate-500 font-medium tracking-wide mt-1">La 1ère plateforme autonome de recherche scientifique en Afrique</span>
+            </div>
         </div>
 
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-djoliba text-sm font-medium mb-8 border border-slate-200 shadow-sm">
